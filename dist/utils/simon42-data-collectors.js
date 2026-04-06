@@ -169,28 +169,45 @@ export function collectBatteriesCritical(hass, excludeLabels, config = {}) {
   const hiddenFromConfig = getHiddenEntitiesFromConfig(config);
   const excludeSet = new Set(excludeLabels);
   
-  return Object.keys(hass.states)
+  const batteryList = Object.keys(hass.states)
     .filter(entityId => {
       const state = hass.states[entityId];
       if (!state) return false;
-      
-      // 1. Battery-Check zuerst (String-includes ist schnell)
-      const isBattery = entityId.includes('battery') || 
+
+      // 1. Battery-Check: sensor/binary_sensor mit battery device_class oder "battery" im Namen
+      const isBattery = entityId.includes('battery') ||
                        state.attributes?.device_class === 'battery';
       if (!isBattery) return false;
-      
-      // 2. Registry-Check: Nur manuell versteckte ausschließen (hidden_by wird ignoriert)
+      if (!entityId.startsWith('sensor.') && !entityId.startsWith('binary_sensor.')) return false;
+
+      // 2. Registry-Check
       const registryEntry = hass.entities?.[entityId];
-      if (registryEntry?.hidden === true) return false;
-      
+      if (registryEntry?.hidden_by) return false;
+      if (registryEntry?.disabled_by) return false;
+
       // 3. Exclude-Checks
       if (excludeSet.has(entityId)) return false;
       if (hiddenFromConfig.has(entityId)) return false;
-      
-      // 4. Value-Check am Ende
+
+      // 4. Value-Check: binary_sensor "on" = leer, sensor < 20%
+      if (entityId.startsWith('binary_sensor.')) return state.state === 'on';
       const value = parseFloat(state.state);
       return !isNaN(value) && value < 20;
     });
+
+  // Deduplizierung: binary_sensor rauswerfen wenn ein %-Sensor vom selben Device existiert
+  const sensorDeviceIds = new Set();
+  batteryList.forEach(id => {
+    if (id.startsWith('sensor.')) {
+      const deviceId = hass.entities?.[id]?.device_id;
+      if (deviceId) sensorDeviceIds.add(deviceId);
+    }
+  });
+  return batteryList.filter(id => {
+    if (!id.startsWith('binary_sensor.')) return true;
+    const deviceId = hass.entities?.[id]?.device_id;
+    return !deviceId || !sensorDeviceIds.has(deviceId);
+  });
 }
 
 /**

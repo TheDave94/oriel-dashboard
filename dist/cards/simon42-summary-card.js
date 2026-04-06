@@ -178,28 +178,43 @@ class Simon42SummaryCard extends HTMLElement {
           return false;
         });
       
-      case 'batteries':
-        return allEntityIds.filter(id => {
+      case 'batteries': {
+        const batteryEntities = allEntityIds.filter(id => {
           const state = hass.states[id];
           if (!state) return false;
-          
-          // Battery-Check (String-includes ist schneller als Attribute-Lookup)
-          if (!id.includes('battery') && 
-              state.attributes?.device_class !== 'battery') {
-            return false;
-          }
-          
+
+          // Battery-Check: sensor/binary_sensor mit battery device_class oder "battery" im Namen
+          const isBatterySensor = (id.includes('battery') ||
+              state.attributes?.device_class === 'battery') &&
+              (id.startsWith('sensor.') || id.startsWith('binary_sensor.'));
+          if (!isBatterySensor) return false;
+
           // Exclude-Checks
           if (this._excludeLabelsSet.has(id)) return false;
           if (hiddenFromConfig.has(id)) return false;
-          
+
           // Registry-Check
           const registryEntry = hass.entities?.[id];
           if (registryEntry?.hidden_by) return false;
           if (registryEntry?.disabled_by) return false;
-          
+
           return true;
         });
+
+        // Deduplizierung: binary_sensor rauswerfen wenn ein %-Sensor vom selben Device existiert
+        const sensorDeviceIds = new Set();
+        batteryEntities.forEach(id => {
+          if (id.startsWith('sensor.')) {
+            const deviceId = hass.entities?.[id]?.device_id;
+            if (deviceId) sensorDeviceIds.add(deviceId);
+          }
+        });
+        return batteryEntities.filter(id => {
+          if (!id.startsWith('binary_sensor.')) return true;
+          const deviceId = hass.entities?.[id]?.device_id;
+          return !deviceId || !sensorDeviceIds.has(deviceId);
+        });
+      }
       
       default:
         return [];
@@ -291,11 +306,15 @@ class Simon42SummaryCard extends HTMLElement {
         }).length;
       
       case 'batteries':
-        // Zähle kritische Batterien (< 20%)
+        // Zähle kritische Batterien (< 20% oder binary_sensor "on" = low battery)
         return relevantEntities.filter(id => {
           const state = this.hass.states[id];
           if (!state) return false;
-          
+
+          // Binary sensor: "on" = Batterie leer
+          if (id.startsWith('binary_sensor.')) return state.state === 'on';
+
+          // Sensor: numerischer Wert < 20%
           const value = parseFloat(state.state);
           return !isNaN(value) && value < 20;
         }).length;

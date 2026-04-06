@@ -34,34 +34,61 @@ class Simon42ViewBatteriesStrategy {
       .filter(entityId => {
         const state = hass.states[entityId];
         if (!state) return false;
-        
-        // 1. Battery-Check zuerst (String-includes ist schnell)
-        const isBattery = entityId.includes('battery') || 
+
+        // 1. Battery-Check: sensor/binary_sensor mit battery device_class oder "battery" im Namen
+        const isBattery = entityId.includes('battery') ||
                          state.attributes?.device_class === 'battery';
         if (!isBattery) return false;
-        
+        if (!entityId.startsWith('sensor.') && !entityId.startsWith('binary_sensor.')) return false;
+
         // 2. Registry-Check - DIREKT aus hass.entities (O(1) Lookup)
         const registryEntry = hass.entities?.[entityId];
-        if (registryEntry?.hidden === true) return false;
-        
+        if (registryEntry?.hidden_by) return false;
+        if (registryEntry?.disabled_by) return false;
+
         // 3. Exclude-Checks (Set-Lookup = O(1))
         if (excludeSet.has(entityId)) return false;
         if (hiddenFromConfig.has(entityId)) return false;
-        
-        // 4. Value-Check am Ende
+
+        // 4. Value-Check: numerisch ODER binary_sensor
+        if (entityId.startsWith('binary_sensor.')) return true;
         const value = parseFloat(state.state);
         return !isNaN(value); // Nur numerische Werte
       });
+
+    // Deduplizierung: binary_sensor rauswerfen wenn ein %-Sensor vom selben Device existiert
+    const sensorDeviceIds = new Set();
+    batteryEntities.forEach(id => {
+      if (id.startsWith('sensor.')) {
+        const deviceId = hass.entities?.[id]?.device_id;
+        if (deviceId) sensorDeviceIds.add(deviceId);
+      }
+    });
+    const dedupedEntities = batteryEntities.filter(id => {
+      if (!id.startsWith('binary_sensor.')) return true;
+      const deviceId = hass.entities?.[id]?.device_id;
+      return !deviceId || !sensorDeviceIds.has(deviceId);
+    });
 
     // Gruppiere nach Batteriestatus
     const critical = []; // < 20%
     const low = []; // 20-50%
     const good = []; // > 50%
     
-    batteryEntities.forEach(entityId => {
+    dedupedEntities.forEach(entityId => {
       const state = hass.states[entityId];
+
+      // Binary sensor: "on" = Batterie leer → kritisch, "off" = gut
+      if (entityId.startsWith('binary_sensor.')) {
+        if (state.state === 'on') {
+          critical.push(entityId);
+        } else {
+          good.push(entityId);
+        }
+        return;
+      }
+
       const value = parseFloat(state.state);
-      
       if (value < 20) {
         critical.push(entityId);
       } else if (value <= 50) {
