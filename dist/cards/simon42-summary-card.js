@@ -128,10 +128,15 @@ class Simon42SummaryCard extends HTMLElement {
           // Category-Checks (aus Registry UND State-Attributes)
           const category = registryEntry?.entity_category || state.attributes?.entity_category;
           if (category === 'config' || category === 'diagnostic') return false;
-          
+
+          // Device-Class-Filter: nur Rollos/Vorhänge, keine Türen/Garagen
+          const coverDeviceClass = state.attributes?.device_class;
+          const coverClasses = ['awning', 'blind', 'curtain', 'shade', 'shutter', 'window'];
+          if (coverDeviceClass && !coverClasses.includes(coverDeviceClass)) return false;
+
           return true;
         });
-      
+
       case 'security':
         return allEntityIds.filter(id => {
           const state = hass.states[id];
