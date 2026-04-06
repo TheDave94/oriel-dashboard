@@ -68,6 +68,15 @@ export function attachCoversSummaryCheckboxListener(element, callback) {
   }
 }
 
+export function attachHideMobileAppBatteriesCheckboxListener(element, callback) {
+  const checkbox = element.querySelector('#hide-mobile-app-batteries');
+  if (checkbox) {
+    checkbox.addEventListener('change', (e) => {
+      callback(e.target.checked);
+    });
+  }
+}
+
 export function attachAreaCheckboxListeners(element, callback) {
   const areaCheckboxes = element.querySelectorAll('.area-checkbox');
   areaCheckboxes.forEach(checkbox => {

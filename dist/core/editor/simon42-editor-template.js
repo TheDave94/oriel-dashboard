@@ -3,7 +3,7 @@
 // ====================================================================
 // HTML-Template für den Dashboard Strategy Editor
 
-export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary }) {
+export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, hideMobileAppBatteries }) {
   return `
     <div class="card-config">
       <div class="section">
@@ -117,15 +117,26 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
       <div class="section">
         <div class="section-title">Zusammenfassungen</div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="show-covers-summary" 
+          <input
+            type="checkbox"
+            id="show-covers-summary"
             ${showCoversSummary !== false ? 'checked' : ''}
           />
           <label for="show-covers-summary">Rollo-Zusammenfassung anzeigen</label>
         </div>
         <div class="description">
           Zeigt die Rollo-Zusammenfassungskarte in der Übersicht an.
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="hide-mobile-app-batteries"
+            ${hideMobileAppBatteries ? 'checked' : ''}
+          />
+          <label for="hide-mobile-app-batteries">Mobile-App-Batterien ausblenden</label>
+        </div>
+        <div class="description">
+          Blendet Batterien von Smartphones, Tablets und Watches (Mobile App) in der Batterie-Übersicht und -Zusammenfassung aus.
         </div>
       </div>
 

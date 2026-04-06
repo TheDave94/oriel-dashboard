@@ -9,8 +9,9 @@ import {
   attachSearchCardCheckboxListener,
   attachSummaryViewsCheckboxListener,
   attachRoomViewsCheckboxListener,
-  attachGroupByFloorsCheckboxListener, // NEU
+  attachGroupByFloorsCheckboxListener,
   attachCoversSummaryCheckboxListener,
+  attachHideMobileAppBatteriesCheckboxListener,
   attachAreaCheckboxListeners,
   attachDragAndDropListeners,
   attachExpandButtonListeners,
@@ -69,6 +70,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const showRoomViews = this._config.show_room_views === true; // Standard: false
     const groupByFloors = this._config.group_by_floors === true; // NEU
     const showCoversSummary = this._config.show_covers_summary !== false;
+    const hideMobileAppBatteries = this._config.hide_mobile_app_batteries === true;
     const summariesColumns = this._config.summaries_columns || 2;
     const alarmEntity = this._config.alarm_entity || '';
     const favoriteEntities = this._config.favorite_entities || [];
@@ -116,8 +118,9 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         favoriteEntities,
         roomPinEntities,
         allEntities,
-        groupByFloors, // NEU
-        showCoversSummary
+        groupByFloors,
+        showCoversSummary,
+        hideMobileAppBatteries
       })}
     `;
 
@@ -129,6 +132,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachRoomViewsCheckboxListener(this, (showRoomViews) => this._showRoomViewsChanged(showRoomViews));
     attachGroupByFloorsCheckboxListener(this, (groupByFloors) => this._groupByFloorsChanged(groupByFloors)); // NEU
     attachCoversSummaryCheckboxListener(this, (showCoversSummary) => this._showCoversSummaryChanged(showCoversSummary));
+    attachHideMobileAppBatteriesCheckboxListener(this, (hide) => this._hideMobileAppBatteriesChanged(hide));
     this._attachSummariesColumnsListener();
     this._attachAlarmEntityListener();
     this._attachFavoritesListeners();
@@ -889,6 +893,25 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     // Wenn der Standardwert (true) gesetzt ist, entfernen wir die Property
     if (showCoversSummary === true) {
       delete newConfig.show_covers_summary;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _hideMobileAppBatteriesChanged(hide) {
+    if (!this._config || !this._hass) {
+      return;
+    }
+
+    const newConfig = {
+      ...this._config,
+      hide_mobile_app_batteries: hide
+    };
+
+    // Wenn der Standardwert (false) gesetzt ist, entfernen wir die Property
+    if (hide === false) {
+      delete newConfig.hide_mobile_app_batteries;
     }
 
     this._config = newConfig;

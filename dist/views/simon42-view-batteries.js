@@ -46,6 +46,9 @@ class Simon42ViewBatteriesStrategy {
         if (registryEntry?.hidden_by) return false;
         if (registryEntry?.disabled_by) return false;
 
+        // Mobile App Filter
+        if (config.config?.hide_mobile_app_batteries && registryEntry?.platform === 'mobile_app') return false;
+
         // 3. Exclude-Checks (Set-Lookup = O(1))
         if (excludeSet.has(entityId)) return false;
         if (hiddenFromConfig.has(entityId)) return false;

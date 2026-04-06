@@ -198,6 +198,9 @@ class Simon42SummaryCard extends HTMLElement {
           if (registryEntry?.hidden_by) return false;
           if (registryEntry?.disabled_by) return false;
 
+          // Mobile App Filter
+          if (this.config.hide_mobile_app_batteries && registryEntry?.platform === 'mobile_app') return false;
+
           return true;
         });
 
