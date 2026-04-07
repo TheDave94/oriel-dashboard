@@ -12,7 +12,7 @@
 
 import type { HomeAssistant } from './types/homeassistant';
 import type {
-  EntityRegistryDisplayEntry,
+  EntityRegistryEntry,
   DeviceRegistryEntry,
   AreaRegistryEntry,
   FloorRegistryEntry,
@@ -39,7 +39,7 @@ class Registry {
   // === Fetched registry arrays (from WebSocket) ===
 
   /** Full entity registry entries fetched via callWS */
-  private static _fetchedEntities: EntityRegistryDisplayEntry[];
+  private static _fetchedEntities: EntityRegistryEntry[];
 
   /** Full device registry entries fetched via callWS */
   private static _fetchedDevices: DeviceRegistryEntry[];
@@ -50,7 +50,7 @@ class Registry {
   // === Pre-computed Maps for O(1) lookups ===
 
   /** Entity registry entry by entity_id */
-  private static _entityById: Map<string, EntityRegistryDisplayEntry>;
+  private static _entityById: Map<string, EntityRegistryEntry>;
 
   /** Device registry entry by device id */
   private static _deviceById: Map<string, DeviceRegistryEntry>;
@@ -59,7 +59,7 @@ class Registry {
   private static _entitiesByDevice: Map<string, string[]>;
 
   /** Entity registry entries grouped by resolved area_id (entity.area_id || device.area_id) */
-  private static _entitiesByArea: Map<string, EntityRegistryDisplayEntry[]>;
+  private static _entitiesByArea: Map<string, EntityRegistryEntry[]>;
 
   /** Entity IDs grouped by domain prefix (e.g. "light", "sensor") */
   private static _entitiesByDomain: Map<string, string[]>;
@@ -67,13 +67,13 @@ class Registry {
   // === Pre-filtered Maps (visible entities only — no hidden/disabled/excluded) ===
 
   /** Visible entity entries grouped by area (pre-filtered during init) */
-  private static _visibleEntitiesByArea: Map<string, EntityRegistryDisplayEntry[]>;
+  private static _visibleEntitiesByArea: Map<string, EntityRegistryEntry[]>;
 
   /** Visible entity IDs grouped by domain (pre-filtered during init) */
   private static _visibleEntitiesByDomain: Map<string, string[]>;
 
   /** Config/diagnostic entities grouped by area (for potential future use) */
-  private static _configDiagEntitiesByArea: Map<string, EntityRegistryDisplayEntry[]>;
+  private static _configDiagEntitiesByArea: Map<string, EntityRegistryEntry[]>;
 
   // === Pre-computed exclusion Sets ===
 
@@ -120,32 +120,20 @@ class Registry {
   /**
    * Fetch entity, device, and area registries from HA via WebSocket API.
    * This is the official approach used by Mushroom Strategy and HA frontend.
-   * Falls back to hass object properties if WebSocket calls fail.
    */
   private static async _fetchRegistries(): Promise<void> {
-    try {
-      [Registry._fetchedEntities, Registry._fetchedDevices, Registry._fetchedAreas] =
-        await Promise.all([
-          Registry._hass.callWS<EntityRegistryDisplayEntry[]>({
-            type: 'config/entity_registry/list',
-          }),
-          Registry._hass.callWS<DeviceRegistryEntry[]>({
-            type: 'config/device_registry/list',
-          }),
-          Registry._hass.callWS<AreaRegistryEntry[]>({
-            type: 'config/area_registry/list',
-          }),
-        ]);
-    } catch (e) {
-      console.warn(
-        'Simon42 Strategy: WebSocket registry fetch failed, falling back to hass objects',
-        e
-      );
-      // Fallback to hass object properties (pre-loaded by HA frontend)
-      Registry._fetchedEntities = Object.values(Registry._hass.entities || {});
-      Registry._fetchedDevices = Object.values(Registry._hass.devices || {});
-      Registry._fetchedAreas = Object.values(Registry._hass.areas || {});
-    }
+    [Registry._fetchedEntities, Registry._fetchedDevices, Registry._fetchedAreas] =
+      await Promise.all([
+        Registry._hass.callWS<EntityRegistryEntry[]>({
+          type: 'config/entity_registry/list',
+        }),
+        Registry._hass.callWS<DeviceRegistryEntry[]>({
+          type: 'config/device_registry/list',
+        }),
+        Registry._hass.callWS<AreaRegistryEntry[]>({
+          type: 'config/area_registry/list',
+        }),
+      ]);
   }
 
   // =====================================================================
@@ -167,7 +155,7 @@ class Registry {
    *
    * Note: Does NOT check state attributes — only registry data.
    */
-  private static _isEntityVisible(entity: EntityRegistryDisplayEntry): boolean {
+  private static _isEntityVisible(entity: EntityRegistryEntry): boolean {
     if (Registry._excludeSet.has(entity.entity_id)) return false;
     if (Registry._hiddenFromConfig.has(entity.entity_id)) return false;
     if (entity.hidden_by) return false;
@@ -180,7 +168,7 @@ class Registry {
   /**
    * Check if an entity is config or diagnostic category.
    */
-  private static _isConfigOrDiagnostic(entity: EntityRegistryDisplayEntry): boolean {
+  private static _isConfigOrDiagnostic(entity: EntityRegistryEntry): boolean {
     return entity.entity_category === 'config' || entity.entity_category === 'diagnostic';
   }
 
@@ -210,26 +198,28 @@ class Registry {
       Registry._entityById.set(e.entity_id, e);
     }
 
-    // Entities by domain — raw + visible
+    // Entities by domain — raw + visible (built from registry, filtered to entities with state)
     Registry._entitiesByDomain = new Map();
     Registry._visibleEntitiesByDomain = new Map();
-    for (const entityId of Object.keys(Registry._hass.states)) {
-      const dotIndex = entityId.indexOf('.');
-      const domain = entityId.substring(0, dotIndex);
+    for (const e of entities) {
+      // Only include entities that have a state (disabled entities don't)
+      if (!(e.entity_id in Registry._hass.states)) continue;
 
-      // Raw map (all entities with a state)
+      const dotIndex = e.entity_id.indexOf('.');
+      const domain = e.entity_id.substring(0, dotIndex);
+
+      // Raw map (all registry entities with a state)
       if (!Registry._entitiesByDomain.has(domain)) {
         Registry._entitiesByDomain.set(domain, []);
       }
-      Registry._entitiesByDomain.get(domain)!.push(entityId);
+      Registry._entitiesByDomain.get(domain)!.push(e.entity_id);
 
       // Visible map (pre-filtered)
-      const entry = Registry._entityById.get(entityId);
-      if (entry && Registry._isEntityVisible(entry)) {
+      if (Registry._isEntityVisible(e)) {
         if (!Registry._visibleEntitiesByDomain.has(domain)) {
           Registry._visibleEntitiesByDomain.set(domain, []);
         }
-        Registry._visibleEntitiesByDomain.get(domain)!.push(entityId);
+        Registry._visibleEntitiesByDomain.get(domain)!.push(e.entity_id);
       }
     }
 
@@ -344,7 +334,7 @@ class Registry {
   // =====================================================================
 
   /** Get entity registry entry by entity_id. O(1). */
-  static getEntity(entityId: string): EntityRegistryDisplayEntry | undefined {
+  static getEntity(entityId: string): EntityRegistryEntry | undefined {
     return Registry._entityById.get(entityId);
   }
 
@@ -358,7 +348,7 @@ class Registry {
    * Includes entities whose device resolves to that area.
    * O(1).
    */
-  static getEntitiesForArea(areaId: string): EntityRegistryDisplayEntry[] {
+  static getEntitiesForArea(areaId: string): EntityRegistryEntry[] {
     return Registry._entitiesByArea.get(areaId) || [];
   }
 
@@ -383,7 +373,7 @@ class Registry {
    * Get visible entity registry entries for an area. O(1).
    * Pre-filtered: no hidden_by, disabled_by, no_dboard, config/diagnostic, config-hidden.
    */
-  static getVisibleEntitiesForArea(areaId: string): EntityRegistryDisplayEntry[] {
+  static getVisibleEntitiesForArea(areaId: string): EntityRegistryEntry[] {
     return Registry._visibleEntitiesByArea.get(areaId) || [];
   }
 
@@ -391,7 +381,7 @@ class Registry {
    * Get config/diagnostic entities for an area. O(1).
    * Only entities with entity_category = 'config' or 'diagnostic'.
    */
-  static getConfigDiagEntitiesForArea(areaId: string): EntityRegistryDisplayEntry[] {
+  static getConfigDiagEntitiesForArea(areaId: string): EntityRegistryEntry[] {
     return Registry._configDiagEntitiesByArea.get(areaId) || [];
   }
 

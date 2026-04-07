@@ -3,7 +3,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { EntityRegistryDisplayEntry } from '../types/registries';
+import type { EntityRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 
 declare global {
@@ -13,7 +13,7 @@ declare global {
 }
 
 interface CoversGroupConfig {
-  entities: EntityRegistryDisplayEntry[];
+  entities: EntityRegistryEntry[];
   config?: any;
   group_type: 'open' | 'closed';
   device_classes?: string[];
@@ -34,7 +34,7 @@ const DEFAULT_DEVICE_CLASSES = ['awning', 'blind', 'curtain', 'shade', 'shutter'
 class Simon42CoversGroupCard extends HTMLElement {
   private _hass: HomeAssistant | null = null;
   private _config!: CoversGroupConfig;
-  private _entities!: EntityRegistryDisplayEntry[];
+  private _entities!: EntityRegistryEntry[];
   private _deviceClasses!: string[];
   private _cachedFilteredIds: Set<string> | null = null;
   private _lastCoversList = '';

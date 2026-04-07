@@ -17,7 +17,7 @@ import {
 } from 'home-assistant-js-websocket';
 
 import {
-  EntityRegistryDisplayEntry,
+  EntityRegistryEntry,
   DeviceRegistryEntry,
   AreaRegistryEntry,
   FloorRegistryEntry,
@@ -63,7 +63,7 @@ export interface HomeAssistant {
 
   // Registries — primary data source for the strategy
   states: HassEntities;
-  entities: Record<string, EntityRegistryDisplayEntry>;
+  entities: Record<string, EntityRegistryEntry>;
   devices: Record<string, DeviceRegistryEntry>;
   areas: Record<string, AreaRegistryEntry>;
   floors: Record<string, FloorRegistryEntry>;

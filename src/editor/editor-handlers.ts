@@ -7,7 +7,7 @@
 import { renderAreaEntitiesHTML } from './editor-template';
 import { HomeAssistant } from '../types/homeassistant';
 import { Simon42StrategyConfig, RoomEntities } from '../types/strategy';
-import { EntityRegistryDisplayEntry } from '../types/registries';
+import { EntityRegistryEntry } from '../types/registries';
 
 // -- Extended element with expand tracking ----------------------------
 
@@ -497,8 +497,8 @@ export async function getAreaGroupedEntities(
 
   // Labels for filtering
   const excludeLabels = entities
-    .filter((e: EntityRegistryDisplayEntry) => e.labels?.includes('no_dboard'))
-    .map((e: EntityRegistryDisplayEntry) => e.entity_id);
+    .filter((e: EntityRegistryEntry) => e.labels?.includes('no_dboard'))
+    .map((e: EntityRegistryEntry) => e.entity_id);
 
   for (const entity of entities) {
     // Check if entity belongs to the area

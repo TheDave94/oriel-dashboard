@@ -9,12 +9,15 @@
 
 export type EntityCategory = 'config' | 'diagnostic';
 
-export interface EntityRegistryDisplayEntry {
+export interface EntityRegistryEntry {
+  id: string;
   entity_id: string;
+  unique_id: string;
   name?: string | null;
   icon?: string | null;
   device_id?: string | null;
   area_id?: string | null;
+  config_entry_id?: string | null;
   labels: string[];
   hidden?: boolean;
   hidden_by?: 'user' | 'integration' | null;
@@ -25,6 +28,7 @@ export interface EntityRegistryDisplayEntry {
   display_precision?: number;
   translation_key?: string | null;
   original_name?: string | null;
+  categories: Record<string, string>;
 }
 
 // -- Device Registry --------------------------------------------------

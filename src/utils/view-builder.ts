@@ -7,7 +7,7 @@
 // ====================================================================
 
 import type {
-  EntityRegistryDisplayEntry,
+  EntityRegistryEntry,
   DeviceRegistryEntry,
   AreaRegistryEntry,
 } from '../types/registries';
@@ -56,7 +56,7 @@ export function createOverviewView(
  * (hidden from the navigation bar).
  */
 export function createUtilityViews(
-  entities: EntityRegistryDisplayEntry[],
+  entities: EntityRegistryEntry[],
   showSummaryViews: boolean = false,
   config: Simon42StrategyConfig = {},
 ): LovelaceViewConfig[] {
@@ -120,7 +120,7 @@ export function createUtilityViews(
 export function createAreaViews(
   visibleAreas: AreaRegistryEntry[],
   devices: DeviceRegistryEntry[],
-  entities: EntityRegistryDisplayEntry[],
+  entities: EntityRegistryEntry[],
   showRoomViews: boolean = false,
   areasOptions: Record<string, { groups_options?: Record<string, any> }> = {},
   dashboardConfig: Simon42StrategyConfig = {},

@@ -4,7 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig, LovelaceBadgeConfig } from '../types/lovelace';
-import type { EntityRegistryDisplayEntry, DeviceRegistryEntry, AreaRegistryEntry } from '../types/registries';
+import type { EntityRegistryEntry, DeviceRegistryEntry, AreaRegistryEntry } from '../types/registries';
 import type { RoomEntities, SensorEntities } from '../types/strategy';
 import { stripAreaName, sortByLastChanged } from '../utils/name-utils';
 import { Registry } from '../Registry';
@@ -13,7 +13,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
     const area: AreaRegistryEntry = config.area;
     const devices: DeviceRegistryEntry[] = config.devices;
-    const entities: EntityRegistryDisplayEntry[] = config.entities;
+    const entities: EntityRegistryEntry[] = config.entities;
     const dashboardConfig = config.dashboardConfig || {};
     const groupsOptions: Record<string, any> = config.groups_options || {};
 
@@ -24,7 +24,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     }
 
     // Entity ID → Entity map for O(1) lookup
-    const entityIdMap = new Map<string, EntityRegistryDisplayEntry>();
+    const entityIdMap = new Map<string, EntityRegistryEntry>();
     for (const e of entities) entityIdMap.set(e.entity_id, e);
 
     // Device ID → Device map for O(1) lookup

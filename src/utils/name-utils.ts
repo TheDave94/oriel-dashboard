@@ -7,7 +7,7 @@
 
 import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
-import type { AreaRegistryEntry, EntityRegistryDisplayEntry } from '../types/registries';
+import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
 import type { AreasDisplay } from '../types/strategy';
 
 // -- Module-level RegExp caches (shared across all calls) -------------
@@ -161,7 +161,7 @@ export function getVisibleAreas(
  * all exclusion criteria including state attribute fallback.
  */
 export function isEntityHiddenOrDisabled(
-  entity: EntityRegistryDisplayEntry,
+  entity: EntityRegistryEntry,
   hass: HomeAssistant,
 ): boolean {
   return Registry.isEntityExcludedWithStateCategory(entity.entity_id);

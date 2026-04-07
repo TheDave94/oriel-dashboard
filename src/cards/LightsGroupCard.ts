@@ -3,7 +3,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { EntityRegistryDisplayEntry } from '../types/registries';
+import type { EntityRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 
 declare global {
@@ -14,7 +14,7 @@ declare global {
 }
 
 interface LightsGroupConfig {
-  entities: EntityRegistryDisplayEntry[];
+  entities: EntityRegistryEntry[];
   config?: any;
   group_type: 'on' | 'off';
 }
@@ -22,7 +22,7 @@ interface LightsGroupConfig {
 class Simon42LightsGroupCard extends HTMLElement {
   private _hass: HomeAssistant | null = null;
   private _config!: LightsGroupConfig;
-  private _entities!: EntityRegistryDisplayEntry[];
+  private _entities!: EntityRegistryEntry[];
   private _cachedFilteredIds: Set<string> | null = null;
   private _lastLightsList = '';
   private _card: any = null;
