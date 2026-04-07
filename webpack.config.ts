@@ -1,5 +1,7 @@
 import path from 'path';
+import zlib from 'zlib';
 import webpack from 'webpack';
+import CompressionPlugin from 'compression-webpack-plugin';
 
 const config: webpack.Configuration = {
   mode: 'production',
@@ -24,7 +26,20 @@ const config: webpack.Configuration = {
       },
     ],
   },
-  plugins: [],
+  plugins: [
+    new CompressionPlugin({
+      algorithm: 'gzip',
+      test: /\.js$/,
+      minRatio: 0.8,
+    }),
+    new CompressionPlugin({
+      algorithm: 'brotliCompress',
+      test: /\.js$/,
+      compressionOptions: { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11 } } as any,
+      minRatio: 0.8,
+      filename: '[path][base].br',
+    }),
+  ],
 };
 
 export default config;
