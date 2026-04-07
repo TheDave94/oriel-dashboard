@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import { Registry } from '../Registry';
+import { trackHassUpdate } from '../utils/debug';
 
 declare global {
   interface Window {
@@ -30,6 +31,7 @@ class Simon42LightsGroupCard extends HTMLElement {
   }
 
   set hass(hass: HomeAssistant) {
+    trackHassUpdate('lights-group');
     const oldHass = this._hass;
     this._hass = hass;
 
@@ -71,13 +73,17 @@ class Simon42LightsGroupCard extends HTMLElement {
   }
 
   private _getRelevantLights(): string[] {
-    const allLights = this._getFilteredLightEntities();
+    // Use cached set if available, otherwise build it
+    if (!this._cachedFilteredIds) {
+      this._cachedFilteredIds = new Set(this._getFilteredLightEntities());
+    }
     const targetState = this._config.group_type === 'on' ? 'on' : 'off';
 
-    const relevant = allLights.filter(id => {
+    const relevant: string[] = [];
+    for (const id of this._cachedFilteredIds) {
       const state = this._hass!.states[id];
-      return state && state.state === targetState;
-    });
+      if (state && state.state === targetState) relevant.push(id);
+    }
 
     relevant.sort((a, b) => {
       const stateA = this._hass!.states[a];

@@ -8,10 +8,12 @@ import type { AreaRegistryEntry } from '../types/registries';
 import type { RoomEntities, SensorEntities } from '../types/strategy';
 import { stripAreaName, sortByLastChanged } from '../utils/name-utils';
 import { Registry } from '../Registry';
+import { timeStart, timeEnd, debugLog } from '../utils/debug';
 
 class Simon42ViewRoomStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
     const area: AreaRegistryEntry = config.area;
+    timeStart(`room-generate-${area.area_id}`);
     const dashboardConfig = config.dashboardConfig || {};
     const groupsOptions: Record<string, any> = config.groups_options || {};
 
@@ -240,6 +242,8 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       sections.push({ type: 'grid', cards: [{ type: 'heading', heading: 'Raum-Pins', heading_style: 'title', icon: 'mdi:pin' }, ...pinsForArea.map(e => ({ type: 'tile', entity: e, name: stripAreaName(e, area, hass), vertical: false, state_content: 'last_changed' }))] });
     }
 
+    debugLog(`Room ${area.area_id}: ${visibleEntities.length} visible entities, ${sections.length} sections, ${badges.length} badges`);
+    timeEnd(`room-generate-${area.area_id}`);
     return { type: 'sections', header: { badges_position: 'bottom' }, sections, badges };
   }
 }

@@ -4,6 +4,7 @@
 
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 import { Registry } from '../Registry';
+import { trackHassUpdate, debugLog } from '../utils/debug';
 
 declare global {
   interface Window {
@@ -30,13 +31,6 @@ const COVER_DEVICE_CLASSES = new Set(['awning', 'blind', 'curtain', 'shade', 'sh
 const SECURITY_COVER_CLASSES = new Set(['door', 'garage', 'gate']);
 const SECURITY_BINARY_SENSOR_CLASSES = new Set(['door', 'window', 'garage_door', 'opening']);
 
-const DOMAIN_PREFIXES_MAP: Record<SummaryType, string[]> = {
-  lights: ['light.'],
-  covers: ['cover.'],
-  security: ['lock.', 'cover.', 'binary_sensor.'],
-  batteries: ['sensor.', 'binary_sensor.'],
-};
-
 class Simon42SummaryCard extends HTMLElement {
   private _hass: HomeAssistant | null = null;
   private _config!: SummaryCardConfig;
@@ -54,6 +48,7 @@ class Simon42SummaryCard extends HTMLElement {
   }
 
   set hass(hass: HomeAssistant) {
+    trackHassUpdate(`summary-${this._config?.summary_type || 'unknown'}`);
     const oldHass = this._hass;
     this._hass = hass;
 
@@ -62,6 +57,7 @@ class Simon42SummaryCard extends HTMLElement {
     if (!oldHass || oldHass.entities !== hass.entities) {
       this._relevantEntityIds = null;
       this._dummyEntity = null;
+      debugLog(`summary-${this._config?.summary_type}: cache invalidated (registry changed)`);
     }
 
     // Recalculate count (uses cached entity set, just recounts based on current states)
@@ -78,97 +74,83 @@ class Simon42SummaryCard extends HTMLElement {
     return this._hass;
   }
 
-  private _getRelevantDomainPrefixes(): string[] {
-    return DOMAIN_PREFIXES_MAP[this._config.summary_type] ?? [];
-  }
-
   private _isEntityRelevant(id: string, _state: HassEntity): boolean {
     // Single Registry call: no_dboard label + config hidden + hidden_by +
     // disabled_by + entity_category (registry + state attribute fallback)
     return !Registry.isEntityExcludedWithStateCategory(id);
   }
 
-  private _getRelevantEntities(): string[] {
-    if (!this._hass) return [];
-
-    // Return cached set if available
-    if (this._relevantEntityIds) return [...this._relevantEntityIds];
+  private _getRelevantEntities(): void {
+    if (!this._hass || this._relevantEntityIds) return;
 
     const hass = this._hass;
-    const allEntityIds = Object.keys(hass.states);
-    const prefixes = this._getRelevantDomainPrefixes();
     let result: string[];
 
     switch (this._config.summary_type) {
       case 'lights':
-        result = allEntityIds.filter(id => {
-          if (!id.startsWith('light.')) return false;
-          const state = hass.states[id];
-          if (!state) return false;
-          return this._isEntityRelevant(id, state);
-        });
+        // Use pre-filtered Registry instead of iterating all ~4270 states
+        result = Registry.getVisibleEntityIdsForDomain('light')
+          .filter(id => hass.states[id] && this._isEntityRelevant(id, hass.states[id]));
         break;
 
       case 'covers':
-        result = allEntityIds.filter(id => {
-          if (!id.startsWith('cover.')) return false;
-          const state = hass.states[id];
-          if (!state) return false;
-          if (!this._isEntityRelevant(id, state)) return false;
-
-          // Device class filter: only awning/blind/curtain/shade/shutter/window
-          const coverDeviceClass = state.attributes?.device_class;
-          if (coverDeviceClass && !COVER_DEVICE_CLASSES.has(coverDeviceClass)) return false;
-
-          return true;
-        });
+        result = Registry.getVisibleEntityIdsForDomain('cover')
+          .filter(id => {
+            const state = hass.states[id];
+            if (!state) return false;
+            if (!this._isEntityRelevant(id, state)) return false;
+            const coverDeviceClass = state.attributes?.device_class;
+            if (coverDeviceClass && !COVER_DEVICE_CLASSES.has(coverDeviceClass)) return false;
+            return true;
+          });
         break;
 
-      case 'security':
-        result = allEntityIds.filter(id => {
-          const isLock = id.startsWith('lock.');
-          const isCover = id.startsWith('cover.');
-          const isBinarySensor = id.startsWith('binary_sensor.');
+      case 'security': {
+        // Combine lock + cover + binary_sensor domains from Registry
+        const lockIds = Registry.getVisibleEntityIdsForDomain('lock');
+        const coverIds = Registry.getVisibleEntityIdsForDomain('cover');
+        const binarySensorIds = Registry.getVisibleEntityIdsForDomain('binary_sensor');
 
-          if (!isLock && !isCover && !isBinarySensor) return false;
-
+        result = [];
+        for (const id of lockIds) {
+          if (hass.states[id] && this._isEntityRelevant(id, hass.states[id])) {
+            result.push(id);
+          }
+        }
+        for (const id of coverIds) {
           const state = hass.states[id];
-          if (!state) return false;
-          if (!this._isEntityRelevant(id, state)) return false;
-
-          if (isLock) return true;
-
-          if (isCover) {
-            const deviceClass = state.attributes?.device_class;
-            return deviceClass !== undefined && SECURITY_COVER_CLASSES.has(deviceClass);
+          if (!state || !this._isEntityRelevant(id, state)) continue;
+          const deviceClass = state.attributes?.device_class;
+          if (deviceClass !== undefined && SECURITY_COVER_CLASSES.has(deviceClass)) {
+            result.push(id);
           }
-
-          if (isBinarySensor) {
-            const deviceClass = state.attributes?.device_class;
-            return deviceClass !== undefined && SECURITY_BINARY_SENSOR_CLASSES.has(deviceClass);
+        }
+        for (const id of binarySensorIds) {
+          const state = hass.states[id];
+          if (!state || !this._isEntityRelevant(id, state)) continue;
+          const deviceClass = state.attributes?.device_class;
+          if (deviceClass !== undefined && SECURITY_BINARY_SENSOR_CLASSES.has(deviceClass)) {
+            result.push(id);
           }
-
-          return false;
-        });
+        }
         break;
+      }
 
       case 'batteries': {
-        const batteryEntities = allEntityIds.filter(id => {
+        // Combine sensor + binary_sensor domains from Registry
+        const sensorIds = Registry.getVisibleEntityIdsForDomain('sensor');
+        const bsIds = Registry.getVisibleEntityIdsForDomain('binary_sensor');
+        const allDomainIds = [...sensorIds, ...bsIds];
+
+        const batteryEntities = allDomainIds.filter(id => {
           const state = hass.states[id];
           if (!state) return false;
-
-          // Battery check: sensor/binary_sensor with battery device_class or "battery" in name
           const isBatterySensor =
-            (id.includes('battery') || state.attributes?.device_class === 'battery') &&
-            (id.startsWith('sensor.') || id.startsWith('binary_sensor.'));
+            (id.includes('battery') || state.attributes?.device_class === 'battery');
           if (!isBatterySensor) return false;
-
           if (!this._isEntityRelevant(id, state)) return false;
-
-          // Mobile app platform filter
           const registryEntry = hass.entities?.[id];
           if (this._config.hide_mobile_app_batteries && registryEntry?.platform === 'mobile_app') return false;
-
           return true;
         });
 
@@ -194,43 +176,54 @@ class Simon42SummaryCard extends HTMLElement {
     }
 
     this._relevantEntityIds = new Set(result);
-    return result;
   }
 
   private _calculateCount(): number {
     if (!this._hass) return 0;
 
-    const relevantEntities = this._getRelevantEntities();
+    // Ensure cached entity set exists
+    this._getRelevantEntities();
+    if (!this._relevantEntityIds || this._relevantEntityIds.size === 0) return 0;
+
     const hass = this._hass;
+    let count = 0;
 
     switch (this._config.summary_type) {
       case 'lights':
-        return relevantEntities.filter(id => hass.states[id]?.state === 'on').length;
+        for (const id of this._relevantEntityIds) {
+          if (hass.states[id]?.state === 'on') count++;
+        }
+        return count;
 
       case 'covers':
-        return relevantEntities.filter(id => {
+        for (const id of this._relevantEntityIds) {
           const s = hass.states[id]?.state;
-          return s === 'open' || s === 'opening';
-        }).length;
+          if (s === 'open' || s === 'opening') count++;
+        }
+        return count;
 
       case 'security':
-        return relevantEntities.filter(id => {
+        for (const id of this._relevantEntityIds) {
           const state = hass.states[id];
-          if (!state) return false;
-          if (id.startsWith('lock.') && state.state === 'unlocked') return true;
-          if (id.startsWith('cover.') && state.state === 'open') return true;
-          if (id.startsWith('binary_sensor.') && state.state === 'on') return true;
-          return false;
-        }).length;
+          if (!state) continue;
+          if (id.startsWith('lock.') && state.state === 'unlocked') count++;
+          else if (id.startsWith('cover.') && state.state === 'open') count++;
+          else if (id.startsWith('binary_sensor.') && state.state === 'on') count++;
+        }
+        return count;
 
       case 'batteries':
-        return relevantEntities.filter(id => {
+        for (const id of this._relevantEntityIds) {
           const state = hass.states[id];
-          if (!state) return false;
-          if (id.startsWith('binary_sensor.')) return state.state === 'on';
-          const value = parseFloat(state.state);
-          return !isNaN(value) && value < 20;
-        }).length;
+          if (!state) continue;
+          if (id.startsWith('binary_sensor.')) {
+            if (state.state === 'on') count++;
+          } else {
+            const value = parseFloat(state.state);
+            if (!isNaN(value) && value < 20) count++;
+          }
+        }
+        return count;
 
       default:
         return 0;
@@ -276,17 +269,16 @@ class Simon42SummaryCard extends HTMLElement {
 
     if (!this._hass) return 'sun.sun';
 
-    // Find any available sensor to use as dummy entity
-    for (const id of Object.keys(this._hass.states)) {
-      if (!id.startsWith('sensor.')) continue;
+    // Use Registry domain lookup instead of iterating all states
+    const sensorIds = Registry.getEntityIdsForDomain('sensor');
+    for (const id of sensorIds) {
       const state = this._hass.states[id];
-      if (state.state !== 'unavailable' && state.state !== 'unknown') {
+      if (state && state.state !== 'unavailable' && state.state !== 'unknown') {
         this._dummyEntity = id;
         return id;
       }
     }
 
-    // Fallback
     this._dummyEntity = 'sun.sun';
     return 'sun.sun';
   }

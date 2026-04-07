@@ -18,6 +18,7 @@ import type {
   FloorRegistryEntry,
 } from './types/registries';
 import type { Simon42StrategyConfig } from './types/strategy';
+import { timeStart, timeEnd, debugLog } from './utils/debug';
 
 /**
  * Static singleton registry that holds all HA registry data and provides
@@ -97,20 +98,29 @@ class Registry {
    * Must be called once before accessing any other Registry members.
    */
   static async initialize(hass: HomeAssistant, config: Simon42StrategyConfig): Promise<void> {
+    timeStart('registry-init');
     Registry._hass = hass;
     Registry._config = config;
 
     // Fetch full registries via WebSocket API (official HA approach)
+    timeStart('registry-fetch-ws');
     await Registry._fetchRegistries();
+    timeEnd('registry-fetch-ws');
 
     // Build exclusion sets FIRST (needed by entity maps for pre-filtering)
+    timeStart('registry-build-exclusions');
     Registry._buildExclusionSets();
+    timeEnd('registry-build-exclusions');
 
     // Build pre-computed Maps/Sets for O(1) lookups (raw + pre-filtered)
+    timeStart('registry-build-maps');
     Registry._buildDeviceMaps();
     Registry._buildEntityMaps();
+    timeEnd('registry-build-maps');
 
     Registry._initialized = true;
+    debugLog(`Registry initialized: ${Registry._fetchedEntities.length} entities, ${Registry._fetchedDevices.length} devices, ${Registry._fetchedAreas.length} areas`);
+    timeEnd('registry-init');
   }
 
   // =====================================================================

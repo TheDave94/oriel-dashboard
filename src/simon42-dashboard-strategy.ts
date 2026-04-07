@@ -16,6 +16,7 @@ import { createOverviewSection } from './sections/OverviewSection';
 import { createAreasSection } from './sections/AreasSection';
 import { createWeatherEnergySection } from './sections/WeatherEnergySection';
 import { createOverviewView, createUtilityViews, createAreaViews } from './utils/view-builder';
+import { timeStart, timeEnd, debugLog } from './utils/debug';
 
 // Import custom cards (side-effect: registers custom elements)
 import './cards/SummaryCard';
@@ -36,10 +37,12 @@ class Simon42DashboardStrategy extends HTMLElement {
     config: Simon42StrategyConfig,
     hass: HomeAssistant
   ): Promise<LovelaceConfig> {
+    timeStart('strategy-generate');
+
     // Initialize Registry — fetches registries via WebSocket, builds Maps/Sets
     await Registry.initialize(hass, config);
 
-
+    timeStart('strategy-build-views');
     // Visible areas (filtered + sorted by config)
     const visibleAreas = getVisibleAreas(Registry.areas, config.areas_display);
 
@@ -92,6 +95,10 @@ class Simon42DashboardStrategy extends HTMLElement {
         });
       }
     }
+
+    timeEnd('strategy-build-views');
+    debugLog(`Generated ${views.length} views for ${visibleAreas.length} areas`);
+    timeEnd('strategy-generate');
 
     return {
       title: 'Dynamisches Dashboard',
