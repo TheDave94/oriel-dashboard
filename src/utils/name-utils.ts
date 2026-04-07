@@ -5,6 +5,7 @@
 // module-level RegExp caches, and regex-escaping for area names.
 // ====================================================================
 
+import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
 import type { AreaRegistryEntry, EntityRegistryDisplayEntry } from '../types/registries';
 import type { AreasDisplay } from '../types/strategy';
@@ -155,31 +156,15 @@ export function getVisibleAreas(
 /**
  * Checks whether an entity should be excluded from the dashboard based on
  * its registry flags: hidden, hidden_by, disabled_by, or entity_category.
+ *
+ * Delegates to Registry.isEntityExcludedWithStateCategory() which covers
+ * all exclusion criteria including state attribute fallback.
  */
 export function isEntityHiddenOrDisabled(
   entity: EntityRegistryDisplayEntry,
   hass: HomeAssistant,
 ): boolean {
-  // Check direct registry fields
-  if (entity.hidden === true) return true;
-  if (entity.hidden_by) return true;
-  if (entity.disabled_by) return true;
-
-  // Exclude config/diagnostic categories from the registry
-  if (entity.entity_category === 'config' || entity.entity_category === 'diagnostic') {
-    return true;
-  }
-
-  // Fallback: check entity_category in state attributes (some are only there)
-  const state = hass.states?.[entity.entity_id];
-  if (
-    state?.attributes?.entity_category === 'config' ||
-    state?.attributes?.entity_category === 'diagnostic'
-  ) {
-    return true;
-  }
-
-  return false;
+  return Registry.isEntityExcludedWithStateCategory(entity.entity_id);
 }
 
 /**

@@ -3,7 +3,7 @@
 // ====================================================================
 
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
-import type { EntityRegistryDisplayEntry } from '../types/registries';
+import { Registry } from '../Registry';
 
 declare global {
   interface Window {
@@ -15,11 +15,6 @@ type SummaryType = 'lights' | 'covers' | 'security' | 'batteries';
 
 interface SummaryCardConfig {
   summary_type: SummaryType;
-  areas_options?: Record<string, {
-    groups_options?: Record<string, {
-      hidden?: string[];
-    }>;
-  }>;
   hide_mobile_app_batteries?: boolean;
 }
 
@@ -35,13 +30,6 @@ const COVER_DEVICE_CLASSES = new Set(['awning', 'blind', 'curtain', 'shade', 'sh
 const SECURITY_COVER_CLASSES = new Set(['door', 'garage', 'gate']);
 const SECURITY_BINARY_SENSOR_CLASSES = new Set(['door', 'window', 'garage_door', 'opening']);
 
-const RELEVANT_GROUPS_MAP: Record<SummaryType, string[]> = {
-  lights: ['lights'],
-  covers: ['covers', 'covers_curtain'],
-  security: ['covers', 'covers_curtain', 'switches'],
-  batteries: ['lights', 'covers', 'covers_curtain', 'climate', 'media_player', 'vacuum', 'fan', 'switches'],
-};
-
 const DOMAIN_PREFIXES_MAP: Record<SummaryType, string[]> = {
   lights: ['light.'],
   covers: ['cover.'],
@@ -53,8 +41,6 @@ class Simon42SummaryCard extends HTMLElement {
   private _hass: HomeAssistant | null = null;
   private _config!: SummaryCardConfig;
   private _count = 0;
-  private _excludeLabelsSet = new Set<string>();
-  private _hiddenFromConfigCache: Set<string> | null = null;
   private _relevantEntityIds: Set<string> | null = null;
   private _dummyEntity: string | null = null;
   private _card: any = null;
@@ -64,7 +50,6 @@ class Simon42SummaryCard extends HTMLElement {
       throw new Error('You need to define a summary_type');
     }
     this._config = config;
-    this._hiddenFromConfigCache = null;
     this._relevantEntityIds = null;
   }
 
@@ -72,9 +57,8 @@ class Simon42SummaryCard extends HTMLElement {
     const oldHass = this._hass;
     this._hass = hass;
 
-    // Reload excluded labels when entity registry changes
+    // Invalidate caches when entity registry changes
     if (!oldHass || oldHass.entities !== hass.entities) {
-      this._loadExcludedLabels();
       this._relevantEntityIds = null;
       this._dummyEntity = null;
     }
@@ -98,66 +82,14 @@ class Simon42SummaryCard extends HTMLElement {
     return this._hass;
   }
 
-  private _loadExcludedLabels(): void {
-    this._excludeLabelsSet = new Set();
-
-    if (!this._hass?.entities) {
-      console.warn('[Simon42 Summary Card] hass.entities not available');
-      return;
-    }
-
-    for (const entity of Object.values(this._hass.entities)) {
-      if (entity.labels?.includes('no_dboard')) {
-        this._excludeLabelsSet.add(entity.entity_id);
-      }
-    }
-  }
-
   private _getRelevantDomainPrefixes(): string[] {
     return DOMAIN_PREFIXES_MAP[this._config.summary_type] ?? [];
   }
 
-  private _getHiddenFromConfig(): Set<string> {
-    const hiddenEntities = new Set<string>();
-
-    if (!this._config.areas_options) return hiddenEntities;
-
-    const relevantGroups = RELEVANT_GROUPS_MAP[this._config.summary_type] ?? [];
-
-    for (const areaOptions of Object.values(this._config.areas_options)) {
-      if (!areaOptions.groups_options) continue;
-
-      for (const groupKey of relevantGroups) {
-        const groupOptions = areaOptions.groups_options[groupKey];
-        if (groupOptions?.hidden && Array.isArray(groupOptions.hidden)) {
-          for (const id of groupOptions.hidden) hiddenEntities.add(id);
-        }
-      }
-    }
-
-    return hiddenEntities;
-  }
-
-  private _isEntityRelevant(id: string, state: HassEntity): boolean {
-    // Exclude-checks (Set lookup = O(1))
-    if (this._excludeLabelsSet.has(id)) return false;
-
-    // Lazy-init hidden config cache
-    if (this._hiddenFromConfigCache === null) {
-      this._hiddenFromConfigCache = this._getHiddenFromConfig();
-    }
-    if (this._hiddenFromConfigCache.has(id)) return false;
-
-    // Registry check
-    const registryEntry: EntityRegistryDisplayEntry | undefined = this._hass?.entities?.[id];
-    if (registryEntry?.hidden_by) return false;
-    if (registryEntry?.disabled_by) return false;
-
-    // Category check from BOTH registry AND state attributes
-    const category = registryEntry?.entity_category || state.attributes?.entity_category;
-    if (category === 'config' || category === 'diagnostic') return false;
-
-    return true;
+  private _isEntityRelevant(id: string, _state: HassEntity): boolean {
+    // Single Registry call: no_dboard label + config hidden + hidden_by +
+    // disabled_by + entity_category (registry + state attribute fallback)
+    return !Registry.isEntityExcludedWithStateCategory(id);
   }
 
   private _getRelevantEntities(): string[] {

@@ -4,29 +4,13 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
-import type { EntityRegistryDisplayEntry } from '../types/registries';
+import { Registry } from '../Registry';
 
 class Simon42ViewSecurityStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
-    const entities: EntityRegistryDisplayEntry[] = config.entities;
-
-    // Build exclusion sets
-    const excludeSet = new Set<string>();
-    for (const e of entities) {
-      if (e.labels?.includes('no_dboard')) excludeSet.add(e.entity_id);
-    }
-
-    const hiddenFromConfig = new Set<string>();
-    if (config.config?.areas_options) {
-      for (const areaOptions of Object.values(config.config.areas_options) as any[]) {
-        for (const group of ['covers', 'covers_curtain', 'switches']) {
-          const hidden = areaOptions.groups_options?.[group]?.hidden;
-          if (Array.isArray(hidden)) {
-            for (const id of hidden) hiddenFromConfig.add(id);
-          }
-        }
-      }
-    }
+    // Use pre-filtered visible entities from Registry
+    // Covers lock, cover, binary_sensor domains across all areas
+    const allVisibleByDomain = (domain: string) => Registry.getVisibleEntityIdsForDomain(domain);
 
     // Categorize entities
     const locks: string[] = [];
@@ -34,13 +18,8 @@ class Simon42ViewSecurityStrategy extends HTMLElement {
     const garages: string[] = [];
     const windows: string[] = [];
 
-    for (const entity of entities) {
-      const id = entity.entity_id;
-      if (entity.hidden === true || entity.hidden_by || entity.disabled_by) continue;
-      if (entity.entity_category === 'config' || entity.entity_category === 'diagnostic') continue;
+    for (const id of [...allVisibleByDomain('lock'), ...allVisibleByDomain('cover'), ...allVisibleByDomain('binary_sensor')]) {
       if (!hass.states[id]) continue;
-      if (excludeSet.has(id)) continue;
-      if (hiddenFromConfig.has(id)) continue;
 
       const state = hass.states[id];
       const deviceClass = state.attributes?.device_class;

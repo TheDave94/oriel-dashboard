@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { EntityRegistryDisplayEntry } from '../types/registries';
+import { Registry } from '../Registry';
 
 declare global {
   interface Window {
@@ -22,8 +23,6 @@ class Simon42LightsGroupCard extends HTMLElement {
   private _hass: HomeAssistant | null = null;
   private _config!: LightsGroupConfig;
   private _entities!: EntityRegistryDisplayEntry[];
-  private _excludeSet = new Set<string>();
-  private _hiddenFromConfigSet = new Set<string>();
   private _cachedFilteredIds: Set<string> | null = null;
   private _lastLightsList = '';
   private _card: any = null;
@@ -33,7 +32,6 @@ class Simon42LightsGroupCard extends HTMLElement {
     if (!config.group_type) throw new Error('You need to define group_type (on/off)');
     this._config = config;
     this._entities = config.entities;
-    this._calculateExcludeSets();
   }
 
   set hass(hass: HomeAssistant) {
@@ -41,7 +39,6 @@ class Simon42LightsGroupCard extends HTMLElement {
     this._hass = hass;
 
     if (!oldHass || oldHass.entities !== hass.entities) {
-      this._calculateExcludeSets();
       this._cachedFilteredIds = null;
     }
 
@@ -71,34 +68,16 @@ class Simon42LightsGroupCard extends HTMLElement {
 
   get hass(): HomeAssistant | null { return this._hass; }
 
-  private _calculateExcludeSets(): void {
-    this._excludeSet = new Set();
-    for (const e of this._entities) {
-      if (e.labels?.includes('no_dboard')) this._excludeSet.add(e.entity_id);
-    }
-
-    this._hiddenFromConfigSet = new Set();
-    if (this._config.config?.areas_options) {
-      for (const areaOptions of Object.values(this._config.config.areas_options) as any[]) {
-        const hidden = areaOptions.groups_options?.lights?.hidden;
-        if (Array.isArray(hidden)) {
-          for (const id of hidden) this._hiddenFromConfigSet.add(id);
-        }
-      }
-    }
-  }
-
   private _getFilteredLightEntities(): string[] {
     if (!this._hass) return [];
     return this._entities
       .filter(e => {
         const id = e.entity_id;
         if (!id.startsWith('light.')) return false;
-        if (e.hidden === true || e.hidden_by || e.disabled_by) return false;
-        if (e.entity_category === 'config' || e.entity_category === 'diagnostic') return false;
         if (this._hass!.states[id] === undefined) return false;
-        if (this._excludeSet.has(id)) return false;
-        if (this._hiddenFromConfigSet.has(id)) return false;
+        // Single Registry call: no_dboard + config hidden + hidden_by +
+        // disabled_by + entity_category
+        if (Registry.isEntityExcluded(id)) return false;
         return true;
       })
       .map(e => e.entity_id);

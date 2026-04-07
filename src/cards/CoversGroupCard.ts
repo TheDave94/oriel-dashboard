@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { EntityRegistryDisplayEntry } from '../types/registries';
+import { Registry } from '../Registry';
 
 declare global {
   interface Window {
@@ -35,8 +36,6 @@ class Simon42CoversGroupCard extends HTMLElement {
   private _config!: CoversGroupConfig;
   private _entities!: EntityRegistryDisplayEntry[];
   private _deviceClasses!: string[];
-  private _excludeSet = new Set<string>();
-  private _hiddenFromConfigSet = new Set<string>();
   private _cachedFilteredIds: Set<string> | null = null;
   private _lastCoversList = '';
 
@@ -46,7 +45,6 @@ class Simon42CoversGroupCard extends HTMLElement {
     this._config = config;
     this._entities = config.entities;
     this._deviceClasses = config.device_classes || DEFAULT_DEVICE_CLASSES;
-    this._calculateExcludeSets();
   }
 
   set hass(hass: HomeAssistant) {
@@ -54,7 +52,6 @@ class Simon42CoversGroupCard extends HTMLElement {
     this._hass = hass;
 
     if (!oldHass || oldHass.entities !== hass.entities) {
-      this._calculateExcludeSets();
       this._cachedFilteredIds = null;
     }
 
@@ -101,42 +98,21 @@ class Simon42CoversGroupCard extends HTMLElement {
     }).join(',');
   }
 
-  private _calculateExcludeSets(): void {
-    this._excludeSet = new Set();
-    for (const e of this._entities) {
-      if (e.labels?.includes('no_dboard')) this._excludeSet.add(e.entity_id);
-    }
-
-    this._hiddenFromConfigSet = new Set();
-    if (this._config.config?.areas_options) {
-      for (const areaOptions of Object.values(this._config.config.areas_options) as any[]) {
-        const hiddenCovers = areaOptions.groups_options?.covers?.hidden;
-        if (Array.isArray(hiddenCovers)) {
-          for (const id of hiddenCovers) this._hiddenFromConfigSet.add(id);
-        }
-        const hiddenCurtain = areaOptions.groups_options?.covers_curtain?.hidden;
-        if (Array.isArray(hiddenCurtain)) {
-          for (const id of hiddenCurtain) this._hiddenFromConfigSet.add(id);
-        }
-      }
-    }
-  }
-
   private _getFilteredCoverEntities(): string[] {
     if (!this._hass) return [];
     return this._entities
       .filter(e => {
         const id = e.entity_id;
         if (!id.startsWith('cover.')) return false;
-        if (e.hidden === true || e.hidden_by || e.disabled_by) return false;
-        if (e.entity_category === 'config' || e.entity_category === 'diagnostic') return false;
         if (this._hass!.states[id] === undefined) return false;
-        if (this._excludeSet.has(id)) return false;
-        if (this._hiddenFromConfigSet.has(id)) return false;
+        // Single Registry call: no_dboard + config hidden + hidden_by +
+        // disabled_by + entity_category
+        if (Registry.isEntityExcluded(id)) return false;
         return true;
       })
       .map(e => e.entity_id)
       .filter(entityId => {
+        // Domain-specific: device_class filter for cover types
         const state = this._hass!.states[entityId];
         const deviceClass = (state?.attributes as any)?.device_class as string | undefined;
         return this._deviceClasses.includes(deviceClass!) || !deviceClass;

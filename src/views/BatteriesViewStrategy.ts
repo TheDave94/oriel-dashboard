@@ -4,47 +4,27 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
-import type { EntityRegistryDisplayEntry } from '../types/registries';
+import { Registry } from '../Registry';
 
 class Simon42ViewBatteriesStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
-    const entities: EntityRegistryDisplayEntry[] = config.entities;
+    // Use pre-filtered visible entity IDs from Registry (no hidden/disabled/excluded)
+    const sensorIds = Registry.getVisibleEntityIdsForDomain('sensor');
+    const binarySensorIds = Registry.getVisibleEntityIdsForDomain('binary_sensor');
 
-    // Exclusion sets
-    const excludeSet = new Set<string>();
-    for (const e of entities) {
-      if (e.labels?.includes('no_dboard')) excludeSet.add(e.entity_id);
-    }
-
-    const hiddenFromConfig = new Set<string>();
-    if (config.config?.areas_options) {
-      for (const areaOptions of Object.values(config.config.areas_options) as any[]) {
-        if (areaOptions.groups_options) {
-          for (const groupOptions of Object.values(areaOptions.groups_options) as any[]) {
-            if (Array.isArray(groupOptions.hidden)) {
-              for (const id of groupOptions.hidden) hiddenFromConfig.add(id);
-            }
-          }
-        }
-      }
-    }
-
-    // Filter battery entities
-    const batteryEntities = Object.keys(hass.states).filter(entityId => {
+    // Filter battery entities from pre-filtered sets
+    const batteryEntities = [...sensorIds, ...binarySensorIds].filter(entityId => {
       const state = hass.states[entityId];
       if (!state) return false;
 
       const isBattery = entityId.includes('battery') || state.attributes?.device_class === 'battery';
       if (!isBattery) return false;
-      if (!entityId.startsWith('sensor.') && !entityId.startsWith('binary_sensor.')) return false;
 
-      const registryEntry = hass.entities?.[entityId];
-      if (registryEntry?.hidden_by) return false;
-      if (registryEntry?.disabled_by) return false;
-      if (config.config?.hide_mobile_app_batteries && registryEntry?.platform === 'mobile_app') return false;
-
-      if (excludeSet.has(entityId)) return false;
-      if (hiddenFromConfig.has(entityId)) return false;
+      // Platform-specific filter: hide mobile_app batteries if configured
+      if (config.config?.hide_mobile_app_batteries) {
+        const registryEntry = Registry.getEntity(entityId);
+        if (registryEntry?.platform === 'mobile_app') return false;
+      }
 
       if (entityId.startsWith('binary_sensor.')) return true;
       const value = parseFloat(state.state);
@@ -55,13 +35,13 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
     const sensorDeviceIds = new Set<string>();
     for (const id of batteryEntities) {
       if (id.startsWith('sensor.')) {
-        const deviceId = hass.entities?.[id]?.device_id;
+        const deviceId = Registry.getEntity(id)?.device_id;
         if (deviceId) sensorDeviceIds.add(deviceId);
       }
     }
     const dedupedEntities = batteryEntities.filter(id => {
       if (!id.startsWith('binary_sensor.')) return true;
-      const deviceId = hass.entities?.[id]?.device_id;
+      const deviceId = Registry.getEntity(id)?.device_id;
       return !deviceId || !sensorDeviceIds.has(deviceId);
     });
 

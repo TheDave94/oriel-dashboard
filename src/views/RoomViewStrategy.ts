@@ -6,7 +6,8 @@ import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig, LovelaceBadgeConfig } from '../types/lovelace';
 import type { EntityRegistryDisplayEntry, DeviceRegistryEntry, AreaRegistryEntry } from '../types/registries';
 import type { RoomEntities, SensorEntities } from '../types/strategy';
-import { stripAreaName, isEntityHiddenOrDisabled, sortByLastChanged } from '../utils/name-utils';
+import { stripAreaName, sortByLastChanged } from '../utils/name-utils';
+import { Registry } from '../Registry';
 
 class Simon42ViewRoomStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
@@ -49,36 +50,18 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       motion: [], occupancy: [], illuminance: [], battery: [],
     };
 
-    // Label sets
-    const excludeLabels = new Set(entities.filter(e => e.labels?.includes('no_dboard')).map(e => e.entity_id));
-    const showDboardLabels = new Set(entities.filter(e => e.labels?.includes('show_dboard')).map(e => e.entity_id));
+    // Main categorization loop — use pre-filtered visible entities from Registry
+    // (no hidden_by, disabled_by, no_dboard, config/diagnostic, config-hidden)
+    const visibleEntities = Registry.getVisibleEntitiesForArea(area.area_id);
 
-    // Main categorization loop
-    for (const entity of entities) {
+    for (const entity of visibleEntities) {
       const entityId = entity.entity_id;
 
-      // 1. Area check
-      let belongsToArea = false;
-      if (entity.area_id) belongsToArea = entity.area_id === area.area_id;
-      else if (entity.device_id && areaDevices.has(entity.device_id)) belongsToArea = true;
-      if (!belongsToArea) continue;
-
-      // 2. Exclude check
-      if (excludeLabels.has(entityId)) continue;
-
-      // 3. State check
+      // State check
       const state = hass.states[entityId];
       if (!state) continue;
 
-      // 4. Hidden/Disabled
-      const isBatterySensor = entityId.includes('battery') || state.attributes?.device_class === 'battery';
-      if (isBatterySensor) {
-        if (entity.hidden === true) continue;
-      } else {
-        if (isEntityHiddenOrDisabled(entity, hass)) continue;
-      }
-
-      // 5. Domain categorization
+      // Domain categorization
       const domain = entityId.split('.')[0];
       const deviceClass = state.attributes?.device_class as string | undefined;
       const unit = state.attributes?.unit_of_measurement as string | undefined;
@@ -146,13 +129,11 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     let primaryTemp: string | null = null;
     let primaryHumidity: string | null = null;
 
-    if (area.temperature_entity_id && hass.states[area.temperature_entity_id] && !excludeLabels.has(area.temperature_entity_id)) {
-      const reg = hass.entities?.[area.temperature_entity_id];
-      if (!reg || (!reg.hidden_by && !reg.disabled_by)) primaryTemp = area.temperature_entity_id;
+    if (area.temperature_entity_id && hass.states[area.temperature_entity_id] && !Registry.isEntityExcluded(area.temperature_entity_id)) {
+      primaryTemp = area.temperature_entity_id;
     }
-    if (area.humidity_entity_id && hass.states[area.humidity_entity_id] && !excludeLabels.has(area.humidity_entity_id)) {
-      const reg = hass.entities?.[area.humidity_entity_id];
-      if (!reg || (!reg.hidden_by && !reg.disabled_by)) primaryHumidity = area.humidity_entity_id;
+    if (area.humidity_entity_id && hass.states[area.humidity_entity_id] && !Registry.isEntityExcluded(area.humidity_entity_id)) {
+      primaryHumidity = area.humidity_entity_id;
     }
 
     const badgeConfig = (entity: string, color: string): LovelaceBadgeConfig => ({
@@ -195,9 +176,9 @@ class Simon42ViewRoomStrategy extends HTMLElement {
 
         if (isReolink && deviceId) {
           const devEntities = entityDeviceMap.get(deviceId) || [];
-          const spotlight = devEntities.find(id => id.startsWith('light.') && hass.states[id] && !excludeLabels.has(id));
-          const motion = devEntities.find(id => id.startsWith('binary_sensor.') && hass.states[id]?.attributes?.device_class === 'motion' && !excludeLabels.has(id));
-          const siren = devEntities.find(id => id.startsWith('siren.') && hass.states[id] && !excludeLabels.has(id));
+          const spotlight = devEntities.find(id => id.startsWith('light.') && hass.states[id] && !Registry.isEntityExcluded(id));
+          const motion = devEntities.find(id => id.startsWith('binary_sensor.') && hass.states[id]?.attributes?.device_class === 'motion' && !Registry.isEntityExcluded(id));
+          const siren = devEntities.find(id => id.startsWith('siren.') && hass.states[id] && !Registry.isEntityExcluded(id));
           const glanceEntities: any[] = [];
           if (spotlight) glanceEntities.push({ entity: spotlight });
           if (motion) glanceEntities.push({ entity: motion });
