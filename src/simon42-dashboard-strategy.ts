@@ -29,7 +29,7 @@ import './views/SecurityViewStrategy';
 import './views/BatteriesViewStrategy';
 import './views/RoomViewStrategy';
 
-const STRATEGY_VERSION = '2.0.0';
+const STRATEGY_VERSION = '1.2.0-beta.2';
 
 class Simon42DashboardStrategy extends HTMLElement {
   static async generate(
