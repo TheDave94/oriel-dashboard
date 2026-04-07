@@ -1,0 +1,590 @@
+// ====================================================================
+// SIMON42 EDITOR HANDLERS
+// ====================================================================
+// Event handlers for the Dashboard Strategy Editor.
+// Ported from JavaScript to TypeScript with proper DOM casts.
+
+import { renderAreaEntitiesHTML } from './editor-template';
+import { HomeAssistant } from '../types/homeassistant';
+import { Simon42StrategyConfig, RoomEntities } from '../types/strategy';
+import { EntityRegistryDisplayEntry } from '../types/registries';
+
+// -- Extended element with expand tracking ----------------------------
+
+interface EditorElement extends HTMLElement {
+  _expandedAreas?: Set<string>;
+  _expandedGroups?: Map<string, Set<string>>;
+}
+
+// -- Checkbox Listener Functions --------------------------------------
+
+export function attachWeatherCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const weatherCheckbox = element.querySelector('#show-weather') as HTMLInputElement | null;
+  if (weatherCheckbox) {
+    weatherCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachEnergyCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const energyCheckbox = element.querySelector('#show-energy') as HTMLInputElement | null;
+  if (energyCheckbox) {
+    energyCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachSearchCardCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const searchCardCheckbox = element.querySelector('#show-search-card') as HTMLInputElement | null;
+  if (searchCardCheckbox) {
+    searchCardCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachSummaryViewsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const summaryViewsCheckbox = element.querySelector('#show-summary-views') as HTMLInputElement | null;
+  if (summaryViewsCheckbox) {
+    summaryViewsCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachRoomViewsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const roomViewsCheckbox = element.querySelector('#show-room-views') as HTMLInputElement | null;
+  if (roomViewsCheckbox) {
+    roomViewsCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachGroupByFloorsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const groupByFloorsCheckbox = element.querySelector('#group-by-floors') as HTMLInputElement | null;
+  if (groupByFloorsCheckbox) {
+    groupByFloorsCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachCoversSummaryCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const coversSummaryCheckbox = element.querySelector('#show-covers-summary') as HTMLInputElement | null;
+  if (coversSummaryCheckbox) {
+    coversSummaryCheckbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachHideMobileAppBatteriesCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const checkbox = element.querySelector('#hide-mobile-app-batteries') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachShowLocksInRoomsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void,
+): void {
+  const checkbox = element.querySelector('#show-locks-in-rooms') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+// -- Area Management --------------------------------------------------
+
+export function attachAreaCheckboxListeners(
+  element: HTMLElement,
+  callback: (areaId: string, isVisible: boolean) => void,
+): void {
+  const areaCheckboxes = element.querySelectorAll('.area-checkbox') as NodeListOf<HTMLInputElement>;
+  areaCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener('change', (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const areaId = target.dataset.areaId!;
+      const isVisible = target.checked;
+      callback(areaId, isVisible);
+
+      // Disable/Enable expand button
+      const areaItem = target.closest('.area-item') as HTMLElement | null;
+      const expandButton = areaItem?.querySelector('.expand-button') as HTMLButtonElement | null;
+      if (expandButton) {
+        expandButton.disabled = !isVisible;
+      }
+    });
+  });
+}
+
+export function attachExpandButtonListeners(
+  element: EditorElement,
+  hass: HomeAssistant,
+  config: Simon42StrategyConfig,
+  onEntitiesLoad: (areaId: string, group: string, entityId: string | null, isVisible: boolean) => void,
+): void {
+  const expandButtons = element.querySelectorAll('.expand-button') as NodeListOf<HTMLButtonElement>;
+
+  expandButtons.forEach((button) => {
+    button.addEventListener('click', async (e: Event) => {
+      e.stopPropagation();
+      const areaId = button.dataset.areaId!;
+      const areaItem = button.closest('.area-item') as HTMLElement;
+      const content = areaItem.querySelector(
+        `.area-content[data-area-id="${areaId}"]`,
+      ) as HTMLElement;
+
+      if (content.style.display === 'none') {
+        // Expand
+        content.style.display = 'block';
+        button.classList.add('expanded');
+
+        // Track expanded state
+        if (element._expandedAreas) {
+          element._expandedAreas.add(areaId);
+        }
+
+        // Load entities if not yet loaded
+        if (content.querySelector('.loading-placeholder')) {
+          const groupedEntities = await getAreaGroupedEntities(areaId, hass);
+          const hiddenEntities = getHiddenEntitiesForArea(areaId, config);
+          const entityOrders = getEntityOrdersForArea(areaId, config);
+
+          const entitiesHTML = renderAreaEntitiesHTML(
+            areaId,
+            groupedEntities,
+            hiddenEntities,
+            entityOrders,
+            hass,
+          );
+          content.innerHTML = entitiesHTML;
+
+          // Attach listeners for new entity checkboxes
+          attachEntityCheckboxListeners(content, onEntitiesLoad);
+          attachGroupCheckboxListeners(content, onEntitiesLoad);
+          attachEntityExpandButtonListeners(content, element);
+        }
+      } else {
+        // Collapse
+        content.style.display = 'none';
+        button.classList.remove('expanded');
+
+        // Track collapsed state
+        if (element._expandedAreas) {
+          element._expandedAreas.delete(areaId);
+          element._expandedGroups?.delete(areaId);
+        }
+      }
+    });
+  });
+}
+
+// -- Group Visibility -------------------------------------------------
+
+export function attachGroupCheckboxListeners(
+  element: HTMLElement,
+  callback: (areaId: string, group: string, entityId: string | null, isVisible: boolean) => void,
+): void {
+  const groupCheckboxes = element.querySelectorAll('.group-checkbox') as NodeListOf<HTMLInputElement>;
+
+  groupCheckboxes.forEach((checkbox) => {
+    // Set indeterminate state
+    if (checkbox.dataset.indeterminate === 'true') {
+      checkbox.indeterminate = true;
+    }
+
+    checkbox.addEventListener('change', (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const areaId = target.dataset.areaId!;
+      const group = target.dataset.group!;
+      const isVisible = target.checked;
+
+      callback(areaId, group, null, isVisible); // null = all entities in group
+
+      // Update all entity checkboxes in this group
+      const entityList = element.querySelector(
+        `.entity-list[data-area-id="${areaId}"][data-group="${group}"]`,
+      );
+      if (entityList) {
+        const entityCheckboxes = entityList.querySelectorAll('.entity-checkbox') as NodeListOf<HTMLInputElement>;
+        entityCheckboxes.forEach((cb) => {
+          cb.checked = isVisible;
+        });
+      }
+
+      // Remove indeterminate state
+      target.indeterminate = false;
+      target.removeAttribute('data-indeterminate');
+    });
+  });
+}
+
+// -- Entity Visibility ------------------------------------------------
+
+export function attachEntityCheckboxListeners(
+  element: HTMLElement,
+  callback: (areaId: string, group: string, entityId: string | null, isVisible: boolean) => void,
+): void {
+  const entityCheckboxes = element.querySelectorAll('.entity-checkbox') as NodeListOf<HTMLInputElement>;
+
+  entityCheckboxes.forEach((checkbox) => {
+    checkbox.addEventListener('change', (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      const areaId = target.dataset.areaId!;
+      const group = target.dataset.group!;
+      const entityId = target.dataset.entityId!;
+      const isVisible = target.checked;
+
+      callback(areaId, group, entityId, isVisible);
+
+      // Update Group-Checkbox state (all/some/none checked)
+      const entityList = element.querySelector(
+        `.entity-list[data-area-id="${areaId}"][data-group="${group}"]`,
+      );
+      const groupCheckbox = element.querySelector(
+        `.group-checkbox[data-area-id="${areaId}"][data-group="${group}"]`,
+      ) as HTMLInputElement | null;
+
+      if (entityList && groupCheckbox) {
+        const allCheckboxes = Array.from(
+          entityList.querySelectorAll('.entity-checkbox'),
+        ) as HTMLInputElement[];
+        const checkedCount = allCheckboxes.filter((cb) => cb.checked).length;
+
+        if (checkedCount === 0) {
+          groupCheckbox.checked = false;
+          groupCheckbox.indeterminate = false;
+          groupCheckbox.removeAttribute('data-indeterminate');
+        } else if (checkedCount === allCheckboxes.length) {
+          groupCheckbox.checked = true;
+          groupCheckbox.indeterminate = false;
+          groupCheckbox.removeAttribute('data-indeterminate');
+        } else {
+          groupCheckbox.checked = false;
+          groupCheckbox.indeterminate = true;
+          groupCheckbox.setAttribute('data-indeterminate', 'true');
+        }
+      }
+    });
+  });
+}
+
+// -- Entity Group Expand/Collapse -------------------------------------
+
+export function attachEntityExpandButtonListeners(
+  element: HTMLElement,
+  editorElement: EditorElement,
+): void {
+  const expandButtons = element.querySelectorAll('.expand-button-small') as NodeListOf<HTMLButtonElement>;
+
+  expandButtons.forEach((button) => {
+    button.addEventListener('click', (e: Event) => {
+      e.stopPropagation();
+      const areaId = button.dataset.areaId!;
+      const group = button.dataset.group!;
+      const entityList = element.querySelector(
+        `.entity-list[data-area-id="${areaId}"][data-group="${group}"]`,
+      ) as HTMLElement | null;
+
+      if (entityList) {
+        if (entityList.style.display === 'none') {
+          entityList.style.display = 'block';
+          button.classList.add('expanded');
+
+          // Track expanded state
+          if (editorElement._expandedGroups) {
+            if (!editorElement._expandedGroups.has(areaId)) {
+              editorElement._expandedGroups.set(areaId, new Set());
+            }
+            editorElement._expandedGroups.get(areaId)!.add(group);
+          }
+        } else {
+          entityList.style.display = 'none';
+          button.classList.remove('expanded');
+
+          // Track collapsed state
+          if (editorElement._expandedGroups) {
+            const areaGroups = editorElement._expandedGroups.get(areaId);
+            if (areaGroups) {
+              areaGroups.delete(group);
+            }
+          }
+        }
+      }
+    });
+  });
+}
+
+// -- Sort Area Items --------------------------------------------------
+
+export function sortAreaItems(element: HTMLElement): void {
+  const areaList = element.querySelector('#area-list') as HTMLElement | null;
+  if (!areaList) return;
+
+  const items = Array.from(areaList.querySelectorAll('.area-item')) as HTMLElement[];
+  items.sort((a, b) => {
+    const orderA = parseInt(a.dataset.order || '0', 10);
+    const orderB = parseInt(b.dataset.order || '0', 10);
+    return orderA - orderB;
+  });
+
+  items.forEach((item) => areaList.appendChild(item));
+}
+
+// -- Drag-and-Drop Area Reordering ------------------------------------
+
+export function attachDragAndDropListeners(
+  element: HTMLElement,
+  onOrderChange: () => void,
+): void {
+  const areaList = element.querySelector('#area-list') as HTMLElement | null;
+  if (!areaList) return;
+
+  const areaItems = areaList.querySelectorAll('.area-item') as NodeListOf<HTMLElement>;
+
+  let draggedElement: HTMLElement | null = null;
+
+  const handleDragStart = (ev: DragEvent): void => {
+    // Only allow dragging from the drag handle
+    const dragHandle = (ev.target as HTMLElement).closest('.drag-handle');
+    if (!dragHandle) {
+      ev.preventDefault();
+      return;
+    }
+
+    const areaItem = (ev.target as HTMLElement).closest('.area-item') as HTMLElement | null;
+    if (!areaItem) {
+      ev.preventDefault();
+      return;
+    }
+
+    areaItem.classList.add('dragging');
+    ev.dataTransfer!.effectAllowed = 'move';
+    ev.dataTransfer!.setData('text/html', areaItem.innerHTML);
+    draggedElement = areaItem;
+  };
+
+  const handleDragEnd = (ev: DragEvent): void => {
+    const areaItem = (ev.target as HTMLElement).closest('.area-item') as HTMLElement | null;
+    if (areaItem) {
+      areaItem.classList.remove('dragging');
+    }
+
+    // Remove all drag-over classes
+    const items = areaList.querySelectorAll('.area-item');
+    items.forEach((item) => item.classList.remove('drag-over'));
+  };
+
+  const handleDragOver = (ev: DragEvent): boolean => {
+    ev.preventDefault();
+    ev.dataTransfer!.dropEffect = 'move';
+
+    const item = ev.currentTarget as HTMLElement;
+    if (item !== draggedElement) {
+      item.classList.add('drag-over');
+    }
+
+    return false;
+  };
+
+  const handleDragLeave = (ev: DragEvent): void => {
+    (ev.currentTarget as HTMLElement).classList.remove('drag-over');
+  };
+
+  const handleDrop = (ev: DragEvent): boolean => {
+    ev.stopPropagation();
+    ev.preventDefault();
+
+    const dropTarget = ev.currentTarget as HTMLElement;
+    dropTarget.classList.remove('drag-over');
+
+    if (draggedElement && draggedElement !== dropTarget) {
+      const allItems = Array.from(areaList.querySelectorAll('.area-item')) as HTMLElement[];
+      const draggedIndex = allItems.indexOf(draggedElement);
+      const dropIndex = allItems.indexOf(dropTarget);
+
+      if (draggedIndex < dropIndex) {
+        dropTarget.parentNode!.insertBefore(draggedElement, dropTarget.nextSibling);
+      } else {
+        dropTarget.parentNode!.insertBefore(draggedElement, dropTarget);
+      }
+
+      // Update order in config
+      onOrderChange();
+    }
+
+    return false;
+  };
+
+  areaItems.forEach((item) => {
+    item.setAttribute('draggable', 'true');
+    item.addEventListener('dragstart', handleDragStart);
+    item.addEventListener('dragend', handleDragEnd);
+    item.addEventListener('dragover', handleDragOver);
+    item.addEventListener('drop', handleDrop);
+    item.addEventListener('dragleave', handleDragLeave);
+  });
+}
+
+// -- Helper Functions -------------------------------------------------
+
+export async function getAreaGroupedEntities(
+  areaId: string,
+  hass: HomeAssistant,
+): Promise<RoomEntities> {
+  // Use hass.devices and hass.entities (standard Home Assistant objects)
+  // No WebSocket calls needed!
+
+  // Convert objects to arrays
+  const devices = Object.values(hass.devices || {});
+  const entities = Object.values(hass.entities || {});
+
+  // Find all devices in the area
+  const areaDevices = new Set<string>();
+  for (const device of devices) {
+    if (device.area_id === areaId) {
+      areaDevices.add(device.id);
+    }
+  }
+
+  // Group entities
+  const roomEntities: RoomEntities = {
+    lights: [],
+    covers: [],
+    covers_curtain: [],
+    scenes: [],
+    climate: [],
+    media_player: [],
+    vacuum: [],
+    fan: [],
+    switches: [],
+    locks: [],
+    cameras: [],
+  };
+
+  // Labels for filtering
+  const excludeLabels = entities
+    .filter((e: EntityRegistryDisplayEntry) => e.labels?.includes('no_dboard'))
+    .map((e: EntityRegistryDisplayEntry) => e.entity_id);
+
+  for (const entity of entities) {
+    // Check if entity belongs to the area
+    let belongsToArea = false;
+
+    if (entity.area_id) {
+      belongsToArea = entity.area_id === areaId;
+    } else if (entity.device_id && areaDevices.has(entity.device_id)) {
+      belongsToArea = true;
+    }
+
+    if (!belongsToArea) continue;
+    if (excludeLabels.includes(entity.entity_id)) continue;
+    if (!hass.states[entity.entity_id]) continue;
+    if (entity.hidden_by || entity.disabled_by) continue;
+
+    const entityRegistry = hass.entities?.[entity.entity_id];
+    if (entityRegistry && (entityRegistry.hidden_by || entityRegistry.disabled_by)) continue;
+
+    const domain = entity.entity_id.split('.')[0];
+    const state = hass.states[entity.entity_id];
+    const deviceClass = state.attributes?.device_class;
+
+    // Categorize by domain
+    if (domain === 'light') {
+      roomEntities.lights.push(entity.entity_id);
+    } else if (domain === 'cover') {
+      if (deviceClass === 'curtain' || deviceClass === 'blind') {
+        roomEntities.covers_curtain.push(entity.entity_id);
+      } else {
+        roomEntities.covers.push(entity.entity_id);
+      }
+    } else if (domain === 'scene') {
+      roomEntities.scenes.push(entity.entity_id);
+    } else if (domain === 'climate') {
+      roomEntities.climate.push(entity.entity_id);
+    } else if (domain === 'media_player') {
+      roomEntities.media_player.push(entity.entity_id);
+    } else if (domain === 'vacuum') {
+      roomEntities.vacuum.push(entity.entity_id);
+    } else if (domain === 'fan') {
+      roomEntities.fan.push(entity.entity_id);
+    } else if (domain === 'switch') {
+      roomEntities.switches.push(entity.entity_id);
+    } else if (domain === 'lock') {
+      roomEntities.locks.push(entity.entity_id);
+    }
+  }
+
+  return roomEntities;
+}
+
+export function getHiddenEntitiesForArea(
+  areaId: string,
+  config: Simon42StrategyConfig,
+): Record<string, string[]> {
+  const areaOptions = config.areas_options?.[areaId];
+  if (!areaOptions || !areaOptions.groups_options) {
+    return {};
+  }
+
+  const hidden: Record<string, string[]> = {};
+  for (const [group, options] of Object.entries(areaOptions.groups_options)) {
+    if (options.hidden) {
+      hidden[group] = options.hidden;
+    }
+  }
+
+  return hidden;
+}
+
+export function getEntityOrdersForArea(
+  areaId: string,
+  config: Simon42StrategyConfig,
+): Record<string, string[]> {
+  const areaOptions = config.areas_options?.[areaId];
+  if (!areaOptions || !areaOptions.groups_options) {
+    return {};
+  }
+
+  const orders: Record<string, string[]> = {};
+  for (const [group, options] of Object.entries(areaOptions.groups_options)) {
+    if (options.order) {
+      orders[group] = options.order;
+    }
+  }
+
+  return orders;
+}

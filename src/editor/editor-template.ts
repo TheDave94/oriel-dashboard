@@ -3,15 +3,88 @@
 // ====================================================================
 // HTML-Template für den Dashboard Strategy Editor
 
-export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy, showWeather, showSummaryViews, showRoomViews, showSearchCard, hasSearchCardDeps, summariesColumns, alarmEntity, alarmEntities, favoriteEntities, roomPinEntities, allEntities, groupByFloors, showCoversSummary, hideMobileAppBatteries, showLocksInRooms, customViews }) {
+import type { CustomView, RoomEntities } from '../types/strategy';
+import type { AreaRegistryEntry } from '../types/registries';
+
+// -- Editor-specific entity shape (enriched for editor UI) ------------
+
+interface EditorEntity {
+  entity_id: string;
+  name: string;
+  area_id?: string | null;
+  device_area_id?: string | null;
+}
+
+interface AlarmEntity {
+  entity_id: string;
+  name: string;
+}
+
+// -- Main render params -----------------------------------------------
+
+export interface EditorHTMLParams {
+  allAreas: AreaRegistryEntry[];
+  hiddenAreas: string[];
+  areaOrder: string[];
+  showEnergy: boolean;
+  showWeather: boolean;
+  showSummaryViews: boolean;
+  showRoomViews: boolean;
+  showSearchCard: boolean;
+  hasSearchCardDeps: boolean;
+  summariesColumns: 2 | 4;
+  alarmEntity: string;
+  alarmEntities: AlarmEntity[];
+  favoriteEntities: string[];
+  roomPinEntities: string[];
+  allEntities: EditorEntity[];
+  groupByFloors: boolean;
+  showCoversSummary: boolean;
+  hideMobileAppBatteries: boolean;
+  showLocksInRooms: boolean;
+  customViews: CustomView[];
+}
+
+// -- Hass-like subset needed by renderAreaEntitiesHTML -----------------
+
+interface HassStatesSubset {
+  states: Record<string, { attributes: { friendly_name?: string; [key: string]: any } } | undefined>;
+}
+
+// ====================================================================
+// PUBLIC API
+// ====================================================================
+
+export function renderEditorHTML({
+  allAreas,
+  hiddenAreas,
+  areaOrder,
+  showEnergy,
+  showWeather,
+  showSummaryViews,
+  showRoomViews,
+  showSearchCard,
+  hasSearchCardDeps,
+  summariesColumns,
+  alarmEntity,
+  alarmEntities,
+  favoriteEntities,
+  roomPinEntities,
+  allEntities,
+  groupByFloors,
+  showCoversSummary,
+  hideMobileAppBatteries,
+  showLocksInRooms,
+  customViews,
+}: EditorHTMLParams): string {
   return `
     <div class="card-config">
       <div class="section">
         <div class="section-title">Info-Karten</div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="show-weather" 
+          <input
+            type="checkbox"
+            id="show-weather"
             ${showWeather !== false ? 'checked' : ''}
           />
           <label for="show-weather">Wetter-Karte anzeigen</label>
@@ -20,9 +93,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           Zeigt die Wettervorhersage-Karte in der Übersicht an, wenn eine Wetter-Entität verfügbar ist.
         </div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="show-energy" 
+          <input
+            type="checkbox"
+            id="show-energy"
             ${showEnergy ? 'checked' : ''}
           />
           <label for="show-energy">Energie-Dashboard anzeigen</label>
@@ -97,9 +170,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
       <div class="section">
         <div class="section-title">Such-Karte</div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="show-search-card" 
+          <input
+            type="checkbox"
+            id="show-search-card"
             ${showSearchCard ? 'checked' : ''}
             ${!hasSearchCardDeps ? 'disabled' : ''}
           />
@@ -108,8 +181,8 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           </label>
         </div>
         <div class="description">
-          ${hasSearchCardDeps 
-            ? 'Zeigt die custom:search-card direkt unter der Uhr in der Übersicht an.' 
+          ${hasSearchCardDeps
+            ? 'Zeigt die custom:search-card direkt unter der Uhr in der Übersicht an.'
             : '⚠️ Benötigt <strong>custom:search-card</strong> und <strong>card-tools</strong>. Bitte installieren Sie beide Komponenten, um diese Funktion zu nutzen.'}
         </div>
       </div>
@@ -154,9 +227,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
       <div class="section">
         <div class="section-title">Zusammenfassungen Layout</div>
         <div class="form-row">
-          <input 
-            type="radio" 
-            id="summaries-2-columns" 
+          <input
+            type="radio"
+            id="summaries-2-columns"
             name="summaries-columns"
             value="2"
             ${summariesColumns === 2 ? 'checked' : ''}
@@ -164,9 +237,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           <label for="summaries-2-columns">2 Spalten (2x2 Grid)</label>
         </div>
         <div class="form-row">
-          <input 
-            type="radio" 
-            id="summaries-4-columns" 
+          <input
+            type="radio"
+            id="summaries-4-columns"
             name="summaries-columns"
             value="4"
             ${summariesColumns === 4 ? 'checked' : ''}
@@ -181,9 +254,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
       <div class="section">
         <div class="section-title">Ansichten</div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="show-summary-views" 
+          <input
+            type="checkbox"
+            id="show-summary-views"
             ${showSummaryViews ? 'checked' : ''}
           />
           <label for="show-summary-views">Zusammenfassungs-Views anzeigen</label>
@@ -192,9 +265,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
           Zeigt die Zusammenfassungs-Views (Lichter, Rollos, Sicherheit, Batterien) in der oberen Navigation an.
         </div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="show-room-views" 
+          <input
+            type="checkbox"
+            id="show-room-views"
             ${showRoomViews ? 'checked' : ''}
           />
           <label for="show-room-views">Raum-Views anzeigen</label>
@@ -207,9 +280,9 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
       <div class="section">
         <div class="section-title">Bereiche-Ansicht</div>
         <div class="form-row">
-          <input 
-            type="checkbox" 
-            id="group-by-floors" 
+          <input
+            type="checkbox"
+            id="group-by-floors"
             ${groupByFloors ? 'checked' : ''}
           />
           <label for="group-by-floors">Bereiche in Etagen gliedern</label>
@@ -245,17 +318,21 @@ export function renderEditorHTML({ allAreas, hiddenAreas, areaOrder, showEnergy,
   `;
 }
 
-function renderFavoritesList(favoriteEntities, allEntities) {
+// ====================================================================
+// PRIVATE HELPERS
+// ====================================================================
+
+function renderFavoritesList(favoriteEntities: string[], allEntities: EditorEntity[]): string {
   if (!favoriteEntities || favoriteEntities.length === 0) {
     return '<div class="empty-state" style="padding: 12px; text-align: center; color: var(--secondary-text-color); font-style: italic;">Keine Favoriten hinzugefügt</div>';
   }
 
   // Erstelle Map für schnellen Zugriff auf Entity-Namen
-  const entityMap = new Map(allEntities.map(e => [e.entity_id, e.name]));
+  const entityMap = new Map<string, string>(allEntities.map(e => [e.entity_id, e.name]));
 
   return `
     <div style="border: 1px solid var(--divider-color); border-radius: 4px; overflow: hidden;">
-      ${favoriteEntities.map((entityId, index) => {
+      ${favoriteEntities.map((entityId: string, index: number) => {
         const name = entityMap.get(entityId) || entityId;
         return `
           <div class="favorite-item" data-entity-id="${entityId}" style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--divider-color); background: var(--card-background-color);">
@@ -274,23 +351,27 @@ function renderFavoritesList(favoriteEntities, allEntities) {
   `;
 }
 
-export function renderRoomPinsList(roomPinEntities, allEntities, allAreas) {
+export function renderRoomPinsList(
+  roomPinEntities: string[],
+  allEntities: EditorEntity[],
+  allAreas: AreaRegistryEntry[],
+): string {
   if (!roomPinEntities || roomPinEntities.length === 0) {
     return '<div class="empty-state" style="padding: 12px; text-align: center; color: var(--secondary-text-color); font-style: italic;">Keine Raum-Pins hinzugefügt</div>';
   }
 
   // Erstelle Maps für schnellen Zugriff
-  const entityMap = new Map(allEntities.map(e => [e.entity_id, e]));
-  const areaMap = new Map(allAreas.map(a => [a.area_id, a.name]));
+  const entityMap = new Map<string, EditorEntity>(allEntities.map(e => [e.entity_id, e]));
+  const areaMap = new Map<string, string>(allAreas.map(a => [a.area_id, a.name]));
 
   return `
     <div style="border: 1px solid var(--divider-color); border-radius: 4px; overflow: hidden;">
-      ${roomPinEntities.map((entityId, index) => {
+      ${roomPinEntities.map((entityId: string, index: number) => {
         const entity = entityMap.get(entityId);
         const name = entity?.name || entityId;
         const areaId = entity?.area_id || entity?.device_area_id;
         const areaName = areaId ? areaMap.get(areaId) || areaId : 'Kein Raum';
-        
+
         return `
           <div class="room-pin-item" data-entity-id="${entityId}" style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--divider-color); background: var(--card-background-color);">
             <span class="drag-handle" style="margin-right: 12px; cursor: grab; color: var(--secondary-text-color);">☰</span>
@@ -310,12 +391,12 @@ export function renderRoomPinsList(roomPinEntities, allEntities, allAreas) {
   `;
 }
 
-function renderCustomViewsList(customViews) {
+export function renderCustomViewsList(customViews: CustomView[]): string {
   if (!customViews || customViews.length === 0) {
     return '<div class="empty-state" style="padding: 12px; text-align: center; color: var(--secondary-text-color); font-style: italic;">Keine Custom Views erstellt</div>';
   }
 
-  return customViews.map((view, index) => {
+  return customViews.map((view: CustomView, index: number) => {
     const yamlValid = view.parsed_config ? true : false;
     const validationMsg = view._yaml_error
       ? `<span style="color: var(--error-color);">❌ ${view._yaml_error}</span>`
@@ -343,27 +424,29 @@ function renderCustomViewsList(customViews) {
   }).join('');
 }
 
-export { renderCustomViewsList };
-
-function renderAreaItems(allAreas, hiddenAreas, areaOrder) {
+function renderAreaItems(
+  allAreas: AreaRegistryEntry[],
+  hiddenAreas: string[],
+  areaOrder: string[],
+): string {
   if (allAreas.length === 0) {
     return '<div class="empty-state">Keine Bereiche verfügbar</div>';
   }
 
-  return allAreas.map((area, index) => {
+  return allAreas.map((area: AreaRegistryEntry, index: number) => {
     const isHidden = hiddenAreas.includes(area.area_id);
     const orderIndex = areaOrder.indexOf(area.area_id);
     const displayOrder = orderIndex !== -1 ? orderIndex : 9999 + index;
-    
+
     return `
-      <div class="area-item" 
+      <div class="area-item"
            data-area-id="${area.area_id}"
            data-order="${displayOrder}">
         <div class="area-header">
           <span class="drag-handle" draggable="true">☰</span>
-          <input 
-            type="checkbox" 
-            class="area-checkbox" 
+          <input
+            type="checkbox"
+            class="area-checkbox"
             data-area-id="${area.area_id}"
             ${!isHidden ? 'checked' : ''}
           />
@@ -381,8 +464,22 @@ function renderAreaItems(allAreas, hiddenAreas, areaOrder) {
   }).join('');
 }
 
-export function renderAreaEntitiesHTML(areaId, groupedEntities, hiddenEntities, entityOrders, hass) {
-  const domainGroups = [
+// -- Domain group definition for entity rendering ---------------------
+
+interface DomainGroup {
+  key: keyof RoomEntities;
+  label: string;
+  icon: string;
+}
+
+export function renderAreaEntitiesHTML(
+  areaId: string,
+  groupedEntities: Record<string, string[]>,
+  hiddenEntities: Record<string, string[]>,
+  entityOrders: Record<string, string[]>,
+  hass: HassStatesSubset,
+): string {
+  const domainGroups: DomainGroup[] = [
     { key: 'lights', label: 'Beleuchtung', icon: 'mdi:lightbulb' },
     { key: 'climate', label: 'Klima', icon: 'mdi:thermostat' },
     { key: 'covers', label: 'Rollos & Jalousien', icon: 'mdi:window-shutter' },
@@ -392,12 +489,12 @@ export function renderAreaEntitiesHTML(areaId, groupedEntities, hiddenEntities, 
     { key: 'vacuum', label: 'Staubsauger', icon: 'mdi:robot-vacuum' },
     { key: 'fan', label: 'Ventilatoren', icon: 'mdi:fan' },
     { key: 'switches', label: 'Schalter', icon: 'mdi:light-switch' },
-    { key: 'locks', label: 'Schlösser', icon: 'mdi:lock' }
+    { key: 'locks', label: 'Schlösser', icon: 'mdi:lock' },
   ];
 
   let html = '<div class="entity-groups">';
 
-  domainGroups.forEach(group => {
+  domainGroups.forEach((group: DomainGroup) => {
     const entities = groupedEntities[group.key] || [];
     if (entities.length === 0) return;
 
@@ -408,9 +505,9 @@ export function renderAreaEntitiesHTML(areaId, groupedEntities, hiddenEntities, 
     html += `
       <div class="entity-group" data-group="${group.key}">
         <div class="entity-group-header">
-          <input 
-            type="checkbox" 
-            class="group-checkbox" 
+          <input
+            type="checkbox"
+            class="group-checkbox"
             data-area-id="${areaId}"
             data-group="${group.key}"
             ${!allHidden ? 'checked' : ''}
@@ -424,16 +521,16 @@ export function renderAreaEntitiesHTML(areaId, groupedEntities, hiddenEntities, 
           </button>
         </div>
         <div class="entity-list" data-area-id="${areaId}" data-group="${group.key}" style="display: none;">
-          ${entities.map(entityId => {
+          ${entities.map((entityId: string) => {
             const state = hass.states[entityId];
             const name = state?.attributes?.friendly_name || entityId.split('.')[1].replace(/_/g, ' ');
             const isHidden = hiddenInGroup.includes(entityId);
-            
+
             return `
               <div class="entity-item">
-                <input 
-                  type="checkbox" 
-                  class="entity-checkbox" 
+                <input
+                  type="checkbox"
+                  class="entity-checkbox"
                   data-area-id="${areaId}"
                   data-group="${group.key}"
                   data-entity-id="${entityId}"

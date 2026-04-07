@@ -1,0 +1,22 @@
+{
+  "name": "simon42-dashboard-strategy",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "build": "webpack",
+    "build-dev": "webpack --config webpack.dev.config.ts",
+    "watch": "webpack --config webpack.dev.config.ts --watch"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "home-assistant-js-websocket": "^9.6.0",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^7.0.2",
+    "@types/js-yaml": "^4.0.9"
+  }
+}
