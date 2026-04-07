@@ -20,12 +20,11 @@ interface LightsGroupConfig {
 }
 
 class Simon42LightsGroupCard extends LitElement {
-  // Declare _hass as reactive property (triggers re-render on change)
   static properties = {
-    _hass: { state: true },
+    hass: { attribute: false },
   };
 
-  private _hass: HomeAssistant | null = null;
+  public hass?: HomeAssistant;
   private _config!: LightsGroupConfig;
   private _cachedFilteredIds: Set<string> | null = null;
   private _lastLightsList = '';
@@ -59,47 +58,25 @@ class Simon42LightsGroupCard extends LitElement {
     this._config = config;
   }
 
-  set hass(hass: HomeAssistant) {
-    trackHassUpdate('lights-group');
-    const oldHass = this._hass;
+  protected willUpdate(changedProps: PropertyValues): void {
+    if (!changedProps.has('hass') || !this.hass) return;
 
-    if (!oldHass || oldHass.entities !== hass.entities) {
+    trackHassUpdate('lights-group');
+    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+
+    if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._cachedFilteredIds = null;
     }
 
-    // Skip if states unchanged — BUT only if we've successfully loaded once.
-    if (oldHass && oldHass.states === hass.states && this._cachedFilteredIds) return;
-
-    // Fast path: only check light entities for changes
-    if (oldHass && this._cachedFilteredIds) {
-      let hasChange = false;
-      for (const id of this._cachedFilteredIds) {
-        if (oldHass.states[id] !== hass.states[id]) { hasChange = true; break; }
-      }
-      if (!hasChange) {
-        // Still propagate hass to child cards even if our list didn't change
-        this._propagateHass(hass);
-        this._hass = hass;
-        return;
-      }
-    }
-
+    // Build cache if needed
     if (!this._cachedFilteredIds) {
-      if (!Registry.initialized) {
-        this._hass = hass;
-        return;
-      }
-      this._cachedFilteredIds = new Set(this._getFilteredLightEntities(hass));
+      if (!Registry.initialized) return;
+      this._cachedFilteredIds = new Set(this._getFilteredLightEntities(this.hass));
     }
 
-    // Propagate hass to child cards
-    this._propagateHass(hass);
-
-    // Setting _hass triggers Lit re-render (via @state)
-    this._hass = hass;
+    // Always propagate hass to child cards
+    this._propagateHass(this.hass);
   }
-
-  get hass(): HomeAssistant | null { return this._hass; }
 
   private _propagateHass(hass: HomeAssistant): void {
     if (this._headingCard) this._headingCard.hass = hass;
@@ -114,18 +91,18 @@ class Simon42LightsGroupCard extends LitElement {
   }
 
   private _getRelevantLights(): string[] {
-    if (!this._hass || !this._cachedFilteredIds) return [];
+    if (!this.hass || !this._cachedFilteredIds) return [];
     const targetState = this._config.group_type === 'on' ? 'on' : 'off';
 
     const relevant: string[] = [];
     for (const id of this._cachedFilteredIds) {
-      const state = this._hass.states[id];
+      const state = this.hass.states[id];
       if (state && state.state === targetState) relevant.push(id);
     }
 
     relevant.sort((a, b) => {
-      const stateA = this._hass!.states[a];
-      const stateB = this._hass!.states[b];
+      const stateA = this.hass!.states[a];
+      const stateB = this.hass!.states[b];
       if (!stateA || !stateB) return 0;
       return new Date(stateB.last_changed).getTime() - new Date(stateA.last_changed).getTime();
     });
@@ -158,7 +135,7 @@ class Simon42LightsGroupCard extends LitElement {
 
     const isOn = this._config.group_type === 'on';
     card = document.createElement('hui-tile-card');
-    card.hass = this._hass;
+    card.hass = this.hass;
     const cardConfig: any = { type: 'tile', entity: entityId, vertical: false, state_content: 'last_changed' };
     if (isOn) {
       cardConfig.features = [{ type: 'light-brightness' }];
@@ -170,7 +147,7 @@ class Simon42LightsGroupCard extends LitElement {
   }
 
   protected render() {
-    if (!this._hass || !this._cachedFilteredIds) return nothing;
+    if (!this.hass || !this._cachedFilteredIds) return nothing;
 
     const lights = this._getRelevantLights();
     if (lights.length === 0) {
@@ -189,7 +166,7 @@ class Simon42LightsGroupCard extends LitElement {
 
   protected updated(changedProps: PropertyValues): void {
     super.updated(changedProps);
-    if (!this._hass || !this._cachedFilteredIds) return;
+    if (!this.hass || !this._cachedFilteredIds) return;
 
     const lights = this._getRelevantLights();
     const lightsKey = lights.join(',');
@@ -205,7 +182,7 @@ class Simon42LightsGroupCard extends LitElement {
         this._headingCard = document.createElement('hui-heading-card');
         headingSlot.appendChild(this._headingCard);
       }
-      this._headingCard.hass = this._hass;
+      this._headingCard.hass = this.hass;
       this._headingCard.setConfig(this._buildHeadingConfig(lights));
     }
 

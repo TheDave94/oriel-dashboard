@@ -33,10 +33,10 @@ const DEFAULT_DEVICE_CLASSES = ['awning', 'blind', 'curtain', 'shade', 'shutter'
 
 class Simon42CoversGroupCard extends LitElement {
   static properties = {
-    _hass: { state: true },
+    hass: { attribute: false },
   };
 
-  private _hass: HomeAssistant | null = null;
+  public hass?: HomeAssistant;
   private _config!: CoversGroupConfig;
   private _deviceClasses!: string[];
   private _cachedFilteredIds: Set<string> | null = null;
@@ -72,43 +72,25 @@ class Simon42CoversGroupCard extends LitElement {
     this._deviceClasses = config.device_classes || DEFAULT_DEVICE_CLASSES;
   }
 
-  set hass(hass: HomeAssistant) {
-    trackHassUpdate('covers-group');
-    const oldHass = this._hass;
+  protected willUpdate(changedProps: PropertyValues): void {
+    if (!changedProps.has('hass') || !this.hass) return;
 
-    if (!oldHass || oldHass.entities !== hass.entities) {
+    trackHassUpdate('covers-group');
+    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+
+    if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._cachedFilteredIds = null;
     }
 
-    // Skip if states unchanged — BUT only if we've successfully loaded once.
-    if (oldHass && oldHass.states === hass.states && this._cachedFilteredIds) return;
-
-    // Fast path: only check cover entities for changes
-    if (oldHass && this._cachedFilteredIds) {
-      let hasChange = false;
-      for (const id of this._cachedFilteredIds) {
-        if (oldHass.states[id] !== hass.states[id]) { hasChange = true; break; }
-      }
-      if (!hasChange) {
-        this._propagateHass(hass);
-        this._hass = hass;
-        return;
-      }
-    }
-
+    // Build cache if needed
     if (!this._cachedFilteredIds) {
-      if (!Registry.initialized) {
-        this._hass = hass;
-        return;
-      }
-      this._cachedFilteredIds = new Set(this._getFilteredCoverEntities(hass));
+      if (!Registry.initialized) return;
+      this._cachedFilteredIds = new Set(this._getFilteredCoverEntities(this.hass));
     }
 
-    this._propagateHass(hass);
-    this._hass = hass;
+    // Always propagate hass to child cards
+    this._propagateHass(this.hass);
   }
-
-  get hass(): HomeAssistant | null { return this._hass; }
 
   private _propagateHass(hass: HomeAssistant): void {
     if (this._headingCard) this._headingCard.hass = hass;
@@ -128,12 +110,12 @@ class Simon42CoversGroupCard extends LitElement {
   }
 
   private _getRelevantCovers(): string[] {
-    if (!this._hass || !this._cachedFilteredIds) return [];
+    if (!this.hass || !this._cachedFilteredIds) return [];
     const isOpen = this._config.group_type === 'open';
 
     const relevant: string[] = [];
     for (const id of this._cachedFilteredIds) {
-      const state = this._hass.states[id];
+      const state = this.hass.states[id];
       if (!state) continue;
       if (isOpen) {
         if (state.state === 'open' || state.state === 'opening') relevant.push(id);
@@ -143,8 +125,8 @@ class Simon42CoversGroupCard extends LitElement {
     }
 
     relevant.sort((a, b) => {
-      const stateA = this._hass!.states[a];
-      const stateB = this._hass!.states[b];
+      const stateA = this.hass!.states[a];
+      const stateB = this.hass!.states[b];
       if (!stateA || !stateB) return 0;
       return new Date(stateB.last_changed).getTime() - new Date(stateA.last_changed).getTime();
     });
@@ -153,7 +135,7 @@ class Simon42CoversGroupCard extends LitElement {
   }
 
   private _stripCoverType(entityId: string): string {
-    const state = this._hass!.states[entityId];
+    const state = this.hass!.states[entityId];
     if (!state) return entityId;
 
     let name = state.attributes.friendly_name || entityId;
@@ -190,7 +172,7 @@ class Simon42CoversGroupCard extends LitElement {
     if (card) return card;
 
     card = document.createElement('hui-tile-card');
-    card.hass = this._hass;
+    card.hass = this.hass;
     card.setConfig({
       type: 'tile',
       entity: entityId,
@@ -206,7 +188,7 @@ class Simon42CoversGroupCard extends LitElement {
 
   private _calculateRenderKey(covers: string[]): string {
     return covers.map(id => {
-      const state = this._hass!.states[id];
+      const state = this.hass!.states[id];
       if (!state) return id;
       if (state.state === 'opening' || state.state === 'closing') {
         const position = (state.attributes as any).current_position || 0;
@@ -217,7 +199,7 @@ class Simon42CoversGroupCard extends LitElement {
   }
 
   protected render() {
-    if (!this._hass || !this._cachedFilteredIds) return nothing;
+    if (!this.hass || !this._cachedFilteredIds) return nothing;
 
     const covers = this._getRelevantCovers();
     if (covers.length === 0) {
@@ -236,7 +218,7 @@ class Simon42CoversGroupCard extends LitElement {
 
   protected updated(changedProps: PropertyValues): void {
     super.updated(changedProps);
-    if (!this._hass || !this._cachedFilteredIds) return;
+    if (!this.hass || !this._cachedFilteredIds) return;
 
     const covers = this._getRelevantCovers();
     const coversKey = this._calculateRenderKey(covers);
@@ -252,7 +234,7 @@ class Simon42CoversGroupCard extends LitElement {
         this._headingCard = document.createElement('hui-heading-card');
         headingSlot.appendChild(this._headingCard);
       }
-      this._headingCard.hass = this._hass;
+      this._headingCard.hass = this.hass;
       this._headingCard.setConfig(this._buildHeadingConfig(covers));
     }
 

@@ -2,7 +2,7 @@
 // SUMMARY CARD — Reactive summary tile for lights/covers/security/batteries (LitElement)
 // ====================================================================
 
-import { LitElement, html, css, nothing } from 'lit';
+import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 import { Registry } from '../Registry';
 import { trackHassUpdate, debugLog, timeStart, timeEnd } from '../utils/debug';
@@ -42,12 +42,13 @@ const COLOR_MAP: Record<string, string> = {
 
 class Simon42SummaryCard extends LitElement {
   static properties = {
+    hass: { attribute: false },
     _count: { state: true },
   };
 
-  private _hass: HomeAssistant | null = null;
-  private _config!: SummaryCardConfig;
+  public hass?: HomeAssistant;
   private _count = 0;
+  private _config!: SummaryCardConfig;
   private _relevantEntityIds: Set<string> | null = null;
 
   static styles = css`
@@ -93,25 +94,21 @@ class Simon42SummaryCard extends LitElement {
     this._relevantEntityIds = null;
   }
 
-  set hass(hass: HomeAssistant) {
-    trackHassUpdate(`summary-${this._config?.summary_type || 'unknown'}`);
-    const oldHass = this._hass;
-    this._hass = hass;
+  protected willUpdate(changedProps: PropertyValues): void {
+    if (!changedProps.has('hass') || !this.hass) return;
 
-    if (!oldHass || oldHass.entities !== hass.entities) {
+    trackHassUpdate(`summary-${this._config?.summary_type || 'unknown'}`);
+    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+
+    if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._relevantEntityIds = null;
       debugLog(`summary-${this._config?.summary_type}: cache invalidated (registry changed)`);
     }
 
-    // Recalculate count — setting _count triggers Lit re-render via @state
     const newCount = this._calculateCount();
-    if (oldHass === null || this._count !== newCount) {
+    if (this._count !== newCount) {
       this._count = newCount;
     }
-  }
-
-  get hass(): HomeAssistant | null {
-    return this._hass;
   }
 
   private _isEntityRelevant(id: string, _state: HassEntity): boolean {
@@ -119,12 +116,12 @@ class Simon42SummaryCard extends LitElement {
   }
 
   private _getRelevantEntities(): void {
-    if (!this._hass || this._relevantEntityIds) return;
+    if (!this.hass || this._relevantEntityIds) return;
     if (!Registry.initialized) return;
 
     const type = this._config.summary_type;
     timeStart(`summary-getRelevant-${type}`);
-    const hass = this._hass;
+    const hass = this.hass;
     let result: string[];
 
     switch (this._config.summary_type) {
@@ -220,12 +217,12 @@ class Simon42SummaryCard extends LitElement {
   }
 
   private _calculateCount(): number {
-    if (!this._hass) return 0;
+    if (!this.hass) return 0;
 
     this._getRelevantEntities();
     if (!this._relevantEntityIds || this._relevantEntityIds.size === 0) return 0;
 
-    const hass = this._hass;
+    const hass = this.hass;
     let count = 0;
 
     switch (this._config.summary_type) {
@@ -305,7 +302,7 @@ class Simon42SummaryCard extends LitElement {
   }
 
   private _handleClick(): void {
-    if (!this._hass || !this._config) return;
+    if (!this.hass || !this._config) return;
     const displayConfig = this._getDisplayConfig();
     this.dispatchEvent(new CustomEvent('hass-action', {
       bubbles: true,
