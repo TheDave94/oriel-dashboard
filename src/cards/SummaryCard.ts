@@ -4,7 +4,7 @@
 
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 import { Registry } from '../Registry';
-import { trackHassUpdate, debugLog } from '../utils/debug';
+import { trackHassUpdate, debugLog, timeStart, timeEnd } from '../utils/debug';
 
 declare global {
   interface Window {
@@ -36,8 +36,12 @@ class Simon42SummaryCard extends HTMLElement {
   private _config!: SummaryCardConfig;
   private _count = 0;
   private _relevantEntityIds: Set<string> | null = null;
-  private _dummyEntity: string | null = null;
-  private _card: any = null;
+
+  // Stable DOM references
+  private _initialized = false;
+  private _cardEl: HTMLElement | null = null;
+  private _iconEl: HTMLElement | null = null;
+  private _nameEl: HTMLElement | null = null;
 
   setConfig(config: SummaryCardConfig): void {
     if (!config.summary_type) {
@@ -56,7 +60,6 @@ class Simon42SummaryCard extends HTMLElement {
     // State changes don't affect WHICH entities are relevant — only the count changes.
     if (!oldHass || oldHass.entities !== hass.entities) {
       this._relevantEntityIds = null;
-      this._dummyEntity = null;
       debugLog(`summary-${this._config?.summary_type}: cache invalidated (registry changed)`);
     }
 
@@ -82,7 +85,11 @@ class Simon42SummaryCard extends HTMLElement {
 
   private _getRelevantEntities(): void {
     if (!this._hass || this._relevantEntityIds) return;
+    // Don't cache if Registry isn't initialized yet — retry on next hass update
+    if (!Registry.initialized) return;
 
+    const type = this._config.summary_type;
+    timeStart(`summary-getRelevant-${type}`);
     const hass = this._hass;
     let result: string[];
 
@@ -180,6 +187,8 @@ class Simon42SummaryCard extends HTMLElement {
     }
 
     this._relevantEntityIds = new Set(result);
+    debugLog(`summary-${type}: ${result.length} relevant entities`);
+    timeEnd(`summary-getRelevant-${type}`);
   }
 
   private _calculateCount(): number {
@@ -268,60 +277,113 @@ class Simon42SummaryCard extends HTMLElement {
     return configs[this._config.summary_type];
   }
 
-  private _findDummyEntity(): string {
-    if (this._dummyEntity) return this._dummyEntity;
+  /** Map color names to HA CSS custom properties */
+  private _getColorCss(color: string): string {
+    const colorMap: Record<string, string> = {
+      orange: 'var(--orange-color, #ff9800)',
+      purple: 'var(--purple-color, #9c27b0)',
+      yellow: 'var(--yellow-color, #ffc107)',
+      red: 'var(--red-color, #f44336)',
+      grey: 'var(--disabled-color, #bdbdbd)',
+    };
+    return colorMap[color] || colorMap.grey;
+  }
 
-    if (!this._hass) return 'sun.sun';
+  /** Create the stable DOM shell once. */
+  private _initDom(): void {
+    if (this._initialized) return;
+    this._initialized = true;
 
-    // Use Registry domain lookup instead of iterating all states
-    const sensorIds = Registry.getEntityIdsForDomain('sensor');
-    for (const id of sensorIds) {
-      const state = this._hass.states[id];
-      if (state && state.state !== 'unavailable' && state.state !== 'unknown') {
-        this._dummyEntity = id;
-        return id;
+    const shadow = this.attachShadow({ mode: 'open' });
+
+    const style = document.createElement('style');
+    style.textContent = `
+      :host {
+        display: block;
+        cursor: pointer;
       }
-    }
+      ha-card {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 8px;
+        height: 100%;
+        box-sizing: border-box;
+        --ha-card-border-width: 0;
+        background: var(--ha-card-background, var(--card-background-color, #fff));
+        border-radius: var(--ha-card-border-radius, 12px);
+      }
+      ha-card:active {
+        transform: scale(0.97);
+        transition: transform 0.1s;
+      }
+      .icon {
+        --mdc-icon-size: 28px;
+        transition: color 0.3s;
+      }
+      .name {
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.2;
+        color: var(--primary-text-color);
+      }
+    `;
+    shadow.appendChild(style);
 
-    this._dummyEntity = 'sun.sun';
-    return 'sun.sun';
+    this._cardEl = document.createElement('ha-card');
+
+    this._iconEl = document.createElement('ha-icon') as HTMLElement;
+    this._iconEl.className = 'icon';
+    this._cardEl.appendChild(this._iconEl);
+
+    this._nameEl = document.createElement('div');
+    this._nameEl.className = 'name';
+    this._cardEl.appendChild(this._nameEl);
+
+    this._cardEl.addEventListener('click', () => {
+      if (!this._hass || !this._config) return;
+      const displayConfig = this._getDisplayConfig();
+      const event = new CustomEvent('hass-action', {
+        bubbles: true,
+        composed: true,
+        detail: {
+          config: {
+            tap_action: {
+              action: 'navigate',
+              navigation_path: displayConfig.path,
+            },
+          },
+          action: 'tap',
+        },
+      });
+      this.dispatchEvent(event);
+    });
+
+    shadow.appendChild(this._cardEl);
   }
 
   private _render(): void {
     if (!this._hass || !this._config) return;
+    timeStart(`summary-render-${this._config.summary_type}`);
+
+    this._initDom();
 
     const displayConfig = this._getDisplayConfig();
-    const dummyEntity = this._findDummyEntity();
+    const colorCss = this._getColorCss(displayConfig.color);
 
-    const tileConfig = {
-      type: 'tile' as const,
-      entity: dummyEntity,
-      icon: displayConfig.icon,
-      name: displayConfig.name,
-      color: displayConfig.color,
-      hide_state: true,
-      vertical: true,
-      tap_action: {
-        action: 'navigate',
-        navigation_path: displayConfig.path,
-      },
-      icon_tap_action: {
-        action: 'none',
-      },
-    };
-
-    if (!this._card) {
-      this._card = document.createElement('hui-tile-card');
-      this.appendChild(this._card);
+    if (this._iconEl) {
+      (this._iconEl as any).icon = displayConfig.icon;
+      this._iconEl.style.color = colorCss;
     }
 
-    // Set hass BEFORE setConfig so the card initializes correctly
-    this._card.hass = this._hass;
-    this._card.setConfig(tileConfig);
-
-    if (this._card.requestUpdate) {
-      this._card.requestUpdate();
+    if (this._nameEl) {
+      this._nameEl.textContent = displayConfig.name;
     }
+
+    timeEnd(`summary-render-${this._config.summary_type}`);
   }
 
   getCardSize(): number {

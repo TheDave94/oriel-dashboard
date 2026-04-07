@@ -58,8 +58,9 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
         : [])
     ];
 
+    const totalCards = overviewSections.reduce((sum, s) => sum + (s.cards?.length || 0), 0);
     timeEnd('overview-generate');
-    debugLog(`Overview: ${overviewSections.length} sections, ${personBadges.length} badges`);
+    debugLog(`Overview: ${overviewSections.length} sections, ${totalCards} cards, ${personBadges.length} badges`);
 
     return createOverviewView(overviewSections, personBadges);
   }

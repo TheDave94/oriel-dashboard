@@ -63,7 +63,7 @@ class Registry {
   private static _entitiesByArea: Map<string, EntityRegistryEntry[]>;
 
   /** Entity IDs grouped by domain prefix (e.g. "light", "sensor") */
-  private static _entitiesByDomain: Map<string, string[]>;
+  private static _entitiesByDomain: Map<string, string[]> = new Map();
 
   // === Pre-filtered Maps (visible entities only — no hidden/disabled/excluded) ===
 
@@ -71,7 +71,7 @@ class Registry {
   private static _visibleEntitiesByArea: Map<string, EntityRegistryEntry[]>;
 
   /** Visible entity IDs grouped by domain (pre-filtered during init) */
-  private static _visibleEntitiesByDomain: Map<string, string[]>;
+  private static _visibleEntitiesByDomain: Map<string, string[]> = new Map();
 
   /** Config/diagnostic entities grouped by area (for potential future use) */
   private static _configDiagEntitiesByArea: Map<string, EntityRegistryEntry[]>;
@@ -109,11 +109,18 @@ class Registry {
     Registry._fetchedAreas = Object.values(hass.areas);
 
     // Build exclusion sets FIRST (needed by entity maps for pre-filtering)
+    timeStart('registry-buildExclusionSets');
     Registry._buildExclusionSets();
+    timeEnd('registry-buildExclusionSets');
 
     // Build pre-computed Maps/Sets for O(1) lookups (raw + pre-filtered)
+    timeStart('registry-buildDeviceMaps');
     Registry._buildDeviceMaps();
+    timeEnd('registry-buildDeviceMaps');
+
+    timeStart('registry-buildEntityMaps');
     Registry._buildEntityMaps();
+    timeEnd('registry-buildEntityMaps');
 
     Registry._initialized = true;
     debugLog(`Registry initialized: ${Registry._fetchedEntities.length} entities, ${Registry._fetchedDevices.length} devices, ${Registry._fetchedAreas.length} areas`);

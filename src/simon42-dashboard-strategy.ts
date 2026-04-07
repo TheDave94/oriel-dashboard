@@ -10,6 +10,7 @@ import type { Simon42StrategyConfig } from './types/strategy';
 import type { LovelaceConfig, LovelaceViewConfig } from './types/lovelace';
 import { getVisibleAreasFromHass } from './utils/name-utils';
 import { createUtilityViews, createAreaViews } from './utils/view-builder';
+import { Registry } from './Registry';
 import { timeStart, timeEnd, debugLog } from './utils/debug';
 
 // Import custom cards (side-effect: registers custom elements)
@@ -33,6 +34,11 @@ class Simon42DashboardStrategy extends HTMLElement {
     hass: HomeAssistant
   ): Promise<LovelaceConfig> {
     timeStart('strategy-generate');
+
+    // Initialize Registry BEFORE returning views — ensures it's ready when
+    // view strategies and custom cards start receiving hass updates.
+    // This is idempotent; subsequent calls in view strategies are no-ops.
+    Registry.initialize(hass, config);
 
     // Read areas synchronously from hass (no WebSocket needed)
     const visibleAreas = getVisibleAreasFromHass(hass, config.areas_display);

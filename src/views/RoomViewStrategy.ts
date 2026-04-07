@@ -13,6 +13,7 @@ import { timeStart, timeEnd, debugLog } from '../utils/debug';
 class Simon42ViewRoomStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
     const area: AreaRegistryEntry = config.area;
+    debugLog(`room-generate-${area.area_id}: called at ${performance.now().toFixed(1)}ms after page load`);
     timeStart(`room-generate-${area.area_id}`);
     const dashboardConfig = config.dashboardConfig || {};
 

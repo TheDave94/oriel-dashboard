@@ -23,7 +23,14 @@ class Simon42LightsGroupCard extends HTMLElement {
   private _config!: LightsGroupConfig;
   private _cachedFilteredIds: Set<string> | null = null;
   private _lastLightsList = '';
-  private _card: any = null;
+
+  // Stable DOM references (created once)
+  private _initialized = false;
+  private _headingCard: any = null;
+  private _gridEl: HTMLElement | null = null;
+
+  // Reusable tile card pool (keyed by entity_id)
+  private _tileCards: Map<string, any> = new Map();
 
   setConfig(config: LightsGroupConfig): void {
     if (!config.group_type) throw new Error('You need to define group_type (on/off)');
@@ -39,7 +46,9 @@ class Simon42LightsGroupCard extends HTMLElement {
       this._cachedFilteredIds = null;
     }
 
-    if (oldHass && oldHass.states === hass.states) return;
+    // Skip if states unchanged — BUT only if we've successfully loaded once.
+    // If _cachedFilteredIds is null, we still need to retry (Registry may now be ready).
+    if (oldHass && oldHass.states === hass.states && this._cachedFilteredIds) return;
 
     // Fast path: only check light entities for changes
     if (oldHass && this._cachedFilteredIds) {
@@ -51,7 +60,15 @@ class Simon42LightsGroupCard extends HTMLElement {
     }
 
     if (!this._cachedFilteredIds) {
+      // Don't cache if Registry isn't initialized yet — retry on next hass update
+      if (!Registry.initialized) return;
       this._cachedFilteredIds = new Set(this._getFilteredLightEntities());
+    }
+
+    // Propagate hass to all existing cards (cheap — Lit handles diffing internally)
+    if (this._headingCard) this._headingCard.hass = hass;
+    for (const card of this._tileCards.values()) {
+      card.hass = hass;
     }
 
     const currentLights = this._getRelevantLights();
@@ -59,7 +76,7 @@ class Simon42LightsGroupCard extends HTMLElement {
 
     if (!oldHass || this._lastLightsList !== lightsKey) {
       this._lastLightsList = lightsKey;
-      this._render();
+      this._render(currentLights);
     }
   }
 
@@ -95,9 +112,79 @@ class Simon42LightsGroupCard extends HTMLElement {
     return relevant;
   }
 
-  private _render(): void {
+  /** Create the stable DOM shell once. Called on first render. */
+  private _initDom(): void {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .lights-section { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+      .light-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
+    `;
+    this.appendChild(style);
+
+    const section = document.createElement('div');
+    section.className = 'lights-section';
+
+    // HA-native heading card with button badge for batch action
+    this._headingCard = document.createElement('hui-heading-card');
+    section.appendChild(this._headingCard);
+
+    this._gridEl = document.createElement('div');
+    this._gridEl.className = 'light-grid';
+    section.appendChild(this._gridEl);
+
+    this.appendChild(section);
+  }
+
+  /** Build heading card config with batch action badge targeting explicit entity IDs. */
+  private _buildHeadingConfig(lights: string[]): any {
+    const isOn = this._config.group_type === 'on';
+    const icon = isOn ? 'mdi:lightbulb-group' : 'mdi:lightbulb-group-off';
+    const title = isOn ? 'Eingeschaltete Lichter' : 'Ausgeschaltete Lichter';
+
+    return {
+      type: 'heading',
+      heading: `${title} (${lights.length})`,
+      icon: icon,
+      badges: [
+        {
+          type: 'button',
+          icon: isOn ? 'mdi:lightbulb-off' : 'mdi:lightbulb-on',
+          text: isOn ? 'Alle aus' : 'Alle ein',
+          tap_action: {
+            action: 'perform-action',
+            perform_action: isOn ? 'light.turn_off' : 'light.turn_on',
+            target: {
+              entity_id: lights,
+            },
+          },
+        },
+      ],
+    };
+  }
+
+  /** Get or create a tile card for an entity. Cards are pooled and reused. */
+  private _getOrCreateTileCard(entityId: string): any {
+    let card = this._tileCards.get(entityId);
+    if (card) return card;
+
+    const isOn = this._config.group_type === 'on';
+    card = document.createElement('hui-tile-card');
+    card.hass = this._hass;
+    const cardConfig: any = { type: 'tile', entity: entityId, vertical: false, state_content: 'last_changed' };
+    if (isOn) {
+      cardConfig.features = [{ type: 'light-brightness' }];
+      cardConfig.features_position = 'inline';
+    }
+    card.setConfig(cardConfig);
+    this._tileCards.set(entityId, card);
+    return card;
+  }
+
+  private _render(lights: string[]): void {
     if (!this._hass) return;
-    const lights = this._getRelevantLights();
     const isOn = this._config.group_type === 'on';
 
     if (lights.length === 0) {
@@ -106,50 +193,43 @@ class Simon42LightsGroupCard extends HTMLElement {
     }
     this.style.display = 'block';
 
-    const icon = isOn ? '💡' : '🌙';
-    const title = isOn ? 'Eingeschaltete Lichter' : 'Ausgeschaltete Lichter';
-    const actionIcon = isOn ? 'mdi:lightbulb-off' : 'mdi:lightbulb-on';
+    // Create stable DOM shell on first render
+    this._initDom();
 
-    this.innerHTML = `
-      <style>
-        .lights-section { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-        .section-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
-        .section-heading { font-size: ${isOn ? '20px' : '16px'}; font-weight: ${isOn ? '500' : '400'}; margin: 0; display: flex; align-items: center; gap: 8px; }
-        .batch-button { padding: 8px 12px; border-radius: 18px; background: var(--primary-color); color: var(--text-primary-color); border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 14px; }
-        .batch-button:hover { background: var(--primary-color-dark); }
-        .batch-button ha-icon { --mdc-icon-size: 18px; }
-        .light-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; }
-      </style>
-      <div class="lights-section">
-        <div class="section-header">
-          <h${isOn ? '2' : '3'} class="section-heading">${icon} ${title} (${lights.length})</h${isOn ? '2' : '3'}>
-          <button class="batch-button" id="batch-action">
-            <ha-icon icon="${actionIcon}"></ha-icon>
-            Alle ${isOn ? 'ausschalten' : 'einschalten'}
-          </button>
-        </div>
-        <div class="light-grid" id="light-grid"></div>
-      </div>
-    `;
-
-    const batchButton = this.querySelector('#batch-action');
-    if (batchButton) {
-      batchButton.addEventListener('click', () => {
-        this._hass!.callService('light', isOn ? 'turn_off' : 'turn_on', { entity_id: lights });
-      });
+    // Update heading card with current entity list (for batch action target)
+    if (this._headingCard) {
+      this._headingCard.hass = this._hass;
+      this._headingCard.setConfig(this._buildHeadingConfig(lights));
     }
 
-    const grid = this.querySelector('#light-grid')!;
-    for (const entityId of lights) {
-      const card = document.createElement('hui-tile-card') as any;
-      card.hass = this._hass;
-      const cardConfig: any = { type: 'tile', entity: entityId, vertical: false, state_content: 'last_changed' };
-      if (isOn) {
-        cardConfig.features = [{ type: 'light-brightness' }];
-        cardConfig.features_position = 'inline';
+    // Reconcile tile cards in grid: reuse existing, add new, remove stale
+    const grid = this._gridEl!;
+    const activeIds = new Set(lights);
+
+    // Remove cards for entities no longer in the list
+    for (const [id, card] of this._tileCards) {
+      if (!activeIds.has(id)) {
+        if (card.parentNode === grid) grid.removeChild(card);
+        this._tileCards.delete(id);
       }
-      card.setConfig(cardConfig);
-      grid.appendChild(card);
+    }
+
+    // Add/reorder cards to match the desired order
+    let prevNode: Node | null = null;
+    for (const entityId of lights) {
+      const card = this._getOrCreateTileCard(entityId);
+      const nextSibling = prevNode ? prevNode.nextSibling : grid.firstChild;
+
+      // Only move if not already in the right position
+      if (card !== nextSibling) {
+        grid.insertBefore(card, nextSibling);
+      }
+      prevNode = card;
+    }
+
+    // Remove any trailing DOM nodes that shouldn't be there
+    while (prevNode && prevNode.nextSibling) {
+      grid.removeChild(prevNode.nextSibling);
     }
   }
 
