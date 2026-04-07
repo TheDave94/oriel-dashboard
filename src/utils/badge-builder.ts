@@ -31,25 +31,19 @@ export function createPersonBadges(
     const registryEntry = hass.entities?.[person.entity_id];
     if (registryEntry?.hidden === true) continue;
 
-    const isHome = state.state === 'home';
     const firstName = person.name.split(' ')[0];
 
-    const badge: LovelaceBadgeConfig = {
+    badges.push({
       type: 'entity',
       entity: person.entity_id,
       name: firstName,
       show_entity_picture: true,
-      show_state: false,
+      show_state: true,
+      state_content: 'state',
       show_name: true,
       show_icon: true,
       tap_action: { action: 'more-info' },
-    };
-
-    if (!isHome) {
-      badge.color = 'accent';
-    }
-
-    badges.push(badge);
+    } as LovelaceBadgeConfig);
   }
 
   return badges;
