@@ -7,7 +7,10 @@ const config: webpack.Configuration = {
   output: {
     clean: true,
     filename: 'simon42-dashboard-strategy.js',
+    chunkFilename: 'simon42-dashboard-strategy-[name].js',
     path: path.resolve(__dirname, 'dist'),
+    // publicPath must match the HA resource URL path for async chunk loading
+    publicPath: '/hacsfiles/simon42-dashboard-strategy/',
   },
   resolve: {
     extensions: ['.ts', '.js'],
@@ -21,11 +24,7 @@ const config: webpack.Configuration = {
       },
     ],
   },
-  plugins: [
-    new webpack.optimize.LimitChunkCountPlugin({
-      maxChunks: 1,
-    }),
-  ],
+  plugins: [],
 };
 
 export default config;
