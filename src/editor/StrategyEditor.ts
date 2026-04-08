@@ -1073,7 +1073,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const cleanConfig: Simon42StrategyConfig = { ...config };
     if (cleanConfig.custom_views) {
       cleanConfig.custom_views = cleanConfig.custom_views.map((cv) => {
-        const { _yaml_error, ...clean } = cv;
+        const clean = { ...cv };
+        delete clean._yaml_error;
         return clean;
       });
     }

@@ -13,7 +13,7 @@ import type { Simon42StrategyConfig, PersonData } from '../types/strategy';
  * Collects person entities with home/away state.
  * Uses pre-filtered Registry method — no manual exclusion checks needed.
  */
-export function collectPersons(hass: HomeAssistant, config: Simon42StrategyConfig): PersonData[] {
+export function collectPersons(hass: HomeAssistant, _config: Simon42StrategyConfig): PersonData[] {
   const personIds = Registry.getVisibleEntityIdsForDomain('person');
 
   return personIds

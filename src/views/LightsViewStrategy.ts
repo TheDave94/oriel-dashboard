@@ -5,7 +5,7 @@
 import type { LovelaceViewConfig } from '../types/lovelace';
 
 class Simon42ViewLightsStrategy extends HTMLElement {
-  static async generate(config: any, hass: any): Promise<LovelaceViewConfig> {
+  static async generate(config: any, _hass: any): Promise<LovelaceViewConfig> {
     return {
       type: 'sections',
       sections: [

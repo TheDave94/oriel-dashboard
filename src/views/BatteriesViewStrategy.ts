@@ -3,7 +3,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
+import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import { Registry } from '../Registry';
 
 class Simon42ViewBatteriesStrategy extends HTMLElement {

@@ -161,7 +161,7 @@ export function getVisibleAreasFromHass(hass: HomeAssistant, displayConfig?: Are
  * Delegates to Registry.isEntityExcludedWithStateCategory() which covers
  * all exclusion criteria including state attribute fallback.
  */
-export function isEntityHiddenOrDisabled(entity: EntityRegistryEntry, hass: HomeAssistant): boolean {
+export function isEntityHiddenOrDisabled(entity: EntityRegistryEntry, _hass: HomeAssistant): boolean {
   return Registry.isEntityExcludedWithStateCategory(entity.entity_id);
 }
 

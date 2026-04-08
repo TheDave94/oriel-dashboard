@@ -346,7 +346,7 @@ function renderFavoritesList(favoriteEntities: string[], allEntities: EditorEnti
   return `
     <div style="border: 1px solid var(--divider-color); border-radius: 4px; overflow: hidden;">
       ${favoriteEntities
-        .map((entityId: string, index: number) => {
+        .map((entityId: string, _index: number) => {
           const name = entityMap.get(entityId) || entityId;
           return `
           <div class="favorite-item" data-entity-id="${entityId}" style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--divider-color); background: var(--card-background-color);">
@@ -382,7 +382,7 @@ export function renderRoomPinsList(
   return `
     <div style="border: 1px solid var(--divider-color); border-radius: 4px; overflow: hidden;">
       ${roomPinEntities
-        .map((entityId: string, index: number) => {
+        .map((entityId: string, _index: number) => {
           const entity = entityMap.get(entityId);
           const name = entity?.name || entityId;
           const areaId = entity?.area_id || entity?.device_area_id;
@@ -415,7 +415,6 @@ export function renderCustomViewsList(customViews: CustomView[]): string {
 
   return customViews
     .map((view: CustomView, index: number) => {
-      const yamlValid = view.parsed_config ? true : false;
       const validationMsg = view._yaml_error
         ? `<span style="color: var(--error-color);">❌ ${view._yaml_error}</span>`
         : view.yaml
