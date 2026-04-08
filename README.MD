@@ -2,6 +2,14 @@
 
 Eine modulare und hochkonfigurierbare Dashboard-Strategy fuer Home Assistant, die automatisch Views basierend auf Bereichen, Entitaeten und deren Zustaenden generiert.
 
+<p align="center">
+  <a href="https://youtu.be/XU7DfQrfJ2w">
+    <img src="assets/video-thumbnail.png" alt="simon42 Dashboard Strategy — Video Tutorial" width="600" />
+  </a>
+  <br/>
+  <em>Video-Anleitung auf YouTube ansehen</em>
+</p>
+
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TheRealSimon42&repository=simon42-dashboard-strategy&category=plugin)
 
 ---
@@ -147,7 +155,15 @@ strategy:
 
 ## Architektur
 
-**TypeScript** (ES2020, strict) → **Webpack** → Code-Split Chunks (main ~58KB, editor ~46KB, vendors ~38KB)
+**TypeScript** (ES2020, strict) → **Webpack** → Code-Split Chunks:
+
+| Chunk | Groesse | Inhalt |
+|-------|---------|--------|
+| main | ~5 KB | Entry Point, Custom Element Registrierung |
+| lit | ~15 KB | Lit Framework (shared) |
+| core | ~27 KB | Registry, Utils, Overview, Custom Cards |
+| views | ~14 KB | Lichter, Rollos, Sicherheit, Batterien, Raum-Detail |
+| editor | ~84 KB | Konfigurations-UI (nur bei Bedarf geladen) |
 
 Custom Cards (LightsGroupCard, CoversGroupCard, SummaryCard) nutzen **LitElement** mit reaktiven Properties und Tile-Card-Pooling. View-Strategien generieren statische Card-Configs die HA's Rendering-Engine uebernimmt.
 
