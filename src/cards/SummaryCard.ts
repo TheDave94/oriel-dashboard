@@ -18,6 +18,7 @@ type SummaryType = 'lights' | 'covers' | 'security' | 'batteries' | 'climate';
 interface SummaryCardConfig {
   summary_type: SummaryType;
   hide_mobile_app_batteries?: boolean;
+  battery_critical_threshold?: number;
 }
 
 interface DisplayConfig {
@@ -254,18 +255,22 @@ class Simon42SummaryCard extends LitElement {
         }
         return count;
 
-      case 'batteries':
+      case 'batteries': {
+        const critThreshold = this._config.battery_critical_threshold ?? 20;
         for (const id of this._relevantEntityIds) {
           const state = hass.states[id];
           if (!state) continue;
           if (id.startsWith('binary_sensor.')) {
             if (state.state === 'on') count++;
           } else {
+            const unit = state.attributes?.unit_of_measurement;
+            if (unit && unit !== '%') continue;
             const value = parseFloat(state.state);
-            if (!isNaN(value) && value < 20) count++;
+            if (!isNaN(value) && value < critThreshold) count++;
           }
         }
         return count;
+      }
 
       case 'climate':
         for (const id of this._relevantEntityIds) {

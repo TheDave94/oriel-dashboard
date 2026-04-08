@@ -148,6 +148,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const showBatterySummary = this._config.show_battery_summary !== false;
     const showClimateSummary = this._config.show_climate_summary === true;
     const hideMobileAppBatteries = this._config.hide_mobile_app_batteries === true;
+    const batteryCriticalThreshold = this._config.battery_critical_threshold ?? 20;
+    const batteryLowThreshold = this._config.battery_low_threshold ?? 50;
     const showLocksInRooms = this._config.show_locks_in_rooms === true;
     const useDefaultAreaSort = this._config.use_default_area_sort === true;
     const customViews = this._config.custom_views || [];
@@ -205,6 +207,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         showBatterySummary,
         showClimateSummary,
         hideMobileAppBatteries,
+        batteryCriticalThreshold,
+        batteryLowThreshold,
         showLocksInRooms,
         useDefaultAreaSort,
         customViews,
@@ -226,6 +230,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachBatterySummaryCheckboxListener(this, (val: boolean) => this._showBatterySummaryChanged(val));
     attachClimateSummaryCheckboxListener(this, (val: boolean) => this._showClimateSummaryChanged(val));
     attachHideMobileAppBatteriesCheckboxListener(this, (hide: boolean) => this._hideMobileAppBatteriesChanged(hide));
+    this._attachBatteryThresholdListeners();
     attachShowLocksInRoomsCheckboxListener(this, (show: boolean) => this._showLocksInRoomsChanged(show));
     attachUseDefaultAreaSortCheckboxListener(this, (val: boolean) => this._useDefaultAreaSortChanged(val));
     this._attachCustomViewsListeners();
@@ -983,6 +988,31 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
 
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
+  }
+
+  _attachBatteryThresholdListeners(): void {
+    const criticalInput = this.querySelector('#battery-critical-threshold') as HTMLInputElement | null;
+    const lowInput = this.querySelector('#battery-low-threshold') as HTMLInputElement | null;
+
+    criticalInput?.addEventListener('change', () => {
+      if (!this._config) return;
+      const value = parseInt(criticalInput.value, 10);
+      if (isNaN(value) || value < 1 || value > 99) return;
+      const newConfig: Simon42StrategyConfig = { ...this._config, battery_critical_threshold: value };
+      if (value === 20) delete newConfig.battery_critical_threshold;
+      this._config = newConfig;
+      this._fireConfigChanged(newConfig);
+    });
+
+    lowInput?.addEventListener('change', () => {
+      if (!this._config) return;
+      const value = parseInt(lowInput.value, 10);
+      if (isNaN(value) || value < 1 || value > 99) return;
+      const newConfig: Simon42StrategyConfig = { ...this._config, battery_low_threshold: value };
+      if (value === 50) delete newConfig.battery_low_threshold;
+      this._config = newConfig;
+      this._fireConfigChanged(newConfig);
+    });
   }
 
   _showLocksInRoomsChanged(show: boolean): void {
