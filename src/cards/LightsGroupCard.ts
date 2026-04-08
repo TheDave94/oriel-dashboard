@@ -138,8 +138,16 @@ class Simon42LightsGroupCard extends LitElement {
     card.hass = this.hass;
     const cardConfig: any = { type: 'tile', entity: entityId, vertical: false, state_content: 'last_changed' };
     if (isOn) {
-      cardConfig.features = [{ type: 'light-brightness' }];
-      cardConfig.features_position = 'inline';
+      // Only add brightness slider if the light actually supports it
+      const state = this.hass?.states[entityId];
+      const modes = state?.attributes?.supported_color_modes as string[] | undefined;
+      const hasBrightness = modes?.some((m: string) =>
+        ['brightness', 'color_temp', 'hs', 'xy', 'rgb', 'rgbw', 'rgbww', 'white'].includes(m)
+      );
+      if (hasBrightness) {
+        cardConfig.features = [{ type: 'light-brightness' }];
+        cardConfig.features_position = 'inline';
+      }
     }
     card.setConfig(cardConfig);
     this._tileCards.set(entityId, card);

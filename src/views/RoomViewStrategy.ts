@@ -2,13 +2,37 @@
 // VIEW STRATEGY — ROOM (Room detail with sensor badges + cameras)
 // ====================================================================
 
-import type { HomeAssistant } from '../types/homeassistant';
+import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig, LovelaceBadgeConfig } from '../types/lovelace';
 import type { AreaRegistryEntry } from '../types/registries';
 import type { RoomEntities, SensorEntities } from '../types/strategy';
 import { stripAreaName, sortByLastChanged } from '../utils/name-utils';
 import { Registry } from '../Registry';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
+
+// HA supported_features bitmask values
+const LIGHT_BRIGHTNESS_MODES = ['brightness', 'color_temp', 'hs', 'xy', 'rgb', 'rgbw', 'rgbww', 'white'];
+const FAN_SET_SPEED = 1;
+const MEDIA_PAUSE = 1;
+const MEDIA_PLAY = 16384;
+const MEDIA_STOP = 4096;
+
+/** Check if a light supports brightness (based on supported_color_modes) */
+function lightSupportsBrightness(state: HassEntity): boolean {
+  const modes = state.attributes?.supported_color_modes as string[] | undefined;
+  return modes?.some(m => LIGHT_BRIGHTNESS_MODES.includes(m)) || false;
+}
+
+/** Check if a fan supports speed control */
+function fanSupportsSpeed(state: HassEntity): boolean {
+  return ((state.attributes?.supported_features as number) & FAN_SET_SPEED) !== 0;
+}
+
+/** Check if a media player supports playback controls */
+function mediaPlayerSupportsPlayback(state: HassEntity): boolean {
+  const f = (state.attributes?.supported_features as number) || 0;
+  return (f & (MEDIA_PAUSE | MEDIA_PLAY | MEDIA_STOP)) !== 0;
+}
 
 class Simon42ViewRoomStrategy extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
@@ -185,9 +209,15 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       sections.push({ type: 'grid', cards: [{ type: 'heading', heading, heading_style: 'title', icon }, ...entities.map(tileConfig)] });
     };
 
-    domainSection(roomEntities.lights, 'Beleuchtung', 'mdi:lightbulb', e => ({
-      type: 'tile', entity: e, name: stripAreaName(e, area, hass), features: [{ type: 'light-brightness' }], vertical: false, features_position: 'inline', state_content: 'last_changed',
-    }));
+    domainSection(roomEntities.lights, 'Beleuchtung', 'mdi:lightbulb', e => {
+      const state = hass.states[e];
+      const hasBrightness = state && lightSupportsBrightness(state);
+      return {
+        type: 'tile', entity: e, name: stripAreaName(e, area, hass),
+        ...(hasBrightness ? { features: [{ type: 'light-brightness' }], features_position: 'inline' } : {}),
+        vertical: false, state_content: 'last_changed',
+      };
+    });
 
     domainSection(roomEntities.locks, 'Schlösser', 'mdi:lock', e => ({
       type: 'tile', entity: e, name: stripAreaName(e, area, hass), features: [{ type: 'lock-commands' }], features_position: 'inline', vertical: false, state_content: 'last_changed',
@@ -205,9 +235,15 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       type: 'tile', entity: e, name: stripAreaName(e, area, hass), features: [{ type: 'cover-open-close' }], vertical: false, features_position: 'inline', state_content: ['current_position', 'last_changed'],
     }));
 
-    domainSection(roomEntities.media_player, 'Medien', 'mdi:speaker', e => ({
-      type: 'tile', entity: e, name: stripAreaName(e, area, hass), vertical: false, features: [{ type: 'media-player-playback' }], features_position: 'inline', state_content: ['media_title', 'media_artist'],
-    }));
+    domainSection(roomEntities.media_player, 'Medien', 'mdi:speaker', e => {
+      const state = hass.states[e];
+      const hasPlayback = state && mediaPlayerSupportsPlayback(state);
+      return {
+        type: 'tile', entity: e, name: stripAreaName(e, area, hass), vertical: false,
+        ...(hasPlayback ? { features: [{ type: 'media-player-playback' }], features_position: 'inline' } : {}),
+        state_content: ['media_title', 'media_artist'],
+      };
+    });
 
     domainSection(roomEntities.scenes, 'Szenen', 'mdi:palette', e => ({
       type: 'tile', entity: e, name: stripAreaName(e, area, hass), vertical: false, state_content: 'last_changed',
@@ -216,7 +252,11 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     // Misc (vacuum, fan, switches)
     const miscCards: LovelaceCardConfig[] = [];
     for (const e of roomEntities.vacuum) miscCards.push({ type: 'tile', entity: e, name: stripAreaName(e, area, hass), features: [{ type: 'vacuum-commands' }], features_position: 'inline', vertical: false, state_content: 'last_changed' });
-    for (const e of roomEntities.fan) miscCards.push({ type: 'tile', entity: e, name: stripAreaName(e, area, hass), features: [{ type: 'fan-speed' }], features_position: 'inline', vertical: false, state_content: 'last_changed' });
+    for (const e of roomEntities.fan) {
+      const state = hass.states[e];
+      const hasSpeed = state && fanSupportsSpeed(state);
+      miscCards.push({ type: 'tile', entity: e, name: stripAreaName(e, area, hass), ...(hasSpeed ? { features: [{ type: 'fan-speed' }], features_position: 'inline' } : {}), vertical: false, state_content: 'last_changed' });
+    }
     for (const e of roomEntities.switches) miscCards.push({ type: 'tile', entity: e, name: stripAreaName(e, area, hass), vertical: false, state_content: 'last_changed' });
 
     miscCards.sort((a, b) => {
