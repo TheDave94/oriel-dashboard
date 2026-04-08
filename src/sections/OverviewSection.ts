@@ -128,6 +128,7 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       summary_type: 'batteries',
       areas_options: config.areas_options || {},
       hide_mobile_app_batteries: config.hide_mobile_app_batteries,
+      battery_critical_threshold: config.battery_critical_threshold,
     });
   }
 

@@ -47,6 +47,8 @@ export interface EditorHTMLParams {
   showBatterySummary: boolean;
   showClimateSummary: boolean;
   hideMobileAppBatteries: boolean;
+  batteryCriticalThreshold: number;
+  batteryLowThreshold: number;
   showLocksInRooms: boolean;
   useDefaultAreaSort: boolean;
   customViews: CustomView[];
@@ -87,6 +89,8 @@ export function renderEditorHTML({
   showBatterySummary,
   showClimateSummary,
   hideMobileAppBatteries,
+  batteryCriticalThreshold,
+  batteryLowThreshold,
   showLocksInRooms,
   useDefaultAreaSort,
   customViews,
@@ -234,6 +238,29 @@ export function renderEditorHTML({
         </div>
         <div class="description">
           Blendet Batterien von Smartphones, Tablets und Watches (Mobile App) in der Batterie-Übersicht und -Zusammenfassung aus.
+        </div>
+        <div class="form-row" style="margin-top: 8px;">
+          <label for="battery-critical-threshold" style="min-width: 140px;">Kritisch unter</label>
+          <input
+            type="number"
+            id="battery-critical-threshold"
+            min="1" max="99"
+            value="${batteryCriticalThreshold}"
+            style="width: 60px; padding: 6px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);"
+          /> %
+        </div>
+        <div class="form-row">
+          <label for="battery-low-threshold" style="min-width: 140px;">Niedrig unter</label>
+          <input
+            type="number"
+            id="battery-low-threshold"
+            min="1" max="99"
+            value="${batteryLowThreshold}"
+            style="width: 60px; padding: 6px; border-radius: 4px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color);"
+          /> %
+        </div>
+        <div class="description">
+          Schwellwerte für die Batterie-Statusgruppen (Kritisch / Niedrig / Gut).
         </div>
       </div>
 

@@ -57,6 +57,9 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
     });
 
     // Group by status
+    const strategyConfig = config.config || {};
+    const criticalThreshold = strategyConfig.battery_critical_threshold ?? 20;
+    const lowThreshold = strategyConfig.battery_low_threshold ?? 50;
     const critical: string[] = [];
     const low: string[] = [];
     const good: string[] = [];
@@ -74,8 +77,8 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
       // meaningfully compared against percentage thresholds (e.g. 3V would
       // be "critical" at < 20 which is wrong). Skip them entirely.
       if (unit && unit !== '%') continue;
-      if (value < 20) critical.push(entityId);
-      else if (value <= 50) low.push(entityId);
+      if (value < criticalThreshold) critical.push(entityId);
+      else if (value <= lowThreshold) low.push(entityId);
       else good.push(entityId);
     }
 
@@ -87,7 +90,7 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
         cards: [
           {
             type: 'heading',
-            heading: `🔴 Kritisch (< 20%) - ${critical.length} ${critical.length === 1 ? 'Batterie' : 'Batterien'}`,
+            heading: `🔴 Kritisch (< ${criticalThreshold}%) - ${critical.length} ${critical.length === 1 ? 'Batterie' : 'Batterien'}`,
             heading_style: 'title',
           },
           ...critical.map((e) => ({
@@ -107,7 +110,7 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
         cards: [
           {
             type: 'heading',
-            heading: `🟡 Niedrig (20-50%) - ${low.length} ${low.length === 1 ? 'Batterie' : 'Batterien'}`,
+            heading: `🟡 Niedrig (${criticalThreshold}-${lowThreshold}%) - ${low.length} ${low.length === 1 ? 'Batterie' : 'Batterien'}`,
             heading_style: 'title',
           },
           ...low.map((e) => ({
@@ -127,7 +130,7 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
         cards: [
           {
             type: 'heading',
-            heading: `🟢 Gut (> 50%) - ${good.length} ${good.length === 1 ? 'Batterie' : 'Batterien'}`,
+            heading: `🟢 Gut (> ${lowThreshold}%) - ${good.length} ${good.length === 1 ? 'Batterie' : 'Batterien'}`,
             heading_style: 'title',
           },
           ...good.map((e) => ({
