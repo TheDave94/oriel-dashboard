@@ -41,6 +41,7 @@ export interface EditorHTMLParams {
   groupByFloors: boolean;
   showClockCard: boolean;
   showLightSummary: boolean;
+  groupLightsByFloors: boolean;
   showCoversSummary: boolean;
   showSecuritySummary: boolean;
   showBatterySummary: boolean;
@@ -79,6 +80,7 @@ export function renderEditorHTML({
   groupByFloors,
   showClockCard,
   showLightSummary,
+  groupLightsByFloors,
   showCoversSummary,
   showSecuritySummary,
   showBatterySummary,
@@ -173,6 +175,17 @@ export function renderEditorHTML({
             ${showLightSummary !== false ? 'checked' : ''}
           />
           <label for="show-light-summary">Licht-Zusammenfassung anzeigen</label>
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="group-lights-by-floors"
+            ${groupLightsByFloors ? 'checked' : ''}
+          />
+          <label for="group-lights-by-floors">Lichter nach Etagen gruppieren</label>
+        </div>
+        <div class="description">
+          Gruppiert die Lichter in der Lichter-Ansicht nach Etagen. Jede Etage erhält einen eigenen Bereich mit Ein-/Ausschalt-Button.
         </div>
         <div class="form-row">
           <input

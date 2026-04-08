@@ -90,6 +90,18 @@ export function attachLightSummaryCheckboxListener(element: HTMLElement, callbac
   }
 }
 
+export function attachGroupLightsByFloorsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#group-lights-by-floors') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
 export function attachCoversSummaryCheckboxListener(element: HTMLElement, callback: (checked: boolean) => void): void {
   const coversSummaryCheckbox = element.querySelector('#show-covers-summary') as HTMLInputElement | null;
   if (coversSummaryCheckbox) {

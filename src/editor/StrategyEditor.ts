@@ -14,6 +14,7 @@ import {
   attachGroupByFloorsCheckboxListener,
   attachClockCardCheckboxListener,
   attachLightSummaryCheckboxListener,
+  attachGroupLightsByFloorsCheckboxListener,
   attachCoversSummaryCheckboxListener,
   attachSecuritySummaryCheckboxListener,
   attachBatterySummaryCheckboxListener,
@@ -140,6 +141,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const groupByFloors = this._config.group_by_floors === true;
     const showClockCard = this._config.show_clock_card !== false;
     const showLightSummary = this._config.show_light_summary !== false;
+    const groupLightsByFloors = this._config.group_lights_by_floors === true;
     const showCoversSummary = this._config.show_covers_summary !== false;
     const showSecuritySummary = this._config.show_security_summary !== false;
     const showBatterySummary = this._config.show_battery_summary !== false;
@@ -195,6 +197,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         groupByFloors,
         showClockCard,
         showLightSummary,
+        groupLightsByFloors,
         showCoversSummary,
         showSecuritySummary,
         showBatterySummary,
@@ -214,6 +217,7 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachGroupByFloorsCheckboxListener(this, (val: boolean) => this._groupByFloorsChanged(val));
     attachClockCardCheckboxListener(this, (val: boolean) => this._showClockCardChanged(val));
     attachLightSummaryCheckboxListener(this, (val: boolean) => this._showLightSummaryChanged(val));
+    attachGroupLightsByFloorsCheckboxListener(this, (val: boolean) => this._groupLightsByFloorsChanged(val));
     attachCoversSummaryCheckboxListener(this, (val: boolean) => this._showCoversSummaryChanged(val));
     attachSecuritySummaryCheckboxListener(this, (val: boolean) => this._showSecuritySummaryChanged(val));
     attachBatterySummaryCheckboxListener(this, (val: boolean) => this._showBatterySummaryChanged(val));
@@ -874,6 +878,22 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
 
     if (show === true) {
       delete newConfig.show_light_summary;
+    }
+
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _groupLightsByFloorsChanged(group: boolean): void {
+    if (!this._config || !this._hass) return;
+
+    const newConfig: Simon42StrategyConfig = {
+      ...this._config,
+      group_lights_by_floors: group,
+    };
+
+    if (group === false) {
+      delete newConfig.group_lights_by_floors;
     }
 
     this._config = newConfig;
