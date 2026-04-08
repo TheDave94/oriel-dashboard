@@ -84,6 +84,7 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     features_position: 'inline',
     navigation_path: area.area_id,
     vertical: false,
+    grid_options: { columns: 'full' },
   };
 }
 
