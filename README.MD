@@ -56,7 +56,9 @@ Wenn dir die simon42 Dashboard Strategy hilft, unterstütze die Weiterentwicklun
 - **Favoriten** — Beliebige Entitäten als Kacheln auf der Übersicht anpinnen
 - **Alarm-Panel** — Optionale Alarmanlage neben der Uhr
 - **Granulare Filterung** — Per Label (`no-dboard`), pro Bereich, pro Domain, pro Entity
+- **Teiloffene Rollos** `🆕 Beta` — Optionale dritte Gruppe (Offen / Teiloffen / Geschlossen) mit Live-Übergängen
 - **Batch-Aktionen** — Heading-Badges für Gruppensteuerung (alle ein/aus, alle öffnen/schließen)
+- **Automationen & Skripte in Räumen** `🆕 Beta` — Bereichs-zugeordnete Automationen und Skripte in Raum-Views anzeigen
 - **Eigene Karten** `🆕 Beta` — Beliebige Karten via YAML auf der Übersicht einbinden
 - **Custom Views** — Eigene Dashboard-Views mit beliebigen Cards via YAML
 - **Reaktive Updates** — Echtzeit-Aktualisierung via LitElement Custom Cards
@@ -163,7 +165,7 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 
 **Uhr & Alarm** — Die Uhr wird standardmäßig angezeigt. Optional kann eine Alarmanlage daneben eingeblendet werden.
 
-**Zusammenfassungen** — Kacheln die den Status aller Lichter, Rollos, Sicherheits-Entitäten, Batterien und Klimageräte zusammenfassen. Jede Zusammenfassung kann einzeln ein- oder ausgeschaltet werden. Das Layout ist als 2-Spalten-Grid (Standard) oder 4-Spalten-Reihe konfigurierbar.
+**Zusammenfassungen** — Kacheln die den Status aller Lichter, Rollos, Sicherheits-Entitäten, Batterien und Klimageräte zusammenfassen. Jede Zusammenfassung kann einzeln ein- oder ausgeschaltet werden. Das Layout ist als 2-Spalten-Grid (Standard) oder 4-Spalten-Reihe konfigurierbar. Für Rollos kann optional eine **Teiloffen-Gruppe** aktiviert werden, die Rollos mit Position zwischen 1-99% separat anzeigt — inkl. Live-Übergängen während des Fahrens.
 
 <p align="center">
   <img src="assets/Klima-Zusammenfassung.gif" alt="Klima-Zusammenfassung aktivieren" width="800" />
@@ -202,6 +204,8 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 **Bereichs-Verwaltung** — Bereiche ein-/ausblenden, Reihenfolge anpassen, Entitäten pro Bereich und Domain filtern — alles im Editor.
 
 **Raum-Pins** — Spezielle Entitäten die in ihren zugeordneten Räumen ganz oben erscheinen. Ideal für Entitäten die nicht automatisch erkannt werden (z.B. Wetterstationen).
+
+**Automationen & Skripte** — Optional können dem Bereich zugeordnete Automationen und Skripte in den Raum-Views angezeigt werden. Beide Optionen sind separat aktivierbar und standardmäßig aus.
 
 **Ansichten** — Summary-Views (Lichter, Rollos, etc.) und Raum-Views können optional in der oberen Navigation angezeigt werden.
 
@@ -282,7 +286,10 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | `show_energy` | boolean | `true` | Energie-Dashboard |
 | `favorite_entities` | string[] | `[]` | Favoriten-Entitäten auf der Übersicht |
 | `group_by_floors` | boolean | `false` | Bereiche nach Etagen gliedern |
+| `show_partially_open_covers` | boolean | `false` | Teiloffene Rollos separat anzeigen `🆕 Beta` |
 | `show_locks_in_rooms` | boolean | `false` | Schlösser in Raum-Views |
+| `show_automations_in_rooms` | boolean | `false` | Automationen in Raum-Views `🆕 Beta` |
+| `show_scripts_in_rooms` | boolean | `false` | Skripte in Raum-Views `🆕 Beta` |
 | `use_default_area_sort` | boolean | `false` | HA-Sortierung für Bereiche verwenden |
 | `areas_display.hidden` | string[] | `[]` | Ausgeblendete Bereiche |
 | `areas_display.order` | string[] | `[]` | Reihenfolge der Bereiche |
