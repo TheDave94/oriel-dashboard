@@ -55,7 +55,7 @@ Wenn dir die simon42 Dashboard Strategy hilft, unterstütze die Weiterentwicklun
 - **Etagen-Gruppierung** — Bereiche und Lichter optional nach Etagen gliedern
 - **Favoriten** — Beliebige Entitäten als Kacheln auf der Übersicht anpinnen
 - **Alarm-Panel** — Optionale Alarmanlage neben der Uhr
-- **Granulare Filterung** — Per Label (`no_dboard`), pro Bereich, pro Domain, pro Entity
+- **Granulare Filterung** — Per Label (`no-dboard`), pro Bereich, pro Domain, pro Entity
 - **Batch-Aktionen** — Heading-Badges für Gruppensteuerung (alle ein/aus, alle öffnen/schließen)
 - **Eigene Karten** `🆕 Beta` — Beliebige Karten via YAML auf der Übersicht einbinden
 - **Custom Views** — Eigene Dashboard-Views mit beliebigen Cards via YAML
@@ -118,10 +118,10 @@ Die Strategy generiert das Dashboard automatisch aus deiner Home Assistant Konfi
   <img src="assets/Entitaet-auf-nicht-sichtbar-stellen-via-entity-config.gif" alt="Entität auf nicht sichtbar stellen" width="800" />
 </p>
 
-- **Label `no_dboard`** — Erstelle in Home Assistant unter **Einstellungen → Labels** ein Label `no_dboard` und weise es Entitäten zu. Die Entität wird aus allen simon42-Strategy-Dashboards global ausgeblendet, bleibt aber in anderen (manuellen) Dashboards sichtbar.
+- **Label `no-dboard`** — Erstelle in Home Assistant unter **Einstellungen → Labels** ein Label `no-dboard` und weise es Entitäten zu. Die Entität wird aus allen simon42-Strategy-Dashboards global ausgeblendet, bleibt aber in anderen (manuellen) Dashboards sichtbar.
 
 <p align="center">
-  <img src="assets/no-dboard-label.png" alt="Label no_dboard in Home Assistant erstellen" width="800" />
+  <img src="assets/no-dboard-label.png" alt="Label no-dboard in Home Assistant erstellen" width="800" />
 </p>
 
 - **Im Strategy-Editor ausblenden** — Über das Konfigurationsmenü der Strategy können einzelne Entitäten pro Bereich und Domain individuell ein- und ausgeblendet werden. Das betrifft nur diese eine Strategy-Ansicht.
@@ -252,7 +252,7 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | Methode | Ebene | Beschreibung |
 |---------|-------|-------------|
 | Nicht sichtbar schalten | Global | Entität wird aus allen auto-generierten Strategies ausgeblendet |
-| Label `no_dboard` | Global | Entität wird nur aus simon42-Strategy-Dashboards ausgeblendet |
+| Label `no-dboard` | Global | Entität wird nur aus simon42-Strategy-Dashboards ausgeblendet |
 | `groups_options.hidden` | Pro Bereich | Entität nur in bestimmtem Bereich ausblenden |
 | Entity Registry | Automatisch | Hidden/Disabled Entities werden ignoriert |
 | Entity Category | Automatisch | Config/Diagnostic Entities werden ignoriert |
