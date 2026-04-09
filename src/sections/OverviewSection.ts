@@ -175,13 +175,19 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       heading: 'Favoriten',
     });
 
+    const showState = config.favorites_show_state === true;
+    const hideLastChanged = config.favorites_hide_last_changed === true;
+    const stateContent: string[] = [];
+    if (showState) stateContent.push('state');
+    if (!hideLastChanged) stateContent.push('last_changed');
+
     for (const entityId of favoriteEntities) {
       cards.push({
         type: 'tile',
         entity: entityId,
         show_entity_picture: true,
         vertical: false,
-        state_content: 'last_changed',
+        ...(stateContent.length > 0 ? { state_content: stateContent } : {}),
       });
     }
   }

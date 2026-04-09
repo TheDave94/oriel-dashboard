@@ -102,6 +102,30 @@ export function attachGroupLightsByFloorsCheckboxListener(
   }
 }
 
+export function attachFavoritesShowStateCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#favorites-show-state') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachFavoritesHideLastChangedCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#favorites-hide-last-changed') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
 export function attachCoversSummaryCheckboxListener(element: HTMLElement, callback: (checked: boolean) => void): void {
   const coversSummaryCheckbox = element.querySelector('#show-covers-summary') as HTMLInputElement | null;
   if (coversSummaryCheckbox) {
@@ -164,6 +188,30 @@ export function attachHideMobileAppBatteriesCheckboxListener(
   callback: (checked: boolean) => void
 ): void {
   const checkbox = element.querySelector('#hide-mobile-app-batteries') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachRoomPinsShowStateCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#room-pins-show-state') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachRoomPinsHideLastChangedCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#room-pins-hide-last-changed') as HTMLInputElement | null;
   if (checkbox) {
     checkbox.addEventListener('change', (e: Event) => {
       callback((e.target as HTMLInputElement).checked);

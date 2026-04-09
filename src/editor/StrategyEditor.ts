@@ -15,12 +15,16 @@ import {
   attachClockCardCheckboxListener,
   attachLightSummaryCheckboxListener,
   attachGroupLightsByFloorsCheckboxListener,
+  attachFavoritesShowStateCheckboxListener,
+  attachFavoritesHideLastChangedCheckboxListener,
   attachCoversSummaryCheckboxListener,
   attachPartiallyOpenCoversCheckboxListener,
   attachSecuritySummaryCheckboxListener,
   attachBatterySummaryCheckboxListener,
   attachClimateSummaryCheckboxListener,
   attachHideMobileAppBatteriesCheckboxListener,
+  attachRoomPinsShowStateCheckboxListener,
+  attachRoomPinsHideLastChangedCheckboxListener,
   attachShowLocksInRoomsCheckboxListener,
   attachShowAutomationsInRoomsCheckboxListener,
   attachShowScriptsInRoomsCheckboxListener,
@@ -148,6 +152,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const showClockCard = this._config.show_clock_card !== false;
     const showLightSummary = this._config.show_light_summary !== false;
     const groupLightsByFloors = this._config.group_lights_by_floors === true;
+    const favoritesShowState = this._config.favorites_show_state === true;
+    const favoritesHideLastChanged = this._config.favorites_hide_last_changed === true;
     const showCoversSummary = this._config.show_covers_summary !== false;
     const showPartiallyOpenCovers = this._config.show_partially_open_covers === true;
     const showSecuritySummary = this._config.show_security_summary !== false;
@@ -156,6 +162,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const hideMobileAppBatteries = this._config.hide_mobile_app_batteries === true;
     const batteryCriticalThreshold = this._config.battery_critical_threshold ?? 20;
     const batteryLowThreshold = this._config.battery_low_threshold ?? 50;
+    const roomPinsShowState = this._config.room_pins_show_state === true;
+    const roomPinsHideLastChanged = this._config.room_pins_hide_last_changed === true;
     const showLocksInRooms = this._config.show_locks_in_rooms === true;
     const showAutomationsInRooms = this._config.show_automations_in_rooms === true;
     const showScriptsInRooms = this._config.show_scripts_in_rooms === true;
@@ -216,6 +224,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         showClockCard,
         showLightSummary,
         groupLightsByFloors,
+        favoritesShowState,
+        favoritesHideLastChanged,
         showCoversSummary,
         showPartiallyOpenCovers,
         showSecuritySummary,
@@ -224,6 +234,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         hideMobileAppBatteries,
         batteryCriticalThreshold,
         batteryLowThreshold,
+        roomPinsShowState,
+        roomPinsHideLastChanged,
         showLocksInRooms,
         showAutomationsInRooms,
         showScriptsInRooms,
@@ -248,6 +260,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachClockCardCheckboxListener(this, (val: boolean) => this._showClockCardChanged(val));
     attachLightSummaryCheckboxListener(this, (val: boolean) => this._showLightSummaryChanged(val));
     attachGroupLightsByFloorsCheckboxListener(this, (val: boolean) => this._groupLightsByFloorsChanged(val));
+    attachFavoritesShowStateCheckboxListener(this, (val: boolean) => this._favoritesShowStateChanged(val));
+    attachFavoritesHideLastChangedCheckboxListener(this, (val: boolean) => this._favoritesHideLastChangedChanged(val));
     attachCoversSummaryCheckboxListener(this, (val: boolean) => this._showCoversSummaryChanged(val));
     attachPartiallyOpenCoversCheckboxListener(this, (val: boolean) => this._showPartiallyOpenCoversChanged(val));
     attachSecuritySummaryCheckboxListener(this, (val: boolean) => this._showSecuritySummaryChanged(val));
@@ -255,6 +269,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachClimateSummaryCheckboxListener(this, (val: boolean) => this._showClimateSummaryChanged(val));
     attachHideMobileAppBatteriesCheckboxListener(this, (hide: boolean) => this._hideMobileAppBatteriesChanged(hide));
     this._attachBatteryThresholdListeners();
+    attachRoomPinsShowStateCheckboxListener(this, (val: boolean) => this._roomPinsShowStateChanged(val));
+    attachRoomPinsHideLastChangedCheckboxListener(this, (val: boolean) => this._roomPinsHideLastChangedChanged(val));
     attachShowLocksInRoomsCheckboxListener(this, (show: boolean) => this._showLocksInRoomsChanged(show));
     attachShowAutomationsInRoomsCheckboxListener(this, (show: boolean) => this._showAutomationsInRoomsChanged(show));
     attachShowScriptsInRoomsCheckboxListener(this, (show: boolean) => this._showScriptsInRoomsChanged(show));
@@ -1216,6 +1232,22 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     this._fireConfigChanged(newConfig);
   }
 
+  _favoritesShowStateChanged(show: boolean): void {
+    if (!this._config || !this._hass) return;
+    const newConfig: Simon42StrategyConfig = { ...this._config, favorites_show_state: show };
+    if (show === false) delete newConfig.favorites_show_state;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _favoritesHideLastChangedChanged(hide: boolean): void {
+    if (!this._config || !this._hass) return;
+    const newConfig: Simon42StrategyConfig = { ...this._config, favorites_hide_last_changed: hide };
+    if (hide === false) delete newConfig.favorites_hide_last_changed;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
   _showCoversSummaryChanged(showCoversSummary: boolean): void {
     if (!this._config || !this._hass) return;
 
@@ -1328,6 +1360,22 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
       this._config = newConfig;
       this._fireConfigChanged(newConfig);
     });
+  }
+
+  _roomPinsShowStateChanged(show: boolean): void {
+    if (!this._config || !this._hass) return;
+    const newConfig: Simon42StrategyConfig = { ...this._config, room_pins_show_state: show };
+    if (show === false) delete newConfig.room_pins_show_state;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _roomPinsHideLastChangedChanged(hide: boolean): void {
+    if (!this._config || !this._hass) return;
+    const newConfig: Simon42StrategyConfig = { ...this._config, room_pins_hide_last_changed: hide };
+    if (hide === false) delete newConfig.room_pins_hide_last_changed;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
   }
 
   _showLocksInRoomsChanged(show: boolean): void {

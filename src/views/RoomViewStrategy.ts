@@ -576,13 +576,18 @@ class Simon42ViewRoomStrategy extends HTMLElement {
         type: 'grid',
         cards: [
           { type: 'heading', heading: 'Raum-Pins', heading_style: 'title', icon: 'mdi:pin' },
-          ...pinsForArea.map((e) => ({
-            type: 'tile',
-            entity: e,
-            name: stripAreaName(e, area, hass),
-            vertical: false,
-            state_content: 'last_changed',
-          })),
+          ...pinsForArea.map((e) => {
+            const pinStateContent: string[] = [];
+            if (dashboardConfig.room_pins_show_state === true) pinStateContent.push('state');
+            if (dashboardConfig.room_pins_hide_last_changed !== true) pinStateContent.push('last_changed');
+            return {
+              type: 'tile',
+              entity: e,
+              name: stripAreaName(e, area, hass),
+              vertical: false,
+              ...(pinStateContent.length > 0 ? { state_content: pinStateContent } : {}),
+            };
+          }),
         ],
       });
     }

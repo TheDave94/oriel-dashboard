@@ -36,6 +36,12 @@ export interface Simon42StrategyConfig {
   // Layout
   summaries_columns?: 2 | 4; // default: 2
 
+  // Favorites display
+  favorites_show_state?: boolean; // default: false
+  favorites_hide_last_changed?: boolean; // default: false
+  room_pins_show_state?: boolean; // default: false
+  room_pins_hide_last_changed?: boolean; // default: false
+
   // Special entities
   alarm_entity?: string;
   favorite_entities?: string[];

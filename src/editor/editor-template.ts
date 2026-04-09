@@ -42,6 +42,8 @@ export interface EditorHTMLParams {
   showClockCard: boolean;
   showLightSummary: boolean;
   groupLightsByFloors: boolean;
+  favoritesShowState: boolean;
+  favoritesHideLastChanged: boolean;
   showCoversSummary: boolean;
   showPartiallyOpenCovers: boolean;
   showSecuritySummary: boolean;
@@ -50,6 +52,8 @@ export interface EditorHTMLParams {
   hideMobileAppBatteries: boolean;
   batteryCriticalThreshold: number;
   batteryLowThreshold: number;
+  roomPinsShowState: boolean;
+  roomPinsHideLastChanged: boolean;
   showLocksInRooms: boolean;
   showAutomationsInRooms: boolean;
   showScriptsInRooms: boolean;
@@ -93,6 +97,8 @@ export function renderEditorHTML({
   showClockCard,
   showLightSummary,
   groupLightsByFloors,
+  favoritesShowState,
+  favoritesHideLastChanged,
   showCoversSummary,
   showPartiallyOpenCovers,
   showSecuritySummary,
@@ -101,6 +107,8 @@ export function renderEditorHTML({
   hideMobileAppBatteries,
   batteryCriticalThreshold,
   batteryLowThreshold,
+  roomPinsShowState,
+  roomPinsHideLastChanged,
   showLocksInRooms,
   showAutomationsInRooms,
   showScriptsInRooms,
@@ -347,6 +355,22 @@ export function renderEditorHTML({
         <div class="description">
           Wähle Entitäten aus, die als Favoriten unter den Zusammenfassungen angezeigt werden sollen. Die Entitäten werden als Kacheln angezeigt.
         </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="favorites-show-state"
+            ${favoritesShowState ? 'checked' : ''}
+          />
+          <label for="favorites-show-state">Status anzeigen</label>
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="favorites-hide-last-changed"
+            ${favoritesHideLastChanged ? 'checked' : ''}
+          />
+          <label for="favorites-hide-last-changed">Zuletzt aktualisiert ausblenden</label>
+        </div>
       </div>
 
       <div style="border-top: 2px solid var(--divider-color); margin: 24px 0 16px; padding-top: 16px;">
@@ -463,6 +487,22 @@ export function renderEditorHTML({
         </div>
         <div class="description">
           Wähle Entitäten aus, die in ihren zugeordneten Räumen als erstes angezeigt werden sollen. Ideal für Entitäten die normalerweise nicht automatisch erfasst werden (z.B. Wetterstationen, spezielle Sensoren). <strong>Nur Entitäten mit Raum-Zuordnung können ausgewählt werden.</strong> Diese Pins erscheinen nur im jeweiligen Raum, nicht in der Übersicht.
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="room-pins-show-state"
+            ${roomPinsShowState ? 'checked' : ''}
+          />
+          <label for="room-pins-show-state">Status anzeigen</label>
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="room-pins-hide-last-changed"
+            ${roomPinsHideLastChanged ? 'checked' : ''}
+          />
+          <label for="room-pins-hide-last-changed">Zuletzt aktualisiert ausblenden</label>
         </div>
       </div>
 
