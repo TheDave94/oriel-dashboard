@@ -38,7 +38,9 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
       }
 
       if (entityId.startsWith('binary_sensor.')) return true;
-      const value = parseFloat(state.state);
+      const stateVal = state.state;
+      if (stateVal === 'unavailable' || stateVal === 'unknown') return true;
+      const value = parseFloat(stateVal);
       return !isNaN(value);
     });
 
@@ -77,7 +79,8 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
       // meaningfully compared against percentage thresholds (e.g. 3V would
       // be "critical" at < 20 which is wrong). Skip them entirely.
       if (unit && unit !== '%') continue;
-      if (value < criticalThreshold) critical.push(entityId);
+      if (isNaN(value)) critical.push(entityId);
+      else if (value < criticalThreshold) critical.push(entityId);
       else if (value <= lowThreshold) low.push(entityId);
       else good.push(entityId);
     }

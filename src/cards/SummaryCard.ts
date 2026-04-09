@@ -266,7 +266,8 @@ class Simon42SummaryCard extends LitElement {
             const unit = state.attributes?.unit_of_measurement;
             if (unit && unit !== '%') continue;
             const value = parseFloat(state.state);
-            if (!isNaN(value) && value < critThreshold) count++;
+            const isUnavailable = state.state === 'unavailable' || state.state === 'unknown';
+            if (isUnavailable || (!isNaN(value) && value < critThreshold)) count++;
           }
         }
         return count;
