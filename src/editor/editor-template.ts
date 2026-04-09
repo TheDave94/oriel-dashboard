@@ -53,6 +53,8 @@ export interface EditorHTMLParams {
   showLocksInRooms: boolean;
   showAutomationsInRooms: boolean;
   showScriptsInRooms: boolean;
+  showWindowContactsInRooms: boolean;
+  showDoorContactsInRooms: boolean;
   useDefaultAreaSort: boolean;
   customViews: CustomView[];
   customCards: CustomCard[];
@@ -102,6 +104,8 @@ export function renderEditorHTML({
   showLocksInRooms,
   showAutomationsInRooms,
   showScriptsInRooms,
+  showWindowContactsInRooms,
+  showDoorContactsInRooms,
   useDefaultAreaSort,
   customViews,
   customCards,
@@ -394,6 +398,28 @@ export function renderEditorHTML({
         </div>
         <div class="description">
           Zeigt dem Bereich zugeordnete Skripte in den jeweiligen Raum-Ansichten an.
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="show-window-contacts-in-rooms"
+            ${showWindowContactsInRooms ? 'checked' : ''}
+          />
+          <label for="show-window-contacts-in-rooms">Fensterkontakte in Raum-Ansichten anzeigen</label>
+        </div>
+        <div class="description">
+          Zeigt Fensterkontakte als Badges in den jeweiligen Raum-Ansichten an.
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="show-door-contacts-in-rooms"
+            ${showDoorContactsInRooms ? 'checked' : ''}
+          />
+          <label for="show-door-contacts-in-rooms">Türkontakte in Raum-Ansichten anzeigen</label>
+        </div>
+        <div class="description">
+          Zeigt Türkontakte als Badges in den jeweiligen Raum-Ansichten an.
         </div>
         <div class="form-row">
           <input

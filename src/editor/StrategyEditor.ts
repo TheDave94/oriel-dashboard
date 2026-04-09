@@ -24,6 +24,8 @@ import {
   attachShowLocksInRoomsCheckboxListener,
   attachShowAutomationsInRoomsCheckboxListener,
   attachShowScriptsInRoomsCheckboxListener,
+  attachShowWindowContactsInRoomsCheckboxListener,
+  attachShowDoorContactsInRoomsCheckboxListener,
   attachUseDefaultAreaSortCheckboxListener,
   attachAreaCheckboxListeners,
   attachDragAndDropListeners,
@@ -157,6 +159,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     const showLocksInRooms = this._config.show_locks_in_rooms === true;
     const showAutomationsInRooms = this._config.show_automations_in_rooms === true;
     const showScriptsInRooms = this._config.show_scripts_in_rooms === true;
+    const showWindowContactsInRooms = this._config.show_window_contacts_in_rooms === true;
+    const showDoorContactsInRooms = this._config.show_door_contacts_in_rooms === true;
     const useDefaultAreaSort = this._config.use_default_area_sort === true;
     const customViews = this._config.custom_views || [];
     const customCards = this._config.custom_cards || [];
@@ -223,6 +227,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
         showLocksInRooms,
         showAutomationsInRooms,
         showScriptsInRooms,
+        showWindowContactsInRooms,
+        showDoorContactsInRooms,
         useDefaultAreaSort,
         customViews,
         customCards,
@@ -252,6 +258,8 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     attachShowLocksInRoomsCheckboxListener(this, (show: boolean) => this._showLocksInRoomsChanged(show));
     attachShowAutomationsInRoomsCheckboxListener(this, (show: boolean) => this._showAutomationsInRoomsChanged(show));
     attachShowScriptsInRoomsCheckboxListener(this, (show: boolean) => this._showScriptsInRoomsChanged(show));
+    attachShowWindowContactsInRoomsCheckboxListener(this, (show: boolean) => this._showWindowContactsInRoomsChanged(show));
+    attachShowDoorContactsInRoomsCheckboxListener(this, (show: boolean) => this._showDoorContactsInRoomsChanged(show));
     attachUseDefaultAreaSortCheckboxListener(this, (val: boolean) => this._useDefaultAreaSortChanged(val));
     this._attachCustomViewsListeners();
     this._attachCustomCardsListeners();
@@ -1350,6 +1358,22 @@ class Simon42DashboardStrategyEditor extends HTMLElement {
     if (!this._config || !this._hass) return;
     const newConfig: Simon42StrategyConfig = { ...this._config, show_scripts_in_rooms: show };
     if (show === false) delete newConfig.show_scripts_in_rooms;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _showWindowContactsInRoomsChanged(show: boolean): void {
+    if (!this._config || !this._hass) return;
+    const newConfig: Simon42StrategyConfig = { ...this._config, show_window_contacts_in_rooms: show };
+    if (show === false) delete newConfig.show_window_contacts_in_rooms;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  _showDoorContactsInRoomsChanged(show: boolean): void {
+    if (!this._config || !this._hass) return;
+    const newConfig: Simon42StrategyConfig = { ...this._config, show_door_contacts_in_rooms: show };
+    if (show === false) delete newConfig.show_door_contacts_in_rooms;
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
   }

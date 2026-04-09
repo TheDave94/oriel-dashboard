@@ -208,6 +208,8 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 
 **Automationen & Skripte** — Optional können dem Bereich zugeordnete Automationen und Skripte in den Raum-Views angezeigt werden. Beide Optionen sind separat aktivierbar und standardmäßig aus.
 
+**Fenster- & Türkontakte** — Optional können Fensterkontakte und Türkontakte als Badges in den Raum-Views angezeigt werden. Zwei getrennte Toggles im Editor, standardmäßig aus. Absolute Luftfeuchtigkeit (z.B. von der Thermal Comfort Integration, `g/m³`) wird automatisch als Badge erkannt.
+
 **Ansichten** — Summary-Views (Lichter, Rollos, etc.) und Raum-Views können optional in der oberen Navigation angezeigt werden.
 
 **Lichter nach Etagen** — In der Lichter-View können Lichter nach Etagen gruppiert werden, mit Ein-/Ausschalt-Button pro Etage.
@@ -304,6 +306,8 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | `show_locks_in_rooms` | boolean | `false` | Schlösser in Raum-Views |
 | `show_automations_in_rooms` | boolean | `false` | Automationen in Raum-Views `🆕 Beta` |
 | `show_scripts_in_rooms` | boolean | `false` | Skripte in Raum-Views `🆕 Beta` |
+| `show_window_contacts_in_rooms` | boolean | `false` | Fensterkontakte als Badges in Raum-Views |
+| `show_door_contacts_in_rooms` | boolean | `false` | Türkontakte als Badges in Raum-Views |
 | `use_default_area_sort` | boolean | `false` | HA-Sortierung für Bereiche verwenden |
 | `areas_display.hidden` | string[] | `[]` | Ausgeblendete Bereiche |
 | `areas_display.order` | string[] | `[]` | Reihenfolge der Bereiche |

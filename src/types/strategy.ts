@@ -30,6 +30,8 @@ export interface Simon42StrategyConfig {
   show_locks_in_rooms?: boolean; // default: false
   show_automations_in_rooms?: boolean; // default: false
   show_scripts_in_rooms?: boolean; // default: false
+  show_window_contacts_in_rooms?: boolean; // default: false
+  show_door_contacts_in_rooms?: boolean; // default: false
 
   // Layout
   summaries_columns?: 2 | 4; // default: 2
@@ -145,7 +147,10 @@ export interface SensorEntities {
   motion: string[];
   occupancy: string[];
   illuminance: string[];
+  absolute_humidity: string[];
   battery: string[];
+  window: string[];
+  door: string[];
 }
 
 // -- Person Data (used in overview badges) ----------------------------

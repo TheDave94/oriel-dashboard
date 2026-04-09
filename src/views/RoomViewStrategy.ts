@@ -76,7 +76,10 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       motion: [],
       occupancy: [],
       illuminance: [],
+      absolute_humidity: [],
       battery: [],
+      window: [],
+      door: [],
     };
 
     // Main categorization loop — use pre-filtered visible entities from Registry
@@ -157,6 +160,10 @@ class Simon42ViewRoomStrategy extends HTMLElement {
         // No auto-detection — avoids wrong sensors (e.g. heater temperature).
         if (deviceClass === 'temperature' || unit === '°C' || unit === '°F') continue;
         if (deviceClass === 'humidity' || unit === '%') continue;
+        if (unit === 'g/m³') {
+          sensorEntities.absolute_humidity.push(entityId);
+          continue;
+        }
         if (deviceClass === 'pm25' || entityId.includes('pm_2_5') || entityId.includes('pm25')) {
           sensorEntities.pm25.push(entityId);
           continue;
@@ -185,6 +192,14 @@ class Simon42ViewRoomStrategy extends HTMLElement {
         }
         if (deviceClass === 'occupancy' || deviceClass === 'presence') {
           sensorEntities.occupancy.push(entityId);
+          continue;
+        }
+        if (deviceClass === 'window' && dashboardConfig.show_window_contacts_in_rooms) {
+          sensorEntities.window.push(entityId);
+          continue;
+        }
+        if (deviceClass === 'door' && dashboardConfig.show_door_contacts_in_rooms) {
+          sensorEntities.door.push(entityId);
           continue;
         }
       }
@@ -249,6 +264,9 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     if (sensorEntities.battery[0]) badges.push(badgeConfig(sensorEntities.battery[0], 'red'));
     if (sensorEntities.motion[0]) badges.push(badgeConfig(sensorEntities.motion[0], 'yellow'));
     if (sensorEntities.occupancy[0]) badges.push(badgeConfig(sensorEntities.occupancy[0], 'cyan'));
+    if (sensorEntities.absolute_humidity[0]) badges.push(badgeConfig(sensorEntities.absolute_humidity[0], 'blue'));
+    if (sensorEntities.window[0]) badges.push(badgeConfig(sensorEntities.window[0], 'teal'));
+    if (sensorEntities.door[0]) badges.push(badgeConfig(sensorEntities.door[0], 'teal'));
 
     // === SECTIONS ===
     const sections: LovelaceSectionConfig[] = [];

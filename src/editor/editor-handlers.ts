@@ -207,6 +207,30 @@ export function attachShowScriptsInRoomsCheckboxListener(
   }
 }
 
+export function attachShowWindowContactsInRoomsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#show-window-contacts-in-rooms') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachShowDoorContactsInRoomsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#show-door-contacts-in-rooms') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
 export function attachUseDefaultAreaSortCheckboxListener(
   element: HTMLElement,
   callback: (checked: boolean) => void
