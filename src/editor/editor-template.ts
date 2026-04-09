@@ -50,6 +50,8 @@ export interface EditorHTMLParams {
   batteryCriticalThreshold: number;
   batteryLowThreshold: number;
   showLocksInRooms: boolean;
+  showAutomationsInRooms: boolean;
+  showScriptsInRooms: boolean;
   useDefaultAreaSort: boolean;
   customViews: CustomView[];
   customCards: CustomCard[];
@@ -95,6 +97,8 @@ export function renderEditorHTML({
   batteryCriticalThreshold,
   batteryLowThreshold,
   showLocksInRooms,
+  showAutomationsInRooms,
+  showScriptsInRooms,
   useDefaultAreaSort,
   customViews,
   customCards,
@@ -351,6 +355,28 @@ export function renderEditorHTML({
         </div>
         <div class="description">
           Zeigt Schlösser (z.B. Nuki) in den jeweiligen Raum-Ansichten an. Schlösser erscheinen unabhängig davon immer in der Sicherheits-Übersicht.
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="show-automations-in-rooms"
+            ${showAutomationsInRooms ? 'checked' : ''}
+          />
+          <label for="show-automations-in-rooms">Automationen in Raum-Ansichten anzeigen</label>
+        </div>
+        <div class="description">
+          Zeigt dem Bereich zugeordnete Automationen in den jeweiligen Raum-Ansichten an.
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="show-scripts-in-rooms"
+            ${showScriptsInRooms ? 'checked' : ''}
+          />
+          <label for="show-scripts-in-rooms">Skripte in Raum-Ansichten anzeigen</label>
+        </div>
+        <div class="description">
+          Zeigt dem Bereich zugeordnete Skripte in den jeweiligen Raum-Ansichten an.
         </div>
         <div class="form-row">
           <input

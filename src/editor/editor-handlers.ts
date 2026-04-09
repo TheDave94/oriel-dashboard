@@ -171,6 +171,30 @@ export function attachShowLocksInRoomsCheckboxListener(
   }
 }
 
+export function attachShowAutomationsInRoomsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#show-automations-in-rooms') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
+export function attachShowScriptsInRoomsCheckboxListener(
+  element: HTMLElement,
+  callback: (checked: boolean) => void
+): void {
+  const checkbox = element.querySelector('#show-scripts-in-rooms') as HTMLInputElement | null;
+  if (checkbox) {
+    checkbox.addEventListener('change', (e: Event) => {
+      callback((e.target as HTMLInputElement).checked);
+    });
+  }
+}
+
 export function attachUseDefaultAreaSortCheckboxListener(
   element: HTMLElement,
   callback: (checked: boolean) => void
@@ -526,6 +550,8 @@ export async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant
     fan: [],
     switches: [],
     locks: [],
+    automations: [],
+    scripts: [],
     cameras: [],
   };
 

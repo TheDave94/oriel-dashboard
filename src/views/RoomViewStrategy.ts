@@ -61,6 +61,8 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       fan: [],
       switches: [],
       locks: [],
+      automations: [],
+      scripts: [],
       cameras: [],
     };
 
@@ -128,6 +130,14 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       }
       if (domain === 'lock' && dashboardConfig.show_locks_in_rooms) {
         roomEntities.locks.push(entityId);
+        continue;
+      }
+      if (domain === 'automation' && dashboardConfig.show_automations_in_rooms) {
+        roomEntities.automations.push(entityId);
+        continue;
+      }
+      if (domain === 'script' && dashboardConfig.show_scripts_in_rooms) {
+        roomEntities.scripts.push(entityId);
         continue;
       }
       if (domain === 'camera') {
@@ -519,6 +529,21 @@ class Simon42ViewRoomStrategy extends HTMLElement {
         ],
       });
     }
+
+    domainSection(roomEntities.automations, 'Automationen', 'mdi:robot', (e) => ({
+      type: 'tile',
+      entity: e,
+      name: stripAreaName(e, area, hass),
+      vertical: false,
+      state_content: 'last_changed',
+    }));
+
+    domainSection(roomEntities.scripts, 'Skripte', 'mdi:script-text', (e) => ({
+      type: 'tile',
+      entity: e,
+      name: stripAreaName(e, area, hass),
+      vertical: false,
+    }));
 
     // Room Pins
     const roomPinEntities: string[] = dashboardConfig.room_pin_entities || [];

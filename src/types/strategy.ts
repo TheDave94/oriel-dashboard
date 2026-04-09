@@ -27,6 +27,8 @@ export interface Simon42StrategyConfig {
   battery_critical_threshold?: number; // default: 20
   battery_low_threshold?: number; // default: 50
   show_locks_in_rooms?: boolean; // default: false
+  show_automations_in_rooms?: boolean; // default: false
+  show_scripts_in_rooms?: boolean; // default: false
 
   // Layout
   summaries_columns?: 2 | 4; // default: 2
@@ -110,6 +112,8 @@ export interface RoomEntities {
   fan: string[];
   switches: string[];
   locks: string[];
+  automations: string[];
+  scripts: string[];
   cameras: string[];
   [key: string]: string[];
 }
