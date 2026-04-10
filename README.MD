@@ -57,6 +57,7 @@ Wenn dir die simon42 Dashboard Strategy hilft, unterstütze die Weiterentwicklun
 - **Alarm-Panel** — Optionale Alarmanlage neben der Uhr
 - **Granulare Filterung** — Per Label (`no-dboard`), pro Bereich, pro Domain, pro Entity
 - **Teiloffene Rollos** `🆕 Beta` — Optionale dritte Gruppe (Offen / Teiloffen / Geschlossen) mit Live-Übergängen
+- **Alert-Icons** — Optionale Alert-Badges auf Bereichskarten (Bewegung, Feuchtigkeit, Rauch, Wärme u.a.)
 - **Batch-Aktionen** — Heading-Badges für Gruppensteuerung (alle ein/aus, alle öffnen/schließen)
 - **Automationen & Skripte in Räumen** `🆕 Beta` — Bereichs-zugeordnete Automationen und Skripte in Raum-Views anzeigen
 - **Eigene Karten** `🆕 Beta` — Beliebige Karten via YAML auf der Übersicht einbinden
@@ -205,6 +206,12 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
   <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Bereiche-nach-Etagen-Gliedern.gif" alt="Bereiche nach Etagen gliedern" width="800" />
 </p>
 
+**Alert-Icons** — Optional können Alert-Icons auf den Bereichskarten angezeigt werden. Wenn aktiviert, zeigen die Karten ein oranges Icon, sobald ein relevanter Binärsensor im Bereich aktiv ist (z.B. Bewegung, Feuchtigkeit, Rauch, Wärme).
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Alert-Icons-Area-Card-Aktivieren.gif" alt="Alert-Icons auf Bereichskarten aktivieren" width="800" />
+</p>
+
 **Schlösser in Räumen** — Optional können Schlösser (z.B. Nuki) in den Raum-Views angezeigt werden. Unabhängig davon erscheinen sie immer in der Sicherheits-Übersicht.
 
 **Bereichssortierung** — Wahlweise die Reihenfolge aus Home Assistant verwenden oder im Editor per Drag & Drop festlegen.
@@ -231,8 +238,7 @@ Die Hauptseite des Dashboards zeigt eine Übersicht mit folgenden Bereichen:
 
 ### Erweiterte Funktionen
 
-#### Eigene Karten `🆕 Beta`
-
+#### Eigene Karten
 Beliebige Lovelace-Karten via YAML zur Übersicht hinzufügen. Die Karten erscheinen in einer eigenen Section zwischen den Zusammenfassungen und den Bereichen. Überschrift und Icon der Section sind frei wählbar.
 
 **Tipp:** Erstelle die Karte zuerst in einem normalen Dashboard, kopiere den YAML-Code und füge ihn im Editor ein.
@@ -247,8 +253,7 @@ content: "Willkommen zuhause!"
   <img src="https://raw.githubusercontent.com/TheRealSimon42/simon42-dashboard-strategy/main/assets/Eigene-Karten-hinzufugen.gif" alt="Eigene Karten hinzufügen" width="800" />
 </p>
 
-#### Eigene Badges `🆕 Beta`
-
+#### Eigene Badges
 Beliebige Badges via YAML zum Header der Übersicht hinzufügen — sie erscheinen neben den Personen-Chips.
 
 ```yaml
@@ -314,6 +319,7 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | `favorite_entities` | string[] | `[]` | Favoriten-Entitäten auf der Übersicht |
 | `group_by_floors` | boolean | `false` | Bereiche nach Etagen gliedern |
 | `show_partially_open_covers` | boolean | `false` | Teiloffene Rollos separat anzeigen `🆕 Beta` |
+| `show_alerts_on_areas` | boolean | `false` | Alert-Icons auf Bereichskarten |
 | `show_locks_in_rooms` | boolean | `false` | Schlösser in Raum-Views |
 | `show_automations_in_rooms` | boolean | `false` | Automationen in Raum-Views `🆕 Beta` |
 | `show_scripts_in_rooms` | boolean | `false` | Skripte in Raum-Views `🆕 Beta` |

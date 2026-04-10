@@ -61,6 +61,37 @@ function getAreaControls(areaId: string, hass: HomeAssistant): ControlDomain[] {
   return [...found];
 }
 
+// Alert-relevant binary sensor device classes.
+// Excludes noisy classes like light, connectivity, battery, plug, power, running, problem.
+const ALERT_DEVICE_CLASSES = new Set([
+  'motion', 'occupancy', 'sound',
+  'moisture',
+  'smoke', 'gas', 'heat', 'cold', 'safety', 'tamper', 'vibration',
+]);
+
+/**
+ * Pre-computes which binary sensor alert classes exist in this area.
+ * Only returns device classes from the allowlist that have at least one
+ * binary_sensor entity, so the area card doesn't scan all entities at render time.
+ */
+function getAreaAlertClasses(areaId: string, hass: HomeAssistant): string[] {
+  const areaEntities = Registry.getVisibleEntitiesForArea(areaId);
+  if (!areaEntities || areaEntities.length === 0) return [];
+
+  const found = new Set<string>();
+
+  for (const entity of areaEntities) {
+    const domain = entity.entity_id.split('.')[0];
+    if (domain !== 'binary_sensor') continue;
+
+    const state = hass.states[entity.entity_id];
+    const deviceClass = state?.attributes?.device_class as string | undefined;
+    if (deviceClass && ALERT_DEVICE_CLASSES.has(deviceClass)) found.add(deviceClass);
+  }
+
+  return [...found];
+}
+
 /**
  * Builds a single area card config for use in area sections.
  * Pre-filters controls and sensor_classes like HA does — the card
@@ -78,11 +109,17 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     sensorClasses.push('humidity');
   }
 
+  // Pre-filter alert classes if enabled
+  const alertClasses = Registry.config.show_alerts_on_areas
+    ? getAreaAlertClasses(area.area_id, hass)
+    : undefined;
+
   return {
     type: 'area',
     area: area.area_id,
     display_type: 'compact',
     sensor_classes: sensorClasses.length > 0 ? sensorClasses : undefined,
+    alert_classes: alertClasses && alertClasses.length > 0 ? alertClasses : undefined,
     features: controls.length > 0 ? [{ type: 'area-controls', controls }] : [],
     features_position: 'inline',
     navigation_path: area.area_id,

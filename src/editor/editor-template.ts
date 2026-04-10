@@ -56,6 +56,7 @@ export interface EditorHTMLParams {
   roomPinsShowState: boolean;
   roomPinsHideLastChanged: boolean;
   showSwitchesOnAreas: boolean;
+  showAlertsOnAreas: boolean;
   showLocksInRooms: boolean;
   showAutomationsInRooms: boolean;
   showScriptsInRooms: boolean;
@@ -112,6 +113,7 @@ export function renderEditorHTML({
   roomPinsShowState,
   roomPinsHideLastChanged,
   showSwitchesOnAreas,
+  showAlertsOnAreas,
   showLocksInRooms,
   showAutomationsInRooms,
   showScriptsInRooms,
@@ -403,6 +405,17 @@ export function renderEditorHTML({
         </div>
         <div class="description">
           ${localize('editor.show_switches_on_areas_desc')}
+        </div>
+        <div class="form-row">
+          <input
+            type="checkbox"
+            id="show-alerts-on-areas"
+            ${showAlertsOnAreas ? 'checked' : ''}
+          />
+          <label for="show-alerts-on-areas">${localize('editor.show_alerts_on_areas')}</label>
+        </div>
+        <div class="description">
+          ${localize('editor.show_alerts_on_areas_desc')}
         </div>
         <div class="form-row">
           <input
