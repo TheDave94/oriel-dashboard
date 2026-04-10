@@ -56,15 +56,16 @@ Wenn dir die simon42 Dashboard Strategy hilft, unterstütze die Weiterentwicklun
 - **Favoriten** — Beliebige Entitäten als Kacheln auf der Übersicht anpinnen
 - **Alarm-Panel** — Optionale Alarmanlage neben der Uhr
 - **Granulare Filterung** — Per Label (`no-dboard`), pro Bereich, pro Domain, pro Entity
-- **Teiloffene Rollos** `🆕 Beta` — Optionale dritte Gruppe (Offen / Teiloffen / Geschlossen) mit Live-Übergängen
+- **Teiloffene Rollos** — Optionale dritte Gruppe (Offen / Teiloffen / Geschlossen) mit Live-Übergängen
 - **Alert-Icons** — Optionale Alert-Badges auf Bereichskarten (Bewegung, Feuchtigkeit, Rauch, Wärme u.a.)
+- **Rauch- & Gasmelder** — In der Sicherheits-Übersicht, im Security-Summary-Count und als Badges in Raum-Views
 - **Batch-Aktionen** — Heading-Badges für Gruppensteuerung (alle ein/aus, alle öffnen/schließen)
-- **Automationen & Skripte in Räumen** `🆕 Beta` — Bereichs-zugeordnete Automationen und Skripte in Raum-Views anzeigen
-- **Eigene Karten** `🆕 Beta` — Beliebige Karten via YAML auf der Übersicht einbinden
-- **Eigene Badges** `🆕 Beta` — Beliebige Badges via YAML im Header (neben Personen-Chips)
+- **Automationen & Skripte in Räumen** — Bereichs-zugeordnete Automationen und Skripte in Raum-Views anzeigen
+- **Eigene Karten** — Beliebige Karten via YAML auf der Übersicht einbinden
+- **Eigene Badges** — Beliebige Badges via YAML im Header (neben Personen-Chips)
 - **Custom Views** — Eigene Dashboard-Views mit beliebigen Cards via YAML
 - **Reaktive Updates** — Echtzeit-Aktualisierung via LitElement Custom Cards
-- **Mehrsprachig** `🆕 Beta` — Deutsch und Englisch, automatische Erkennung aus HA-Einstellungen, Fallback auf Englisch
+- **Mehrsprachig** — Deutsch und Englisch, automatische Erkennung aus HA-Einstellungen, Fallback auf Englisch
 - **Performance-optimiert** — Code-Split Bundles, Registry-Caching, Tile-Card-Pooling
 
 ## Installation
@@ -318,11 +319,11 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | `show_energy` | boolean | `true` | Energie-Dashboard |
 | `favorite_entities` | string[] | `[]` | Favoriten-Entitäten auf der Übersicht |
 | `group_by_floors` | boolean | `false` | Bereiche nach Etagen gliedern |
-| `show_partially_open_covers` | boolean | `false` | Teiloffene Rollos separat anzeigen `🆕 Beta` |
+| `show_partially_open_covers` | boolean | `false` | Teiloffene Rollos separat anzeigen |
 | `show_alerts_on_areas` | boolean | `false` | Alert-Icons auf Bereichskarten |
 | `show_locks_in_rooms` | boolean | `false` | Schlösser in Raum-Views |
-| `show_automations_in_rooms` | boolean | `false` | Automationen in Raum-Views `🆕 Beta` |
-| `show_scripts_in_rooms` | boolean | `false` | Skripte in Raum-Views `🆕 Beta` |
+| `show_automations_in_rooms` | boolean | `false` | Automationen in Raum-Views |
+| `show_scripts_in_rooms` | boolean | `false` | Skripte in Raum-Views |
 | `show_window_contacts_in_rooms` | boolean | `false` | Fensterkontakte als Badges in Raum-Views |
 | `show_door_contacts_in_rooms` | boolean | `false` | Türkontakte als Badges in Raum-Views |
 | `use_default_area_sort` | boolean | `false` | HA-Sortierung für Bereiche verwenden |
@@ -333,10 +334,10 @@ Entitäten können auf mehreren Ebenen gefiltert werden:
 | `show_summary_views` | boolean | `false` | Summary-Views in Navigation |
 | `show_room_views` | boolean | `false` | Raum-Views in Navigation |
 | `group_lights_by_floors` | boolean | `false` | Lichter nach Etagen gruppieren |
-| `custom_cards` | object[] | `[]` | Eigene Karten via YAML `🆕 Beta` |
-| `custom_cards_heading` | string | `"Eigene Karten"` | Überschrift der Custom Cards Section `🆕 Beta` |
-| `custom_cards_icon` | string | `"mdi:cards"` | Icon der Custom Cards Section `🆕 Beta` |
-| `custom_badges` | object[] | `[]` | Eigene Badges im Header via YAML `🆕 Beta` |
+| `custom_cards` | object[] | `[]` | Eigene Karten via YAML |
+| `custom_cards_heading` | string | `"Eigene Karten"` | Überschrift der Custom Cards Section |
+| `custom_cards_icon` | string | `"mdi:cards"` | Icon der Custom Cards Section |
+| `custom_badges` | object[] | `[]` | Eigene Badges im Header via YAML |
 | `custom_views` | object[] | `[]` | Eigene Views via YAML |
 
 </details>

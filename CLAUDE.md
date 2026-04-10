@@ -36,7 +36,7 @@ src/
 │   ├── RoomViewStrategy.ts          #   Room detail view (15+ device classes, Reolink + Aqara cameras)
 │   ├── LightsViewStrategy.ts        #   Light aggregation (optional floor grouping)
 │   ├── CoversViewStrategy.ts        #   Cover/blind aggregation
-│   ├── SecurityViewStrategy.ts      #   Security overview (locks, doors, windows, garages)
+│   ├── SecurityViewStrategy.ts      #   Security overview (locks, doors, windows, garages, smoke/gas detectors)
 │   ├── BatteriesViewStrategy.ts     #   Battery status (critical/low/ok)
 │   └── ClimateViewStrategy.ts       #   Climate/thermostat overview (heating/cooling/idle/off)
 └── editor/                          # Configuration UI
@@ -126,7 +126,7 @@ Many entity properties exist ONLY in the Entity Registry, NOT in state attribute
 
 ### Config Hierarchy
 
-- **Global toggles**: show_weather, show_energy, show_summary_views, show_room_views, group_by_floors, show_covers_summary, show_clock_card, show_light_summary, show_security_summary, show_battery_summary, show_climate_summary, show_search_card, show_locks_in_rooms, hide_mobile_app_batteries, group_lights_by_floors, use_default_area_sort
+- **Global toggles**: show_weather, show_energy, show_summary_views, show_room_views, group_by_floors, show_covers_summary, show_clock_card, show_light_summary, show_security_summary, show_battery_summary, show_climate_summary, show_search_card, show_locks_in_rooms, hide_mobile_app_batteries, group_lights_by_floors, use_default_area_sort, show_switches_on_areas, show_alerts_on_areas
 - **Layout**: summaries_columns (2 | 4)
 - **Area-level**: areas_display.hidden, areas_display.order
 - **Entity-level**: areas_options.{areaId}.groups_options.{domain}.hidden
@@ -278,6 +278,9 @@ Gradual alignment with the official HA Home Strategy. Reference: `../references/
 - [x] ClimateViewStrategy: new climate view (heating/cooling/idle/off) + climate SummaryCard
 - [x] Content-hash chunk filenames for cache busting after HACS updates
 - [x] i18n: localize utility + DE/EN translations, auto-detect from hass.locale.language (#56)
+- [x] Alert icons on area cards: configurable `show_alerts_on_areas` toggle with curated allowlist (#114)
+- [x] Smoke/gas detectors in SecurityView, SummaryCard count, and room badges (#104)
+- [x] Security view headings: emojis replaced with MDI icons
 
 ### Open: Evaluate
 - SummaryCard entity caching removal (HA's home-summary doesn't cache — stateless per render = more correct behavior for dynamic entity changes)
