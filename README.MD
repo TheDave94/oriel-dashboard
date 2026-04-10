@@ -77,8 +77,8 @@ Wenn dir die simon42 Dashboard Strategy hilft, unterstütze die Weiterentwicklun
 
 1. Gehe zu HACS → **Custom repositories**
 2. Füge das Repository hinzu: `https://github.com/TheRealSimon42/simon42-dashboard-strategy`
-3. Installiere die "Simon42 Dashboard Strategy"
-4. Folge den Anweisungen in HACS für die Resource-Registrierung
+3. Lade die "Simon42 Dashboard Strategy" herunter
+4. Klicke nach dem Download in HACS auf die Meldung "Neu laden", um die Installation abzuschließen
 
 </details>
 
@@ -149,9 +149,19 @@ Mehr zur Filterung findest du im Abschnitt [Entity-Filterung](#entity-filterung)
 ```yaml
 strategy:
   type: custom:simon42-dashboard
+
 ```
 
-6. Speichern — der grafische Editor öffnet sich automatisch.
+6. Speichern (oben rechts)
+
+Nun muss der Raw-Editor verlassen werden. Dafür gibt es zwei Wege:
+
+- **Weg A:** Links in der Seitenleiste auf einen anderen Bereich klicken, danach wieder auf das neu angelegte Dashboard wechseln.
+- **Weg B:** Im Editor, 1× auf das **X** oben links klicken → erneut auf das **X** oben links klicken → oben rechts auf **Fertig** klicken.
+  > **Wichtig:** Dabei nichts an den Views verändern — einfach nur den Editor verlassen. Änderungen an Views würden die Strategy-Kontrolle aufheben.
+
+Anschließend öffnet sich über das **Stift-Icon** oben rechts in dem Strategy-Dashboard der grafische Editor 🎉
+
 
 ## Konfiguration
 
