@@ -1,0 +1,34 @@
+{
+  "name": "simon42-dashboard-strategy",
+  "version": "1.3.4-beta.9",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "webpack",
+    "build-dev": "webpack --config webpack.dev.config.ts",
+    "watch": "webpack --config webpack.dev.config.ts --watch",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "lit": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.58.1",
+    "@typescript-eslint/parser": "^8.58.1",
+    "compression-webpack-plugin": "^12.0.0",
+    "eslint": "^10.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "home-assistant-js-websocket": "^9.6.0",
+    "prettier": "^3.8.1",
+    "ts-loader": "^9.5.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^7.0.2"
+  }
+}

@@ -1,0 +1,42 @@
+---
+engines:
+  # Modern Linting & Security
+  eslint9:
+    enabled: true
+  opengrep:
+    enabled: true
+
+  # Logic & Quality Metrics
+  lizard:
+    enabled: true
+
+  # Dependency Scanning
+  trivy:
+    enabled: true
+
+  # Explicitly disable Legacy engines (replaced by eslint9/opengrep)
+  eslint:
+    enabled: false
+  semgrep:
+    enabled: false
+  tslint:
+    enabled: false
+  csslint:
+    enabled: false
+  pmd:
+    enabled: false
+  checkov:
+    enabled: false
+
+exclude_paths:
+  - "dist/**"
+  - "node_modules/**"
+  - "src/types/**"
+  - "*.config.ts"
+  - ".github/**"
+  - "package-lock.json"
+
+languages:
+  typescript:
+    extensions:
+      - ".ts"
