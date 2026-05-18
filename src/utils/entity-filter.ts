@@ -9,6 +9,8 @@ import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
 import type { Simon42StrategyConfig, PersonData } from '../types/strategy';
 
+type BatteryFilterConfig = Pick<Simon42StrategyConfig, 'hide_mobile_app_batteries'>;
+
 /**
  * Collects person entities with home/away state.
  * Uses pre-filtered Registry method — no manual exclusion checks needed.
@@ -68,11 +70,15 @@ export function findDummySensor(hass: HomeAssistant): string {
  */
 export const SECURITY_EXCLUDED_PLATFORMS = new Set(['tankerkoenig']);
 
-export function getBatteryEntities(hass: HomeAssistant, config: Simon42StrategyConfig): string[] {
+/**
+ * Filters the battery entities according to following criteria:
+ * - Must be a sensor with device_class 'battery' and unit '%', OR a binary_sensor with 'battery' in the name.
+ * - Excludes entities that are hidden or excluded by Registry (including by label dboard).
+ */
+export function filterBatteryEntities(hass: HomeAssistant, config: BatteryFilterConfig): string[] {
   const sensorIds = Registry.getEntityIdsForDomain('sensor');
   const binarySensorIds = Registry.getEntityIdsForDomain('binary_sensor');
 
-  // Filter battery entities — exclude hidden/no_dboard but keep diagnostic
   const batteryEntities = [...sensorIds, ...binarySensorIds].filter((entityId) => {
     const state = hass.states[entityId];
     if (!state) return false;
@@ -93,18 +99,18 @@ export function getBatteryEntities(hass: HomeAssistant, config: Simon42StrategyC
     return false;
   });
 
-  // Deduplication: remove binary_sensor if %-sensor exists on same device
+  // Collect the device ids of all %-sensors
   const sensorDeviceIds = new Set<string>();
   for (const id of batteryEntities) {
-    if (id.startsWith('sensor.')) {
-      const deviceId = hass.entities[id]?.device_id;
-      if (deviceId) sensorDeviceIds.add(deviceId);
-    }
+    if (id.startsWith('binary_sensor.')) continue;
+    const deviceId = hass.entities[id]?.device_id;
+    if (deviceId) sensorDeviceIds.add(deviceId);
   }
-
+  
+  // Deduplication: Remove a binary_sensor if a %-sensor exists on same device
   return batteryEntities.filter((id) => {
     if (!id.startsWith('binary_sensor.')) return true;
     const deviceId = hass.entities[id]?.device_id;
     return !deviceId || !sensorDeviceIds.has(deviceId);
-  })
+  });
 }
