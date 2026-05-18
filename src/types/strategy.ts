@@ -90,6 +90,7 @@ export interface Simon42StrategyConfig {
   show_person_badges?: boolean; // default: true — set false to suppress the
   // auto-generated person chip badges (useful when supplying replacement
   // badges via custom_badges)
+  show_window_alerts_on_areas?: boolean; // default: false
   energy_link_dashboard?: boolean; // default: true
 
   // Layout
