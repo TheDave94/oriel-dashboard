@@ -164,6 +164,8 @@
     "show_automations_in_rooms_desc": "Shows automations assigned to the area in the respective room views.",
     "show_scripts_in_rooms": "Show scripts in room views",
     "show_scripts_in_rooms_desc": "Shows scripts assigned to the area in the respective room views.",
+    "hide_unavailable_in_rooms": "Hide unavailable entities in room views",
+    "hide_unavailable_in_rooms_desc": "Skips entities whose state is `unavailable` (offline integrations, dead batteries, disconnected ESPHome devices) when building room views. Default on — these entities show up elsewhere (Batteries view, the optional Unavailable alert badge) and tend to be noise in a room view. Disable to surface them in the room view too.",
     "show_window_contacts_in_rooms": "Show window contacts in room views",
     "show_window_contacts_in_rooms_desc": "Shows window contacts as badges in the respective room views.",
     "show_door_contacts_in_rooms": "Show door contacts in room views",
