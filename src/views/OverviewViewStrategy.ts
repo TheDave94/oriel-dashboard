@@ -149,7 +149,23 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       .filter((b) => b.parsed_config)
       .map((b) => b.parsed_config as LovelaceBadgeConfig);
 
-    return createOverviewView(overviewSections, [...personBadges, ...customBadges]);
+    // Optional sun badge — shows sun.sun with next sunrise/sunset
+    // (state_content auto-picks next_dawn/next_dusk from HA's sun integration).
+    // Auto-hide when no sun.sun entity present.
+    const sunBadges: LovelaceBadgeConfig[] = [];
+    if (dashboardConfig.show_sun_badge === true && hass.states['sun.sun']) {
+      const isAbove = hass.states['sun.sun'].state === 'above_horizon';
+      sunBadges.push({
+        type: 'entity',
+        entity: 'sun.sun',
+        name: '',
+        icon: isAbove ? 'mdi:weather-sunset-down' : 'mdi:weather-sunset-up',
+        color: isAbove ? 'amber' : 'indigo',
+        tap_action: { action: 'more-info' },
+      });
+    }
+
+    return createOverviewView(overviewSections, [...personBadges, ...sunBadges, ...customBadges]);
   }
 }
 
