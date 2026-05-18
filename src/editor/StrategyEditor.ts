@@ -1264,6 +1264,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
     const hideMobileAppBatteries = this._config.hide_mobile_app_batteries === true;
     const batteryCriticalThreshold = this._config.battery_critical_threshold ?? 20;
     const batteryLowThreshold = this._config.battery_low_threshold ?? 50;
+    const unavailableBatteriesBucket = this._config.unavailable_batteries_bucket === 'good' ? 'good' : 'critical';
 
     return html`
       <div class="section">
@@ -1336,9 +1337,36 @@ class Simon42DashboardStrategyEditor extends LitElement {
               @change=${this._batteryLowChanged} /> %
           </div>
           <div class="description">${localize('editor.battery_thresholds_desc')}</div>
+
+          <div style="font-size: 13px; font-weight: 500; color: var(--primary-text-color); margin-top: 12px; margin-bottom: 4px;">
+            ${localize('editor.unavailable_batteries_bucket')}
+          </div>
+          <div class="form-row">
+            <input type="radio" id="unavailable-batteries-critical" name="unavailable-batteries-bucket" value="critical"
+              ?checked=${unavailableBatteriesBucket === 'critical'}
+              @change=${() => this._unavailableBatteriesBucketChanged('critical')} />
+            <label for="unavailable-batteries-critical">${localize('editor.unavailable_batteries_critical')}</label>
+          </div>
+          <div class="form-row">
+            <input type="radio" id="unavailable-batteries-good" name="unavailable-batteries-bucket" value="good"
+              ?checked=${unavailableBatteriesBucket === 'good'}
+              @change=${() => this._unavailableBatteriesBucketChanged('good')} />
+            <label for="unavailable-batteries-good">${localize('editor.unavailable_batteries_good')}</label>
+          </div>
+          <div class="description">${localize('editor.unavailable_batteries_bucket_desc')}</div>
         </div>
       </div>
     `;
+  }
+
+  private _unavailableBatteriesBucketChanged(bucket: 'critical' | 'good'): void {
+    const updated: Simon42StrategyConfig = { ...this._config };
+    if (bucket === 'critical') {
+      delete updated.unavailable_batteries_bucket;
+    } else {
+      updated.unavailable_batteries_bucket = bucket;
+    }
+    this._fireConfigChanged(updated);
   }
 
   private _renderFavoritesSection(): TemplateResult {
