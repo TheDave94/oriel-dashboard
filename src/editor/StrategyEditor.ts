@@ -1088,6 +1088,9 @@ class Simon42DashboardStrategyEditor extends LitElement {
     const order = this._getSectionsOrder();
     const energyLinkDashboard = this._config.energy_link_dashboard !== false;
     const showEnergy = this._config.show_energy !== false;
+    const showWeather = this._config.show_weather !== false;
+    const showWeatherForecastCard = this._config.show_weather_forecast_card !== false;
+    const showEnergyDistributionCard = this._config.show_energy_distribution_card !== false;
 
     return html`
       <div class="section">
@@ -1123,12 +1126,26 @@ class Simon42DashboardStrategyEditor extends LitElement {
                   </label>
                 ` : nothing}
               </div>
+              ${key === 'weather' && showWeather ? html`
+                <div class="section-order-sub">
+                  <input type="checkbox" id="show-weather-forecast-card"
+                    ?checked=${showWeatherForecastCard}
+                    @change=${(e: Event) => { this._toggleChanged('show_weather_forecast_card', (e.target as HTMLInputElement).checked, true); }} />
+                  <label for="show-weather-forecast-card">${localize('editor.show_weather_forecast_card')}</label>
+                </div>
+              ` : nothing}
               ${key === 'energy' && showEnergy ? html`
                 <div class="section-order-sub">
                   <input type="checkbox" id="energy-link-dashboard"
                     ?checked=${energyLinkDashboard}
                     @change=${(e: Event) => { this._toggleChanged('energy_link_dashboard', (e.target as HTMLInputElement).checked, true); }} />
                   <label for="energy-link-dashboard">${localize('editor.energy_link_dashboard')}</label>
+                </div>
+                <div class="section-order-sub">
+                  <input type="checkbox" id="show-energy-distribution-card"
+                    ?checked=${showEnergyDistributionCard}
+                    @change=${(e: Event) => { this._toggleChanged('show_energy_distribution_card', (e.target as HTMLInputElement).checked, true); }} />
+                  <label for="show-energy-distribution-card">${localize('editor.show_energy_distribution_card')}</label>
                 </div>
               ` : nothing}
             `;
