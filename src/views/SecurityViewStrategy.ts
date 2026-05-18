@@ -235,6 +235,7 @@ class Simon42ViewSecurityStrategy extends HTMLElement {
 
     // User-picked extra entities (smart appliances, custom sensors, etc.)
     const extraEntities: string[] = (config.config?.security_extra_entities || []).filter(
+      // eslint-disable-next-line security/detect-object-injection -- entity IDs are user-picked from the editor entity registry
       (id: string) => hass.states[id] !== undefined
     );
     if (extraEntities.length > 0) {
