@@ -19,9 +19,10 @@ class Simon42ViewSecurityStrategy extends HTMLElement {
 
     // Categorize entities
     const locks: string[] = [];
-    const doors: string[] = [];
+    const doors: string[] = [];          // cover.door + cover.gate (security: open/closed)
+    const motorizedWindows: string[] = []; // cover.window (electric Velux etc.)
     const garages: string[] = [];
-    const windows: string[] = [];
+    const windows: string[] = [];        // binary_sensor.door/window/opening (contact sensors)
     const smokeGas: string[] = [];
 
     for (const id of [
@@ -38,7 +39,8 @@ class Simon42ViewSecurityStrategy extends HTMLElement {
         locks.push(id);
       } else if (id.startsWith('cover.')) {
         if (deviceClass === 'garage') garages.push(id);
-        else if (deviceClass === 'door' || deviceClass === 'gate' || deviceClass === 'window') doors.push(id);
+        else if (deviceClass === 'window') motorizedWindows.push(id);
+        else if (deviceClass === 'door' || deviceClass === 'gate') doors.push(id);
       } else if (id.startsWith('binary_sensor.')) {
         const entry = Registry.getEntity(id);
         if (entry?.platform && SECURITY_EXCLUDED_PLATFORMS.has(entry.platform)) continue;
@@ -134,6 +136,58 @@ class Simon42ViewSecurityStrategy extends HTMLElement {
       }
       if (closed.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.doors_closed'), heading_style: 'subtitle', icon: 'mdi:door-closed' });
+        cards.push(
+          ...closed.map((e) => ({
+            type: 'tile',
+            entity: e,
+            features: [{ type: 'cover-open-close' }],
+            features_position: 'inline',
+            state_content: 'last_changed',
+          }))
+        );
+      }
+      if (cards.length > 0) sections.push({ type: 'grid', cards });
+    }
+
+    // Motorized windows (cover.* with device_class=window — e.g. Velux electric)
+    if (motorizedWindows.length > 0) {
+      const open = motorizedWindows.filter((e) => hass.states[e]?.state === 'open');
+      const closed = motorizedWindows.filter((e) => hass.states[e]?.state === 'closed');
+      const cards: LovelaceCardConfig[] = [];
+
+      if (open.length > 0) {
+        cards.push({
+          type: 'heading',
+          heading: localize('security.motorized_windows_open'),
+          heading_style: 'subtitle',
+          icon: 'mdi:window-open-variant',
+          badges: [
+            {
+              type: 'entity',
+              entity: open[0],
+              show_name: false,
+              show_state: false,
+              tap_action: {
+                action: 'perform-action',
+                perform_action: 'cover.close_cover',
+                target: { entity_id: open },
+              },
+              icon: 'mdi:arrow-down',
+            },
+          ],
+        });
+        cards.push(
+          ...open.map((e) => ({
+            type: 'tile',
+            entity: e,
+            features: [{ type: 'cover-open-close' }],
+            features_position: 'inline',
+            state_content: 'last_changed',
+          }))
+        );
+      }
+      if (closed.length > 0) {
+        cards.push({ type: 'heading', heading: localize('security.motorized_windows_closed'), heading_style: 'subtitle', icon: 'mdi:window-closed-variant' });
         cards.push(
           ...closed.map((e) => ({
             type: 'tile',
