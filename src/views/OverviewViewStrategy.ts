@@ -121,6 +121,11 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     // their own person badges through custom_badges instead)
     const showPersonBadges = dashboardConfig.show_person_badges !== false;
     const personBadges = showPersonBadges ? createPersonBadges(persons, hass) : [];
+    // Person badges (zone-aware: HA's person.state already returns the zone
+    // name when the person is in a non-home zone, so the 'with_state' layout
+    // surfaces "Work" / "Office" / etc. automatically).
+    const personBadgeLayout = dashboardConfig.person_badge_layout || 'with_state';
+    const personBadges = createPersonBadges(persons, hass, personBadgeLayout);
 
     // Config flags
     const showWeather = dashboardConfig.show_weather !== false;

@@ -120,6 +120,7 @@ export interface Simon42StrategyConfig {
   show_sun_badge?: boolean; // default: false (requires HA sun integration / sun.sun entity)
   show_maintenance_section?: boolean; // default: false (auto-hides when nothing pending)
   hide_unavailable_in_rooms?: boolean; // default: true (skip unavailable in room views)
+  person_badge_layout?: 'minimal' | 'with_state' | 'with_state_and_time'; // default: 'with_state'
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
