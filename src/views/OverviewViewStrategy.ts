@@ -127,14 +127,24 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       customCardsBySection.set(target, list);
     }
 
+    // Hidden section headings (per-section opt-in)
+    const hiddenHeadings = new Set(dashboardConfig.hidden_section_headings || []);
+
     // Build sections
     const overviewSection = createOverviewSection({ someSensorId, showSearchCard, config: dashboardConfig, hass });
     const customCardsSection = createCustomCardsSection(
       customCardsBySection.get('custom_cards') || [],
       dashboardConfig.custom_cards_heading,
-      dashboardConfig.custom_cards_icon
+      dashboardConfig.custom_cards_icon,
+      hiddenHeadings.has('custom_cards')
     );
-    const areasSections = createAreasSection(visibleAreas, groupByFloors, hass);
+    const areasSections = createAreasSection(
+      visibleAreas,
+      groupByFloors,
+      hass,
+      hiddenHeadings.has('areas'),
+      hiddenHeadings.has('areas_other'),
+    );
 
     // Section map: key → section(s) or null
     const sectionMap = new Map<SectionKey, LovelaceSectionConfig | LovelaceSectionConfig[] | null>([
@@ -159,6 +169,8 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
           dashboardConfig.show_energy_distribution_card !== false
         ),
       ],
+      ['weather', createWeatherSection(weatherEntity ?? null, showWeather, hiddenHeadings.has('weather'))],
+      ['energy', createEnergySection(showEnergy, dashboardConfig.energy_link_dashboard !== false, hiddenHeadings.has('energy'))],
     ]);
 
     // Assemble in configured order, appending assigned custom cards to each section
