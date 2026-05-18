@@ -107,6 +107,8 @@
     "section_order_desc": "Ziehe die Abschnitte per Drag & Drop in die gewünschte Reihenfolge. Leere Abschnitte werden automatisch ausgeblendet.",
     "section_hidden": "ausgeblendet",
     "energy_link_dashboard": "Energie-Dashboard verlinken",
+    "show_updates_badge": "Anstehende Updates als Badge anzeigen",
+    "show_updates_badge_desc": "Fügt ein kleines oranges Badge in den Übersichts-Header ein, das die Anzahl der `update.*`-Entitäten mit Status `on` (Update verfügbar) zeigt. Klick öffnet Einstellungen → Updates. Wird automatisch ausgeblendet, wenn keine Updates anstehen. Benötigte Integration: keine — die `update.*`-Domain ist HA-nativ.",
     "target_section": "Zeige in",
     "section_overview": "Übersicht",
     "show_clock_card": "Uhrzeit-Karte anzeigen",
