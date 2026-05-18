@@ -120,11 +120,9 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     const sectionsOrder = normalizeSectionsOrder(dashboardConfig.sections_order ?? DEFAULT_SECTIONS_ORDER);
     const overviewSections: LovelaceSectionConfig[] = [];
     for (const key of sectionsOrder) {
-      // eslint-disable-next-line security/detect-object-injection -- key is a typed SectionKey, not user-supplied
-      const rule: { entity?: string; state?: string } | undefined = sectionVisibility[key];
-      if (rule && rule.entity) {
-        // eslint-disable-next-line security/detect-object-injection -- entity ID is user-picked
-        const entState = hass.states[rule.entity];
+      const rule = Reflect.get(sectionVisibility, key) as { entity?: string; state?: string } | undefined;
+      if (rule?.entity) {
+        const entState = Reflect.get(hass.states as Record<string, unknown>, rule.entity) as { state?: string } | undefined;
         if (!entState || entState.state !== rule.state) continue;
       }
       const result = sectionMap.get(key);
