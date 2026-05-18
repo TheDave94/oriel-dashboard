@@ -20,6 +20,7 @@ function findBatterySensorForPerson(
   hass: HomeAssistant,
   personEntityId: string,
 ): string | undefined {
+  // eslint-disable-next-line security/detect-object-injection -- personEntityId comes from Registry caller
   const state = hass.states[personEntityId];
   const sources = state?.attributes?.source as string[] | string | undefined;
   const sourceList = Array.isArray(sources) ? sources : sources ? [sources] : [];
@@ -35,6 +36,7 @@ function findBatterySensorForPerson(
     const siblings = Registry.getEntityIdsForDevice(deviceId);
     for (const sid of siblings) {
       if (!sid.startsWith('sensor.')) continue;
+      // eslint-disable-next-line security/detect-object-injection -- sid comes from Registry device-entities lookup
       const sState = hass.states[sid];
       if (!sState) continue;
       const dc = sState.attributes?.device_class;
@@ -53,6 +55,7 @@ export function createPersonsSection(
   if (!enabled) return null;
 
   const personIds = Registry.getVisibleEntityIdsForDomain('person').filter(
+    // eslint-disable-next-line security/detect-object-injection -- entity IDs from Registry
     (id) => hass.states[id] !== undefined
   );
   if (personIds.length === 0) return null;
