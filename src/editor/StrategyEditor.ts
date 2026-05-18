@@ -1224,6 +1224,22 @@ class Simon42DashboardStrategyEditor extends LitElement {
           (checked) => this._toggleChanged('show_clock_card', checked, true))}
         <div class="description">${localize('editor.show_clock_card_desc')}</div>
 
+        <div style="font-size: 13px; font-weight: 500; color: var(--primary-text-color); margin-top: 12px; margin-bottom: 4px;">
+          ${localize('editor.person_badge_layout')}
+        </div>
+        ${(['minimal', 'with_state', 'with_state_and_time'] as const).map((opt) => {
+          const current = this._config.person_badge_layout || 'with_state';
+          return html`
+            <div class="form-row">
+              <input type="radio" id="person-badge-${opt}" name="person-badge-layout" value=${opt}
+                ?checked=${current === opt}
+                @change=${() => this._personBadgeLayoutChanged(opt)} />
+              <label for="person-badge-${opt}">${localize('editor.person_badge_layout_' + opt)}</label>
+            </div>
+          `;
+        })}
+        <div class="description">${localize('editor.person_badge_layout_desc')}</div>
+
         <div class="form-row">
           <label for="alarm-entity" style="margin-right: 8px; min-width: 120px;">${localize('editor.alarm_entity')}</label>
           <select id="alarm-entity"
@@ -2171,6 +2187,16 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
+  }
+
+  private _personBadgeLayoutChanged(layout: 'minimal' | 'with_state' | 'with_state_and_time'): void {
+    const updated: Simon42StrategyConfig = { ...this._config };
+    if (layout === 'with_state') {
+      delete updated.person_badge_layout;
+    } else {
+      updated.person_badge_layout = layout;
+    }
+    this._fireConfigChanged(updated);
   }
 
   private _alarmEntityChanged(e: Event): void {
