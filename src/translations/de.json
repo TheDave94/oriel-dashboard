@@ -18,7 +18,8 @@
     "areas": "Bereiche",
     "areas_other": "Weitere Bereiche",
     "weather": "Wetter",
-    "energy": "Energie"
+    "energy": "Energie",
+    "light_favorites": "Schnellzugriff Lampen"
   },
   "summary": {
     "lights_on_one": "Licht an",
@@ -145,6 +146,8 @@
     "show_energy": "Energie-Dashboard anzeigen",
     "show_energy_desc": "Zeigt die Energie-Verteilungskarte in der Übersicht an, wenn Energiedaten verfügbar sind.",
     "section_favorites": "Favoriten",
+    "section_light_favorites": "Schnellzugriff Lampen",
+    "light_favorites_desc": "Lichter auswählen, die als kompakte Toggle-Reihe in der Übersicht (oberhalb der regulären Favoriten) erscheinen sollen. Jede Lampe wird als Glance-Icon gerendert: Tippen schaltet um, Lang-Drücken öffnet die Details. Wird automatisch ausgeblendet, wenn keine Lampe ausgewählt ist. Nur `light.*`-Entitäten können hinzugefügt werden.",
     "select_entity": "Entität auswählen...",
     "add": "+ Hinzufügen",
     "favorites_desc": "Wähle Entitäten aus, die als Favoriten unter den Zusammenfassungen angezeigt werden sollen. Die Entitäten werden als Kacheln angezeigt.",
