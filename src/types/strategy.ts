@@ -8,7 +8,7 @@
 
 // -- Section Ordering -------------------------------------------------
 
-export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy';
+export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'plants';
 
 export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'overview',
@@ -16,6 +16,7 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'areas',
   'weather',
   'energy',
+  'plants',
 ];
 
 /** Keys for section headings that can be hidden via hidden_section_headings */
@@ -96,6 +97,7 @@ export interface Simon42StrategyConfig {
   // badges via custom_badges)
   show_window_alerts_on_areas?: boolean; // default: false
   energy_link_dashboard?: boolean; // default: true
+  show_plants_section?: boolean; // default: false (auto-hides anyway if no plants)
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
