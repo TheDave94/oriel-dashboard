@@ -19,7 +19,8 @@
     "areas_other": "Other Areas",
     "weather": "Weather",
     "energy": "Energy",
-    "plants": "Plants"
+    "plants": "Plants",
+    "agenda": "Agenda"
   },
   "summary": {
     "lights_on_one": "light on",
