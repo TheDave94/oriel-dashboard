@@ -1088,6 +1088,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
     const order = this._getSectionsOrder();
     const energyLinkDashboard = this._config.energy_link_dashboard !== false;
     const showEnergy = this._config.show_energy !== false;
+    const hiddenHeadings = new Set(this._config.hidden_section_headings || []);
 
     return html`
       <div class="section">
@@ -1134,8 +1135,44 @@ class Simon42DashboardStrategyEditor extends LitElement {
             `;
           })}
         </div>
+
+        <details style="margin-top: 12px;">
+          <summary style="cursor: pointer; font-size: 13px; font-weight: 500; color: var(--primary-text-color); padding: 4px 0;">
+            ${localize('editor.hide_section_headings')}
+          </summary>
+          <div style="margin-left: 14px; margin-top: 6px;">
+            <div class="description" style="margin-left: 0; margin-bottom: 8px;">
+              ${localize('editor.hide_section_headings_desc')}
+            </div>
+            ${(['overview', 'summaries', 'favorites', 'custom_cards', 'areas', 'areas_other', 'weather', 'energy'] as const).map((hk) => html`
+              <div class="form-row">
+                <input type="checkbox" id="hide-heading-${hk}"
+                  ?checked=${hiddenHeadings.has(hk)}
+                  @change=${(e: Event) => { this._toggleHiddenHeading(hk, (e.target as HTMLInputElement).checked); }} />
+                <label for="hide-heading-${hk}">${localize('editor.heading_label_' + hk)}</label>
+              </div>
+            `)}
+          </div>
+        </details>
       </div>
     `;
+  }
+
+  private _toggleHiddenHeading(key: string, hide: boolean): void {
+    const current = new Set(this._config.hidden_section_headings || []);
+    if (hide) {
+      current.add(key as any);
+    } else {
+      current.delete(key as any);
+    }
+    const next = [...current];
+    const updated: Simon42StrategyConfig = { ...this._config };
+    if (next.length === 0) {
+      delete updated.hidden_section_headings;
+    } else {
+      updated.hidden_section_headings = next;
+    }
+    this._fireConfigChanged(updated);
   }
 
   // -- Section order drag & drop -----------------------------------------

@@ -149,21 +149,22 @@ function getFloorIcon(level: number | null | undefined): string {
 export function createAreasSection(
   visibleAreas: AreaRegistryEntry[],
   groupByFloors: boolean = false,
-  hass: HomeAssistant | null = null
+  hass: HomeAssistant | null = null,
+  hideAreasHeading: boolean = false,
+  hideAreasOtherHeading: boolean = false
 ): LovelaceSectionConfig | LovelaceSectionConfig[] {
   // No floor grouping: flat list
   if (!groupByFloors || !hass) {
-    return {
-      type: 'grid',
-      cards: [
-        {
-          type: 'heading',
-          heading_style: 'title',
-          heading: localize('sections.areas'),
-        },
-        ...visibleAreas.map((area) => buildAreaCard(area, hass as HomeAssistant)),
-      ],
-    };
+    const cards: LovelaceCardConfig[] = [];
+    if (!hideAreasHeading) {
+      cards.push({
+        type: 'heading',
+        heading_style: 'title',
+        heading: localize('sections.areas'),
+      });
+    }
+    for (const area of visibleAreas) cards.push(buildAreaCard(area, hass as HomeAssistant));
+    return { type: 'grid', cards };
   }
 
   // Group areas by floor
@@ -212,18 +213,17 @@ export function createAreasSection(
 
   // Areas without a floor
   if (areasWithoutFloor.length > 0) {
-    sections.push({
-      type: 'grid',
-      cards: [
-        {
-          type: 'heading',
-          heading_style: 'title',
-          heading: localize('sections.areas_other'),
-          icon: 'mdi:home-outline',
-        },
-        ...areasWithoutFloor.map((area) => buildAreaCard(area, hass)),
-      ],
-    });
+    const cards: LovelaceCardConfig[] = [];
+    if (!hideAreasOtherHeading) {
+      cards.push({
+        type: 'heading',
+        heading_style: 'title',
+        heading: localize('sections.areas_other'),
+        icon: 'mdi:home-outline',
+      });
+    }
+    for (const area of areasWithoutFloor) cards.push(buildAreaCard(area, hass));
+    sections.push({ type: 'grid', cards });
   }
 
   return sections;

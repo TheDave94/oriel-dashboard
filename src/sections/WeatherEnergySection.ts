@@ -5,7 +5,7 @@
 // distribution. Each returns a single section or null.
 // ====================================================================
 
-import type { LovelaceSectionConfig } from '../types/lovelace';
+import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
 import { localize } from '../utils/localize';
 
 /**
@@ -14,26 +14,27 @@ import { localize } from '../utils/localize';
  */
 export function createWeatherSection(
   weatherEntity: string | null,
-  showWeather: boolean
+  showWeather: boolean,
+  hideHeading: boolean = false
 ): LovelaceSectionConfig | null {
   if (!weatherEntity || !showWeather) return null;
 
-  return {
-    type: 'grid',
-    cards: [
-      {
-        type: 'heading',
-        heading: localize('sections.weather'),
-        heading_style: 'title',
-        icon: 'mdi:weather-partly-cloudy',
-      },
-      {
-        type: 'weather-forecast',
-        entity: weatherEntity,
-        forecast_type: 'daily',
-      },
-    ],
-  };
+  const cards: LovelaceCardConfig[] = [];
+  if (!hideHeading) {
+    cards.push({
+      type: 'heading',
+      heading: localize('sections.weather'),
+      heading_style: 'title',
+      icon: 'mdi:weather-partly-cloudy',
+    });
+  }
+  cards.push({
+    type: 'weather-forecast',
+    entity: weatherEntity,
+    forecast_type: 'daily',
+  });
+
+  return { type: 'grid', cards };
 }
 
 /**
@@ -42,23 +43,24 @@ export function createWeatherSection(
  */
 export function createEnergySection(
   showEnergy: boolean,
-  linkDashboard: boolean = true
+  linkDashboard: boolean = true,
+  hideHeading: boolean = false
 ): LovelaceSectionConfig | null {
   if (!showEnergy) return null;
 
-  return {
-    type: 'grid',
-    cards: [
-      {
-        type: 'heading',
-        heading: localize('sections.energy'),
-        heading_style: 'title',
-        icon: 'mdi:lightning-bolt',
-      },
-      {
-        type: 'energy-distribution',
-        link_dashboard: linkDashboard,
-      },
-    ],
-  };
+  const cards: LovelaceCardConfig[] = [];
+  if (!hideHeading) {
+    cards.push({
+      type: 'heading',
+      heading: localize('sections.energy'),
+      heading_style: 'title',
+      icon: 'mdi:lightning-bolt',
+    });
+  }
+  cards.push({
+    type: 'energy-distribution',
+    link_dashboard: linkDashboard,
+  });
+
+  return { type: 'grid', cards };
 }

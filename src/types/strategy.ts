@@ -18,6 +18,28 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'energy',
 ];
 
+/** Keys for section headings that can be hidden via hidden_section_headings */
+export type HeadingKey =
+  | 'overview'
+  | 'summaries'
+  | 'favorites'
+  | 'custom_cards'
+  | 'areas'
+  | 'areas_other'
+  | 'weather'
+  | 'energy';
+
+export const ALL_HEADING_KEYS: HeadingKey[] = [
+  'overview',
+  'summaries',
+  'favorites',
+  'custom_cards',
+  'areas',
+  'areas_other',
+  'weather',
+  'energy',
+];
+
 // -- Main Strategy Config ---------------------------------------------
 
 export interface Simon42StrategyConfig {
@@ -52,6 +74,7 @@ export interface Simon42StrategyConfig {
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
   summaries_columns?: 2 | 4; // default: 2
+  hidden_section_headings?: HeadingKey[]; // default: []
 
   // Favorites display
   favorites_show_state?: boolean; // default: false
