@@ -296,6 +296,27 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
           color: 'green',
           show_state: false,
           tap_action: { action: 'more-info' },
+    // Optional "pending updates count" badge — Registry-filtered update.* in state 'on'.
+    const updatesBadges: LovelaceBadgeConfig[] = [];
+    if (dashboardConfig.show_updates_badge === true) {
+      let count = 0;
+      let firstId: string | undefined;
+      for (const id of Registry.getVisibleEntityIdsForDomain('update')) {
+        const st = Reflect.get(hass.states as Record<string, unknown>, id) as { state?: string } | undefined;
+        if (st?.state === 'on') {
+          count++;
+          if (!firstId) firstId = id;
+        }
+      }
+      if (count > 0 && firstId) {
+        updatesBadges.push({
+          type: 'entity',
+          entity: firstId,
+          name: String(count),
+          icon: 'mdi:update',
+          color: 'orange',
+          show_state: false,
+          tap_action: { action: 'navigate', navigation_path: '/config/updates' },
         });
       }
     }
@@ -319,6 +340,7 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     }
 
     return createOverviewView(overviewSections, [...personBadges, ...sunBadges, ...customBadges]);
+    return createOverviewView(overviewSections, [...personBadges, ...updatesBadges, ...customBadges]);
   }
 }
 

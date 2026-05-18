@@ -158,6 +158,8 @@
     "section_visibility_desc": "Optionally hide a section unless a chosen entity is in a specific state. Useful e.g. to show the Agenda only on workdays (entity: calendar.workday_sensor, state: on) or the Energy section only during day hours (entity: sun.sun, state: above_horizon). Leave entity blank to disable per-section.",
     "section_visibility_entity": "Entity:",
     "section_visibility_state": "State:",
+    "show_updates_badge": "Show pending updates count badge",
+    "show_updates_badge_desc": "Adds a small orange badge to the overview header showing the count of update.* entities in state \"on\" (pending). Tap navigates to Settings → Updates. Auto-hidden when no updates are pending. Required integration: none — the update.* domain is HA-native.",
     "target_section": "Show in",
     "section_overview": "Overview",
     "show_clock_card": "Show clock card",

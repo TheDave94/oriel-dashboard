@@ -128,6 +128,7 @@ export interface Simon42StrategyConfig {
    * → agenda section only on workdays.
    */
   section_visibility?: Record<string, { entity: string; state: string }>;
+  show_updates_badge?: boolean; // default: false (auto-hides at zero pending)
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
