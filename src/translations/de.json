@@ -158,6 +158,8 @@
     "section_visibility_desc": "Blendet einen Abschnitt aus, solange eine gewählte Entität nicht den angegebenen Status hat. Beispiele: Agenda nur an Werktagen (Entität: `calendar.workday_sensor`, Status: `on`) oder Energie nur tagsüber (Entität: `sun.sun`, Status: `above_horizon`). Entität leer lassen, um die Bedingung pro Abschnitt zu deaktivieren.",
     "section_visibility_entity": "Entität:",
     "section_visibility_state": "Status:",
+    "show_updates_badge": "Anstehende Updates als Badge anzeigen",
+    "show_updates_badge_desc": "Fügt ein kleines oranges Badge in den Übersichts-Header ein, das die Anzahl der `update.*`-Entitäten mit Status `on` (Update verfügbar) zeigt. Klick öffnet Einstellungen → Updates. Wird automatisch ausgeblendet, wenn keine Updates anstehen. Benötigte Integration: keine — die `update.*`-Domain ist HA-nativ.",
     "target_section": "Zeige in",
     "section_overview": "Übersicht",
     "show_clock_card": "Uhrzeit-Karte anzeigen",

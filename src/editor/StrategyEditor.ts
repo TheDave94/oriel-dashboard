@@ -1362,6 +1362,12 @@ class Simon42DashboardStrategyEditor extends LitElement {
             })}
           </div>
         </details>
+        <div style="margin-top: 12px;">
+          ${this._renderCheckbox('show-updates-badge', localize('editor.show_updates_badge'),
+            this._config.show_updates_badge === true,
+            (checked) => this._toggleChanged('show_updates_badge', checked, false))}
+          <div class="description">${localize('editor.show_updates_badge_desc')}</div>
+        </div>
       </div>
     `;
   }
