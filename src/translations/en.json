@@ -63,8 +63,10 @@
   "security": {
     "locks_unlocked": "Locks - Unlocked",
     "locks_locked": "Locks - Locked",
-    "doors_open": "Doors, Gates & Windows - Open",
-    "doors_closed": "Doors, Gates & Windows - Closed",
+    "doors_open": "Doors & Gates - Open",
+    "doors_closed": "Doors & Gates - Closed",
+    "motorized_windows_open": "Motorized Windows - Open",
+    "motorized_windows_closed": "Motorized Windows - Closed",
     "garages_open": "Garages - Open",
     "garages_closed": "Garages - Closed",
     "windows_open": "Door & Window Sensors - Open",
