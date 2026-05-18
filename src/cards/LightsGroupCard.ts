@@ -23,6 +23,7 @@ interface LightsGroupConfig {
   group_type: 'on' | 'off' | 'all';
   group_by_floors?: boolean;
   nested_groups?: boolean;
+  sort_by?: 'last_changed' | 'name';
   heading_label?: string;
   heading_icon?: string;
   area?: AreaRegistryEntry;
@@ -209,10 +210,22 @@ class Simon42LightsGroupCard extends LitElement {
   }
 
   private _sortByLastChanged(a: string, b: string): number {
+    // When sort_by === 'name', fall through to a friendly-name comparison.
+    // Default behaviour ('last_changed') is preserved for existing dashboards.
+    if (this._config.sort_by === 'name') {
+      const nameA = this._getFriendlyName(a);
+      const nameB = this._getFriendlyName(b);
+      return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+    }
     const stateA = this._getState(a);
     const stateB = this._getState(b);
     if (!stateA || !stateB) return 0;
     return new Date(stateB.last_changed).getTime() - new Date(stateA.last_changed).getTime();
+  }
+
+  private _getFriendlyName(entityId: string): string {
+    const state = this._getState(entityId);
+    return (state?.attributes?.friendly_name as string | undefined) ?? entityId;
   }
 
   private _getAreaForEntity(entityId: string): string | null {

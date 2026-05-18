@@ -73,6 +73,7 @@ export interface Simon42StrategyConfig {
   show_light_summary?: boolean; // default: true
   group_lights_by_floors?: boolean; // default: false
   nested_light_groups?: boolean; // default: false
+  lights_sort_by?: 'last_changed' | 'name'; // default: 'last_changed'
   show_security_summary?: boolean; // default: true
   show_battery_summary?: boolean; // default: true
   show_climate_summary?: boolean; // default: false

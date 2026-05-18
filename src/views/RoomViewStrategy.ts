@@ -473,6 +473,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
             area,
             default_expanded: true,
             nested_groups: dashboardConfig.nested_light_groups === true,
+            sort_by: dashboardConfig.lights_sort_by === 'name' ? 'name' : 'last_changed',
           },
         ],
       });

@@ -1376,6 +1376,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
     const showLightSummary = this._config.show_light_summary !== false;
     const groupLightsByFloors = this._config.group_lights_by_floors === true;
     const nestedLightGroups = this._config.nested_light_groups === true;
+    const lightsSortBy = this._config.lights_sort_by === 'name' ? 'name' : 'last_changed';
     const showCoversSummary = this._config.show_covers_summary !== false;
     const showPartiallyOpenCovers = this._config.show_partially_open_covers === true;
     const groupCoversByFloors = this._config.group_covers_by_floors === true;
@@ -1417,6 +1418,23 @@ class Simon42DashboardStrategyEditor extends LitElement {
         ${this._renderCheckbox('nested-light-groups', localize('editor.nested_light_groups'), nestedLightGroups,
           (checked) => this._toggleChanged('nested_light_groups', checked, false))}
         <div class="description">${localize('editor.nested_light_groups_desc')}</div>
+
+        <div style="font-size: 13px; font-weight: 500; color: var(--primary-text-color); margin-top: 12px; margin-bottom: 4px;">
+          ${localize('editor.lights_sort_by')}
+        </div>
+        <div class="form-row">
+          <input type="radio" id="lights-sort-last-changed" name="lights-sort-by" value="last_changed"
+            ?checked=${lightsSortBy === 'last_changed'}
+            @change=${() => this._lightsSortByChanged('last_changed')} />
+          <label for="lights-sort-last-changed">${localize('editor.lights_sort_by_last_changed')}</label>
+        </div>
+        <div class="form-row">
+          <input type="radio" id="lights-sort-name" name="lights-sort-by" value="name"
+            ?checked=${lightsSortBy === 'name'}
+            @change=${() => this._lightsSortByChanged('name')} />
+          <label for="lights-sort-name">${localize('editor.lights_sort_by_name')}</label>
+        </div>
+        <div class="description">${localize('editor.lights_sort_by_desc')}</div>
 
         ${this._renderCheckbox('show-covers-summary', localize('editor.show_covers_summary'), showCoversSummary,
           (checked) => this._toggleChanged('show_covers_summary', checked, true))}
@@ -1570,6 +1588,12 @@ class Simon42DashboardStrategyEditor extends LitElement {
       delete updated.unavailable_batteries_bucket;
     } else {
       updated.unavailable_batteries_bucket = bucket;
+  private _lightsSortByChanged(sortBy: 'last_changed' | 'name'): void {
+    const updated: Simon42StrategyConfig = { ...this._config };
+    if (sortBy === 'last_changed') {
+      delete updated.lights_sort_by;
+    } else {
+      updated.lights_sort_by = sortBy;
     }
     this._fireConfigChanged(updated);
   }
