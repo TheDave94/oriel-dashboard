@@ -7,7 +7,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { Simon42StrategyConfig, SectionKey, CustomCard, CustomSection } from '../types/strategy';
+import type { Simon42StrategyConfig, CustomCard, CustomSection } from '../types/strategy';
 import { DEFAULT_SECTIONS_ORDER } from '../types/strategy';
 import type { LovelaceViewConfig, LovelaceSectionConfig, LovelaceBadgeConfig, LovelaceCardConfig } from '../types/lovelace';
 import { Registry } from '../Registry';
@@ -60,8 +60,11 @@ function normalizeSectionsOrder(order: string[], customSectionKeys: string[]): s
  */
 function buildCustomSection(section: CustomSection): LovelaceSectionConfig | null {
   if (!Array.isArray(section.parsed_config) || section.parsed_config.length === 0) return null;
+  // parsed_config comes from YAML.load → always Record<string, any>; we only
+  // need to verify each entry actually has a string `type` field, which is
+  // what every Lovelace card config requires.
   const validCards = section.parsed_config.filter(
-    (c): c is LovelaceCardConfig => typeof c === 'object' && c !== null && typeof (c as { type?: unknown }).type === 'string'
+    (c): c is LovelaceCardConfig => typeof (c as { type?: unknown }).type === 'string'
   );
   if (validCards.length === 0) return null;
   const cards: LovelaceCardConfig[] = [];
