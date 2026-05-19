@@ -1069,6 +1069,8 @@ class Simon42DashboardStrategyEditor extends LitElement {
         return this._config.show_persons_section !== true;
       case 'vacuums':
         return this._config.show_vacuums_section !== true;
+      case 'maintenance':
+        return this._config.show_maintenance_section !== true;
       default:
         return false;
     }
@@ -1105,6 +1107,11 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
   private _isSectionToggleable(key: SectionKey): boolean {
     return key === 'weather' || key === 'energy' || key === 'vacuums';
+    ['maintenance', { icon: 'mdi:update', labelKey: 'sections.maintenance' }],
+  ]);
+
+  private _isSectionToggleable(key: SectionKey): boolean {
+    return key === 'weather' || key === 'energy' || key === 'maintenance';
   }
 
   private _toggleSectionVisibility(key: SectionKey, visible: boolean): void {
@@ -1122,6 +1129,8 @@ class Simon42DashboardStrategyEditor extends LitElement {
       this._toggleChanged('show_persons_section', visible, false);
     } else if (key === 'vacuums') {
       this._toggleChanged('show_vacuums_section', visible, false);
+    } else if (key === 'maintenance') {
+      this._toggleChanged('show_maintenance_section', visible, false);
     }
   }
 
