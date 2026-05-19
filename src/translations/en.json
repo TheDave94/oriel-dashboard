@@ -116,6 +116,8 @@
     "show_now_playing_badge_desc": "Adds a small green badge to the overview header showing the first media_player whose state is \"playing\". Click opens the media controls. Auto-hidden when nothing is playing.",
     "show_sun_badge": "Show sun badge (sunrise/sunset)",
     "show_sun_badge_desc": "Adds a small badge to the overview header that shows whether the sun is up, and links to the next sunrise/sunset time on tap. Auto-hidden if your HA has no sun.sun entity (the built-in sun integration is enabled by default in most installs).",
+    "show_updates_badge": "Show pending updates count badge",
+    "show_updates_badge_desc": "Adds a small orange badge to the overview header showing the count of update.* entities in state \"on\" (pending). Tap navigates to Settings → Updates. Auto-hidden when no updates are pending. Required integration: none — the update.* domain is HA-native.",
     "target_section": "Show in",
     "section_overview": "Overview",
     "show_clock_card": "Show clock card",

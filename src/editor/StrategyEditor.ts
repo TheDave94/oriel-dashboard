@@ -1189,6 +1189,10 @@ class Simon42DashboardStrategyEditor extends LitElement {
             this._config.show_sun_badge === true,
             (checked) => this._toggleChanged('show_sun_badge', checked, false))}
           <div class="description">${localize('editor.show_sun_badge_desc')}</div>
+          ${this._renderCheckbox('show-updates-badge', localize('editor.show_updates_badge'),
+            this._config.show_updates_badge === true,
+            (checked) => this._toggleChanged('show_updates_badge', checked, false))}
+          <div class="description">${localize('editor.show_updates_badge_desc')}</div>
         </div>
       </div>
     `;

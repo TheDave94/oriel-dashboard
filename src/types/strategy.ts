@@ -52,6 +52,7 @@ export interface Simon42StrategyConfig {
   show_unavailable_alert_badge?: boolean; // default: false (auto-hides at zero)
   show_now_playing_badge?: boolean; // default: false (auto-hides when nothing's playing)
   show_sun_badge?: boolean; // default: false (requires HA sun integration / sun.sun entity)
+  show_updates_badge?: boolean; // default: false (auto-hides at zero pending)
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
