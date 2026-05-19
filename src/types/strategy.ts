@@ -51,6 +51,7 @@ export interface Simon42StrategyConfig {
   // auto-generated person chip badges (useful when supplying replacement
   // badges via custom_badges)
   energy_link_dashboard?: boolean; // default: true
+  person_badge_layout?: 'minimal' | 'with_state' | 'with_state_and_time'; // default: 'with_state'
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
