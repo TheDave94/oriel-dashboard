@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+/* eslint-disable security/detect-object-injection, security/detect-non-literal-fs-filename
+ *  -- this script runs only in CI against translation files committed to
+ *     this repo. There is no user-controlled input. The object accesses
+ *     are over known, fixed structures (parsed JSON / character indices
+ *     in the source file). The fs reads target the two literal paths in
+ *     the FILES constant below.
+ */
 // Translation file linter — catches three classes of bug:
 //   1. Invalid JSON
 //   2. Duplicate keys in any object (JSON.parse silently keeps the last value)
