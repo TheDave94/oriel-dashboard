@@ -77,6 +77,11 @@ export interface Simon42StrategyConfig {
   custom_cards_heading?: string;
   custom_cards_icon?: string;
 
+  // Custom sections — user-declared section blocks with their own heading
+  // and card list. Each entry's `key` becomes a valid sections_order entry
+  // and a valid custom_cards.target_section value. Auto-hides when empty.
+  custom_sections?: CustomSection[];
+
   // Custom badges (shown in header next to person chips)
   custom_badges?: CustomBadge[];
 }
@@ -134,12 +139,38 @@ export interface CustomBadge {
 export interface CustomCard {
   /** Optional title shown as heading above the card */
   title?: string;
-  /** Target section where this card appears (default: 'custom_cards') */
-  target_section?: SectionKey;
+  /** Target section where this card appears (default: 'custom_cards').
+   *  Accepts built-in SectionKeys OR a user-defined custom_sections[].key. */
+  target_section?: SectionKey | string;
   /** Raw YAML string entered by the user in the editor */
   yaml?: string;
   /** Parsed Lovelace card config (generated from yaml) */
   parsed_config?: Record<string, any> | null;
+  /** YAML parse error message, if any */
+  _yaml_error?: string;
+}
+
+// -- Custom Sections --------------------------------------------------
+// User-declared sections that render alongside built-ins. Lighter-weight
+// extension hook than full plugin/extension API — users get their own
+// heading + card list in YAML without forking. The section can be
+// positioned via `sections_order` (its `key` is a valid order entry),
+// custom_cards can target it via `target_section`, and it auto-hides
+// when `cards` is empty.
+
+export interface CustomSection {
+  /** Required unique key (must not collide with a built-in SectionKey).
+   *  Used as the entry in sections_order and as custom_cards.target_section. */
+  key: string;
+  /** Heading text shown at the top of the section */
+  heading?: string;
+  /** Optional MDI icon for the heading */
+  icon?: string;
+  /** Raw YAML string entered by the user in the editor — a Lovelace card
+   *  config array, e.g. `- type: markdown\n  content: ...` */
+  yaml?: string;
+  /** Parsed array of Lovelace card configs (derived from yaml) */
+  parsed_config?: Record<string, any>[] | null;
   /** YAML parse error message, if any */
   _yaml_error?: string;
 }

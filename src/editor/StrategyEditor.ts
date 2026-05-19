@@ -15,6 +15,7 @@ import type {
   CustomView,
   CustomCard,
   CustomBadge,
+  CustomSection,
   RoomEntities,
   SectionKey,
 } from '../types/strategy';
@@ -1026,6 +1027,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
         ${this._renderSectionOrderPanel()}
         ${this._renderCustomCardsSection()}
+        ${this._renderCustomSectionsSection()}
         ${this._renderCustomBadgesSection()}
         ${this._renderCustomViewsSection()}
       </div>
@@ -1607,6 +1609,61 @@ class Simon42DashboardStrategyEditor extends LitElement {
           ${localize('editor.add_custom_card')}
         </button>
         <div class="description">${localize('editor.custom_cards_help')}</div>
+      </div>
+    `;
+  }
+
+  private _renderCustomSectionsSection(): TemplateResult {
+    const customSections = this._config.custom_sections || [];
+    return html`
+      <div class="section">
+        <div class="section-title">${localize('editor.section_custom_sections')}</div>
+        <div class="description" style="margin-bottom: 8px;">${localize('editor.custom_sections_desc')}</div>
+
+        <div id="custom-sections-list">
+          ${customSections.length === 0
+            ? html`<div class="empty-state">${localize('editor.no_custom_sections')}</div>`
+            : customSections.map((s, index) => this._renderCustomSectionItem(s, index))}
+        </div>
+
+        <button class="btn-primary" style="margin-top: 8px;" @click=${this._addCustomSection}>
+          ${localize('editor.add_custom_section')}
+        </button>
+        <div class="description">${localize('editor.custom_sections_help')}</div>
+      </div>
+    `;
+  }
+
+  private _renderCustomSectionItem(section: CustomSection, index: number): TemplateResult {
+    const validationMsg = section._yaml_error
+      ? html`<span style="color: var(--error-color);">&#x274C; ${section._yaml_error}</span>`
+      : section.parsed_config
+        ? html`<span style="color: var(--success-color, green);">&#x2705; ${localize('editor.yaml_valid')}</span>`
+        : html``;
+
+    return html`
+      <div class="custom-item">
+        <div class="custom-item-header">
+          <span class="custom-item-index">#${index + 1}</span>
+          <button class="btn-icon" @click=${() => this._removeCustomSection(index)}
+            title=${localize('editor.remove')}>&#x274C;</button>
+        </div>
+        <div class="custom-item-fields">
+          <input type="text" .value=${section.key || ''}
+            placeholder=${localize('editor.custom_section_key_placeholder')}
+            @change=${(e: Event) => this._updateCustomSectionField(index, 'key', (e.target as HTMLInputElement).value)} />
+          <input type="text" .value=${section.heading || ''}
+            placeholder=${localize('editor.custom_section_heading_placeholder')}
+            @change=${(e: Event) => this._updateCustomSectionField(index, 'heading', (e.target as HTMLInputElement).value)} />
+          <input type="text" .value=${section.icon || ''}
+            placeholder="mdi:card-bulleted"
+            @change=${(e: Event) => this._updateCustomSectionField(index, 'icon', (e.target as HTMLInputElement).value)} />
+          <textarea rows="6" placeholder=${localize('editor.custom_section_yaml_placeholder')}
+            .value=${section.yaml || ''}
+            style="width: 100%;"
+            @change=${(e: Event) => this._updateCustomSectionYaml(index, (e.target as HTMLTextAreaElement).value)}></textarea>
+          <div class="custom-item-validation">${validationMsg}</div>
+        </div>
       </div>
     `;
   }
@@ -2454,6 +2511,66 @@ class Simon42DashboardStrategyEditor extends LitElement {
     customCards[index] = updated;
 
     const newConfig: Simon42StrategyConfig = { ...this._config, custom_cards: customCards };
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  // -- Custom Sections --------------------------------------------------
+
+  private _addCustomSection(): void {
+    const sections: CustomSection[] = [...(this._config.custom_sections || [])];
+    sections.push({ key: '', heading: '', yaml: '', parsed_config: undefined });
+    const newConfig: Simon42StrategyConfig = { ...this._config, custom_sections: sections };
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _removeCustomSection(index: number): void {
+    const sections: CustomSection[] = [...(this._config.custom_sections || [])];
+    sections.splice(index, 1);
+    const newConfig: Simon42StrategyConfig = { ...this._config };
+    if (sections.length === 0) delete newConfig.custom_sections;
+    else newConfig.custom_sections = sections;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _updateCustomSectionField(index: number, field: 'key' | 'heading' | 'icon', value: string): void {
+    const sections: CustomSection[] = [...(this._config.custom_sections || [])];
+    if (!sections[index]) return;
+    sections[index] = { ...sections[index], [field]: value };
+    const newConfig: Simon42StrategyConfig = { ...this._config, custom_sections: sections };
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _updateCustomSectionYaml(index: number, yamlString: string): void {
+    const sections: CustomSection[] = [...(this._config.custom_sections || [])];
+    if (!sections[index]) return;
+    const updated: CustomSection = { ...sections[index], yaml: yamlString };
+    delete updated._yaml_error;
+    if (yamlString.trim()) {
+      try {
+        const parsed = yaml.load(yamlString);
+        if (Array.isArray(parsed)) {
+          updated.parsed_config = parsed as Record<string, any>[];
+        } else if (parsed && typeof parsed === 'object') {
+          // single card → wrap into array for caller convenience
+          updated.parsed_config = [parsed as Record<string, any>];
+        } else {
+          updated._yaml_error = 'YAML must produce a card or list of cards';
+          updated.parsed_config = undefined;
+        }
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message.split('\n')[0] : 'Invalid YAML';
+        updated._yaml_error = message || 'Invalid YAML';
+        updated.parsed_config = undefined;
+      }
+    } else {
+      updated.parsed_config = undefined;
+    }
+    sections[index] = updated;
+    const newConfig: Simon42StrategyConfig = { ...this._config, custom_sections: sections };
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
   }
