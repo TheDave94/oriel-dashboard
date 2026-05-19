@@ -16,7 +16,8 @@ function getAreaNameForEntity(entityId: string, hass: HomeAssistant): string | n
     areaId = device?.area_id ?? null;
   }
   if (!areaId) return null;
-  return hass.areas?.[areaId]?.name ?? null;
+  const area = Reflect.get(hass.areas as Record<string, unknown>, areaId) as { name?: string } | undefined;
+  return area?.name ?? null;
 }
 
 function createBatterySection(
@@ -52,7 +53,8 @@ function createBatterySection(
         if (showArea) {
           const areaName = getAreaNameForEntity(e, hass);
           if (areaName) {
-            const friendly = hass.states[e]?.attributes?.friendly_name as string | undefined;
+            const st = Reflect.get(hass.states as Record<string, unknown>, e) as { attributes?: { friendly_name?: string } } | undefined;
+            const friendly = st?.attributes?.friendly_name;
             tile.name = friendly ? `${areaName} • ${friendly}` : areaName;
           }
         }
