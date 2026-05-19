@@ -21,7 +21,8 @@
     "energy": "Energy",
     "plants": "Plants",
     "agenda": "Agenda",
-    "todos": "To-do"
+    "todos": "To-do",
+    "persons": "People"
   },
   "summary": {
     "lights_on_one": "light on",
