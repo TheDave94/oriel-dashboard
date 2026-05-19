@@ -1181,6 +1181,10 @@ class Simon42DashboardStrategyEditor extends LitElement {
             this._config.show_unavailable_alert_badge === true,
             (checked) => this._toggleChanged('show_unavailable_alert_badge', checked, false))}
           <div class="description">${localize('editor.show_unavailable_alert_badge_desc')}</div>
+          ${this._renderCheckbox('show-now-playing-badge', localize('editor.show_now_playing_badge'),
+            this._config.show_now_playing_badge === true,
+            (checked) => this._toggleChanged('show_now_playing_badge', checked, false))}
+          <div class="description">${localize('editor.show_now_playing_badge_desc')}</div>
         </div>
       </div>
     `;
