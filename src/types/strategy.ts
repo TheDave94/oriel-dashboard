@@ -11,6 +11,7 @@
 export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'plants';
 export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'agenda';
 export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'todos';
+export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'persons';
 
 export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'overview',
@@ -21,6 +22,7 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'plants',
   'agenda',
   'todos',
+  'persons',
 ];
 
 // -- Main Strategy Config ---------------------------------------------
@@ -58,6 +60,7 @@ export interface Simon42StrategyConfig {
   agenda_calendar_entities?: string[]; // default: [] → all visible calendars
   show_todos_section?: boolean; // default: false (auto-hides when no todos)
   todos_entities?: string[]; // default: [] → all visible todo.* entities
+  show_persons_section?: boolean; // default: false (auto-hides when no persons)
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
