@@ -13,6 +13,7 @@ export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'en
 export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'todos';
 export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'persons';
 export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'vacuums';
+export type SectionKey = 'overview' | 'custom_cards' | 'areas' | 'weather' | 'energy' | 'maintenance';
 
 export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'overview',
@@ -25,6 +26,7 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'todos',
   'persons',
   'vacuums',
+  'maintenance',
 ];
 
 // -- Main Strategy Config ---------------------------------------------
@@ -64,6 +66,7 @@ export interface Simon42StrategyConfig {
   todos_entities?: string[]; // default: [] → all visible todo.* entities
   show_persons_section?: boolean; // default: false (auto-hides when no persons)
   show_vacuums_section?: boolean; // default: false (auto-hides without vacuum/mower)
+  show_maintenance_section?: boolean; // default: false (auto-hides when nothing pending)
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER

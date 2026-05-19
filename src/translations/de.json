@@ -23,7 +23,8 @@
     "agenda": "Agenda",
     "todos": "Aufgaben",
     "persons": "Personen",
-    "vacuums": "Saug- & Mähroboter"
+    "vacuums": "Saug- & Mähroboter",
+    "maintenance": "Anstehende Updates"
   },
   "summary": {
     "lights_on_one": "Licht an",

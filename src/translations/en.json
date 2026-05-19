@@ -23,7 +23,8 @@
     "agenda": "Agenda",
     "todos": "To-do",
     "persons": "People",
-    "vacuums": "Vacuums & Mowers"
+    "vacuums": "Vacuums & Mowers",
+    "maintenance": "Pending Updates"
   },
   "summary": {
     "lights_on_one": "light on",
