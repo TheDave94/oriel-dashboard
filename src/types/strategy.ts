@@ -51,6 +51,7 @@ export interface Simon42StrategyConfig {
   power_badge_entity?: string; // default: unset (no badge). Pick a sensor (e.g. main grid power in W).
   show_unavailable_alert_badge?: boolean; // default: false (auto-hides at zero)
   show_now_playing_badge?: boolean; // default: false (auto-hides when nothing's playing)
+  show_sun_badge?: boolean; // default: false (requires HA sun integration / sun.sun entity)
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
