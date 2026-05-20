@@ -5,7 +5,7 @@
 // vanilla HTMLElement + innerHTML pattern.
 // ====================================================================
 
-import { LitElement, html, css, nothing, type TemplateResult, type PropertyValues } from 'lit';
+import { LitElement, html, css, nothing, type TemplateResult } from 'lit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import yaml from 'js-yaml';
 
