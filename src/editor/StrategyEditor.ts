@@ -34,6 +34,7 @@ import { renderRoomPinsTab } from './tabs/RoomPinsTab';
 import { renderLightFavoritesTab } from './tabs/LightFavoritesTab';
 import { renderFavoritesTab } from './tabs/FavoritesTab';
 import { renderWeatherSensorsTab } from './tabs/WeatherSensorsTab';
+import { renderCustomCardsTab } from './tabs/CustomCardsTab';
 
 // -- Supporting types for the editor ------------------------------------
 
@@ -1830,45 +1831,17 @@ class Simon42DashboardStrategyEditor extends LitElement {
   }
 
   private _renderCustomCardsSection(): TemplateResult {
-    const customCards = this._config.custom_cards || [];
-    const customCardsHeading = this._config.custom_cards_heading || '';
-    const customCardsIcon = this._config.custom_cards_icon || '';
-
-    return html`
-      <div class="section">
-        <div class="section-title" style="display: flex; align-items: center; gap: 8px;">
-          ${localize('editor.section_custom_cards')}
-          <a href="https://github.com/TheRealSimon42/simon42-dashboard-strategy/blob/main/assets/Eigene-Karten-hinzufugen.gif"
-            target="_blank" rel="noopener"
-            style="color: var(--primary-color); text-decoration: none; font-size: 18px;"
-            title=${localize('editor.video_tutorial')}>&#x1F3AC;</a>
-        </div>
-        <div class="custom-item-row" style="margin-bottom: 12px;">
-          <input type="text" id="custom-cards-heading"
-            .value=${customCardsHeading}
-            placeholder=${localize('editor.custom_cards_heading_placeholder')}
-            style="flex: 2;"
-            @change=${this._customCardsHeadingChanged} />
-          <input type="text" id="custom-cards-icon"
-            .value=${customCardsIcon}
-            placeholder="mdi:cards"
-            style="flex: 1;"
-            @change=${this._customCardsIconChanged} />
-        </div>
-        <div class="description" style="margin-bottom: 8px;">${localize('editor.custom_cards_desc')}</div>
-
-        <div id="custom-cards-list">
-          ${customCards.length === 0
-            ? html`<div class="empty-state">${localize('editor.no_custom_cards')}</div>`
-            : customCards.map((card, index) => this._renderCustomCardItem(card, index))}
-        </div>
-
-        <button class="btn-primary" style="margin-top: 8px;" @click=${this._addCustomCard}>
-          ${localize('editor.add_custom_card')}
-        </button>
-        <div class="description">${localize('editor.custom_cards_help')}</div>
-      </div>
-    `;
+    if (!this._hass) return html``;
+    return renderCustomCardsTab({
+      config: this._config,
+      sectionMeta: Simon42DashboardStrategyEditor._sectionMeta,
+      onHeadingChange: (value) => this._customCardsHeadingChanged({ target: { value } } as unknown as Event),
+      onIconChange: (value) => this._customCardsIconChanged({ target: { value } } as unknown as Event),
+      onAddCard: () => this._addCustomCard(),
+      onRemoveCard: (index) => this._removeCustomCard(index),
+      onUpdateField: (index, field, value) => this._updateCustomCardField(index, field, value),
+      onUpdateYaml: (index, yamlString) => this._updateCustomCardYaml(index, yamlString),
+    });
   }
 
   private _renderCustomSectionsSection(): TemplateResult {
