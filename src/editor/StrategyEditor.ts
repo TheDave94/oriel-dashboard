@@ -33,6 +33,7 @@ import { renderAreasTab } from './tabs/AreasTab';
 import { renderRoomPinsTab } from './tabs/RoomPinsTab';
 import { renderLightFavoritesTab } from './tabs/LightFavoritesTab';
 import { renderFavoritesTab } from './tabs/FavoritesTab';
+import { renderWeatherSensorsTab } from './tabs/WeatherSensorsTab';
 
 // -- Supporting types for the editor ------------------------------------
 
@@ -1555,84 +1556,23 @@ class Simon42DashboardStrategyEditor extends LitElement {
   // Each row binds to a WeatherSensorConfig and exposes inline inputs for
   // icon / unit / round. Adding a row uses the same entity-search picker
   // pattern as favorites; removal is a single-click button.
-  //
-  // The picker filters to numeric-ish sensors by default but does not hard-
-  // restrict — any entity domain is accepted (the markdown row in the
-  // section renderer just calls `states(...)` against the id).
 
   private _renderWeatherSensorsSection(): TemplateResult {
-    const sensors = this._config.weather_sensors || [];
+    if (!this._hass) return html``;
     const allEntities = this._getAllEntitiesForSelect();
-    const entityMap = new Map(allEntities.map((e) => [e.entity_id, e.name]));
-    const filteredEntities = this._getFilteredEntities(this._weatherSensorSearch);
-
-    return html`
-      <div class="section">
-        <div class="section-title">${localize('editor.section_weather_sensors')}</div>
-        <div class="description" style="margin-left: 0; margin-bottom: 12px;">
-          ${localize('editor.weather_sensors_desc')}
-        </div>
-
-        <div id="weather-sensors-list" style="margin-bottom: 12px;">
-          ${sensors.length === 0
-            ? html`<div class="empty-state">${localize('editor.no_weather_sensors')}</div>`
-            : sensors.map((sensor, index) => {
-                const name = entityMap.get(sensor.entity) || sensor.entity;
-                return html`
-                  <div class="custom-item" data-sensor-index=${index}>
-                    <div class="custom-item-header">
-                      <strong>
-                        ${name}
-                        <span class="item-entity-id" style="font-weight: normal; margin-left: 8px;">
-                          ${sensor.entity}
-                        </span>
-                      </strong>
-                      <button class="btn-remove" @click=${() => this._removeWeatherSensor(index)}>&#x2715;</button>
-                    </div>
-                    <div class="custom-item-fields">
-                      <div class="custom-item-row">
-                        <input type="text" style="flex: 2;"
-                          placeholder=${localize('editor.weather_sensors_icon')}
-                          .value=${sensor.icon || ''}
-                          @change=${(e: Event) => this._updateWeatherSensor(index, 'icon', (e.target as HTMLInputElement).value)} />
-                        <input type="text" style="flex: 1;"
-                          placeholder=${localize('editor.weather_sensors_unit')}
-                          .value=${sensor.unit || ''}
-                          @change=${(e: Event) => this._updateWeatherSensor(index, 'unit', (e.target as HTMLInputElement).value)} />
-                        <input type="number" style="flex: 1;" min="0" max="6" step="1"
-                          placeholder=${localize('editor.weather_sensors_round')}
-                          .value=${sensor.round !== undefined ? String(sensor.round) : ''}
-                          @change=${(e: Event) => this._updateWeatherSensor(index, 'round', (e.target as HTMLInputElement).value)} />
-                      </div>
-                    </div>
-                  </div>
-                `;
-              })}
-        </div>
-
-        <div class="entity-search-picker">
-          <input type="text" class="entity-search-input"
-            placeholder=${localize('editor.weather_sensors_add')}
-            .value=${this._weatherSensorSearch}
-            @input=${(e: Event) => { this._weatherSensorSearch = (e.target as HTMLInputElement).value; this.requestUpdate(); }}
-            @blur=${() => { setTimeout(() => { this._weatherSensorSearch = ''; this.requestUpdate(); }, 200); }}
-          />
-          ${this._weatherSensorSearch.length >= 2 ? html`
-            <div class="entity-search-results">
-              ${filteredEntities.length > 0
-                ? filteredEntities.map((entity) => html`
-                  <div class="entity-search-result" @mousedown=${(e: Event) => { e.preventDefault(); this._addWeatherSensor(entity.entity_id); this._weatherSensorSearch = ''; this.requestUpdate(); }}>
-                    <span class="entity-search-name">${entity.name}</span>
-                    <span class="entity-search-id">${entity.entity_id}</span>
-                  </div>
-                `)
-                : html`<div class="entity-search-no-results">${localize('editor.no_results')}</div>`
-              }
-            </div>
-          ` : nothing}
-        </div>
-      </div>
-    `;
+    return renderWeatherSensorsTab({
+      config: this._config,
+      search: this._weatherSensorSearch,
+      entityNameMap: new Map(allEntities.map((e) => [e.entity_id, e.name])),
+      filteredEntities: this._getFilteredEntities(this._weatherSensorSearch),
+      onSearchChange: (value) => {
+        this._weatherSensorSearch = value;
+        this.requestUpdate();
+      },
+      onAddSensor: (entityId) => this._addWeatherSensor(entityId),
+      onRemoveSensor: (index) => this._removeWeatherSensor(index),
+      onUpdateSensor: (index, field, value) => this._updateWeatherSensor(index, field, value),
+    });
   }
 
   // Per device-class defaults used when adding a sensor via the picker.
