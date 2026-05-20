@@ -1,12 +1,20 @@
 name: Release Build
 
 # Triggered when release-please publishes a new GitHub Release.
-# Builds dist/ from source at the tagged commit, zips it, and attaches
-# the zip as a release asset. HACS picks up the zip via hacs.json's
-# `zip_release: true` flag.
+# Builds dist/ from source at the tagged commit and uploads every file
+# in dist/ as an individual release asset.
+#
+# Why individual assets (not a zip): HACS's `zip_release: true` flow
+# only works for integrations or single-file plugins — it downloads the
+# zip filename literally and never extracts it for plugin category.
+# For a code-split plugin like ours (multiple chunked .js files), the
+# correct HACS pattern is to upload each dist file as an individual
+# release asset. HACS plugin install then fetches all of them by
+# iterating release assets and resolves the entry-point via hacs.json
+# `filename`.
 #
 # Separates concerns from release-please: that workflow owns versioning
-# + changelog + tagging; this one owns producing the artifact users
+# + changelog + tagging; this one owns producing the artifacts users
 # install. Either can be retried independently.
 
 on:
@@ -23,7 +31,7 @@ permissions:
 
 jobs:
   build:
-    name: Build + attach dist zip
+    name: Build + attach dist assets
     runs-on: ubuntu-latest
     steps:
       - name: Determine ref
@@ -50,17 +58,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Package dist into a zip
-        run: |
-          cd dist
-          zip -r ../simon42-dashboard-strategy.zip .
-          cd ..
-          ls -la simon42-dashboard-strategy.zip
+      - name: List dist files
+        run: ls -la dist/
 
-      - name: Attach zip to the release
+      - name: Upload each dist file as an individual release asset
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ steps.ref.outputs.ref }}" \
-            simon42-dashboard-strategy.zip \
-            --clobber
+          cd dist
+          # --clobber overwrites any existing same-named asset (idempotent rerun).
+          gh release upload "${{ steps.ref.outputs.ref }}" * --clobber
