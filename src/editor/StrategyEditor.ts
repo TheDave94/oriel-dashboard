@@ -176,7 +176,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
         return {
           entity_id: entityId,
-          name: stateObj.attributes?.friendly_name || entityId.split('.')[1].replace(/_/g, ' '),
+          name: stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' '),
           area_id: areaId,
           device_area_id: areaId,
         };
@@ -192,7 +192,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
         const stateObj = this._hass!.states[entityId];
         return {
           entity_id: entityId,
-          name: stateObj.attributes?.friendly_name || entityId.split('.')[1].replace(/_/g, ' '),
+          name: stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' '),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -206,7 +206,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
         const stateObj = this._hass!.states[entityId];
         return {
           entity_id: entityId,
-          name: stateObj.attributes?.friendly_name || entityId.split('.')[1].replace(/_/g, ' '),
+          name: stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' '),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -227,7 +227,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
         const stateObj = this._hass!.states[entityId];
         return {
           entity_id: entityId,
-          name: stateObj.attributes?.friendly_name || entityId.split('.')[1].replace(/_/g, ' '),
+          name: stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' '),
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -2047,7 +2047,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
                   <div class="entity-list" data-area-id=${areaId} data-group=${group.key}>
                     ${entities.map((entityId) => {
                       const stateObj = hass.states[entityId];
-                      const name = stateObj?.attributes.friendly_name || entityId.split('.')[1].replace(/_/g, ' ');
+                      const name = stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' ');
                       const isEntityHidden = hiddenInGroup.includes(entityId);
                       return html`
                         <div class="entity-item">
@@ -2127,7 +2127,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
             <div class="entity-list" data-area-id=${areaId} data-group="badges">
               ${badgeCandidates.map((entityId) => {
                 const stateObj = hass.states[entityId];
-                const name = stateObj?.attributes.friendly_name || entityId.split('.')[1].replace(/_/g, ' ');
+                const name = stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' ');
                 const isHidden = hiddenInBadges.includes(entityId);
                 const showName = isNameShown(entityId);
 
@@ -2152,7 +2152,7 @@ class Simon42DashboardStrategyEditor extends LitElement {
                   <div class="badge-separator">${localize('editor.badges_additional')}</div>
                   ${additionalBadges.map((entityId) => {
                     const stateObj = hass.states[entityId];
-                    const name = stateObj?.attributes.friendly_name || entityId.split('.')[1].replace(/_/g, ' ');
+                    const name = stateObj?.attributes?.friendly_name || (entityId.split('.')[1] ?? entityId).replace(/_/g, ' ');
                     const showName = isNameShown(entityId);
 
                     return html`
@@ -3314,6 +3314,7 @@ async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant): Prom
 
     const domain = entity.entity_id.split('.')[0];
     const stateObj = hass.states[entity.entity_id];
+    if (!stateObj) continue;
     const deviceClass = stateObj.attributes?.device_class;
 
     if (domain === 'light') {
@@ -3364,10 +3365,10 @@ function getAreaBadgeCandidates(areaId: string, hass: HomeAssistant): string[] {
     if (!belongsToArea) continue;
     if (entity.hidden) continue;
     if (entity.labels?.includes('no_dboard')) continue;
-    if (!hass.states[entity.entity_id]) continue;
-
-    const domain = entity.entity_id.split('.')[0];
     const stateObj = hass.states[entity.entity_id];
+    if (!stateObj) continue;
+
+    const domain = entity.entity_id.split('.')[0] ?? '';
     const dc = stateObj.attributes?.device_class as string | undefined;
     const unit = stateObj.attributes?.unit_of_measurement as string | undefined;
 
@@ -3419,7 +3420,10 @@ function getAvailableBadgeEntities(
     if (excludeSet.has(entity.entity_id)) continue;
 
     const stateObj = hass.states[entity.entity_id];
-    const name = (stateObj.attributes?.friendly_name as string) || entity.entity_id.split('.')[1].replace(/_/g, ' ');
+    if (!stateObj) continue;
+    const name =
+      (stateObj.attributes?.friendly_name as string) ||
+      (entity.entity_id.split('.')[1] ?? entity.entity_id).replace(/_/g, ' ');
     available.push({ entity_id: entity.entity_id, name });
   }
 

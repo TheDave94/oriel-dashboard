@@ -32,6 +32,7 @@ class Simon42ViewClimateStrategy extends HTMLElement {
 
     for (const id of climateIds) {
       const state = hass.states[id];
+      if (!state) continue;
       const hvacAction = state.attributes?.hvac_action as string | undefined;
       const hvacState = state.state;
 

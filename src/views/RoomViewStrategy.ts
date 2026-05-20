@@ -250,8 +250,9 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     // Apply groups_options filters
     const applyGroupFilter = (groupKey: keyof RoomEntities): string[] => {
       const groupOpts = groupsOptions[groupKey];
-      if (!groupOpts) return roomEntities[groupKey];
-      let filtered = roomEntities[groupKey];
+      const baseList: string[] = roomEntities[groupKey] ?? [];
+      if (!groupOpts) return baseList;
+      let filtered: string[] = baseList;
       if (groupOpts.hidden?.length > 0) {
         const hiddenSet = new Set<string>(groupOpts.hidden);
         filtered = filtered.filter((e: string) => !hiddenSet.has(e));
@@ -740,11 +741,10 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     if (!roomModeEntity) {
       const candidates = Registry.getVisibleEntitiesForArea(area.area_id)
         .map((e) => e.entity_id)
-        .filter(
-          (id) =>
-            id.startsWith('input_select.') &&
-            /mode/i.test(id.split('.')[1])
-        );
+        .filter((id) => {
+          const objectId = id.split('.')[1];
+          return id.startsWith('input_select.') && objectId !== undefined && /mode/i.test(objectId);
+        });
       if (candidates.length === 1) roomModeEntity = candidates[0];
     }
 

@@ -15,18 +15,19 @@ import type { Simon42StrategyConfig, PersonData } from '../types/strategy';
  */
 export function collectPersons(hass: HomeAssistant, _config: Simon42StrategyConfig): PersonData[] {
   const personIds = Registry.getVisibleEntityIdsForDomain('person');
-
-  return personIds
-    .filter((id) => !!hass.states[id])
-    .map((id) => {
-      const state = hass.states[id];
-      return {
-        entity_id: id,
-        name: state.attributes?.friendly_name || id.split('.')[1],
-        state: state.state,
-        isHome: state.state === 'home',
-      };
+  const out: PersonData[] = [];
+  for (const id of personIds) {
+    const state = hass.states[id];
+    if (!state) continue;
+    const friendly = state.attributes?.friendly_name;
+    out.push({
+      entity_id: id,
+      name: typeof friendly === 'string' ? friendly : id.split('.')[1] ?? id,
+      state: state.state,
+      isHome: state.state === 'home',
     });
+  }
+  return out;
 }
 
 /**

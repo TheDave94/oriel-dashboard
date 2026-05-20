@@ -16,10 +16,10 @@
     "noImplicitReturns": true,
     "strictNullChecks": true,
     "noFallthroughCasesInSwitch": true,
-    // noUncheckedIndexedAccess: surfaces ~54 real "possibly undefined"
-    // sites across the codebase (hass.states[id] without guard, etc.).
-    // Worth enabling but requires a dedicated typing pass to add `?.`
-    // guards across the editor + cards. Deferred to its own beta.
+    // Indexed access of T returns `T | undefined`, forcing every
+    // `hass.states[id]` / `entities[i]` to be guarded explicitly.
+    // Catches the "value isn't there" bug class at type-check time.
+    "noUncheckedIndexedAccess": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     // Pin legacy class-field semantics regardless of target.
