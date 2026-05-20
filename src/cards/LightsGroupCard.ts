@@ -297,16 +297,38 @@ class Simon42LightsGroupCard extends LitElement {
       return { topLevelIds: [...lightIds], nodes };
     }
 
+    // Candidate set starts from state-matched visible lights, but for
+    // the *purpose of nesting only* we also surface members of any
+    // visible group — even ones the user has hidden globally
+    // (`hidden_by: user`) or whose individual state doesn't match the
+    // current on/off partition. The membership relationship is
+    // authoritative inside a parent group; the visibility filter only
+    // applies to standalone tiles. Hidden / opposite-state members
+    // still won't appear at top level (see `topLevelIds` filter below);
+    // they only render nested under their parent.
     const candidateSet = new Set(lightIds);
+    for (const parentId of lightIds) {
+      const members = this._getState(parentId)?.attributes?.entity_id;
+      if (!Array.isArray(members)) continue;
+      for (const m of members) {
+        if (typeof m !== 'string' || !m.startsWith('light.')) continue;
+        if (!this._getState(m)) continue; // skip entities without state
+        candidateSet.add(m);
+      }
+    }
     const rawChildren = new Map<string, string[]>();
-    for (const entityId of lightIds) {
+    for (const entityId of candidateSet) {
       rawChildren.set(entityId, this._getGroupChildIds(entityId, candidateSet));
     }
 
     const descendantCache = new Map<string, Set<string>>();
     const nodes = new Map<string, LightHierarchyNode>();
     const allNestedChildIds = new Set<string>();
-    for (const entityId of lightIds) {
+    // Walk the *expanded* candidateSet (state-matched visible parents
+    // PLUS any group member surfaced via the expansion above) so hidden
+    // children that are themselves groups still get their own sub-tree
+    // recorded in the nodes map.
+    for (const entityId of candidateSet) {
       const directChildIds = rawChildren.get(entityId) || [];
       const prunedChildIds = directChildIds.filter((childId) => {
         return !directChildIds.some((siblingId) => {
@@ -320,6 +342,10 @@ class Simon42LightsGroupCard extends LitElement {
       }
     }
 
+    // Top-level still comes from `lightIds` (the original
+    // visible+state-matched set). Hidden children added to candidateSet
+    // are never top-level — they only render nested inside their
+    // parent's container.
     const topLevelIds = lightIds
       .filter((entityId) => !allNestedChildIds.has(entityId))
       .sort((a, b) => this._sortByLastChanged(a, b));
