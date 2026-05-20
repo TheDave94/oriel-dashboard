@@ -448,6 +448,7 @@ class Simon42ZonePresenceCard extends LitElement {
     const entries = this._entries();
     if (!Number.isFinite(idx) || idx < 0 || idx >= entries.length) return;
     const entry = entries[idx];
+    if (!entry) return;
     const actions = this._resolveActions(entry);
     // Build a config block hass-action recognises (same shape as a
     // tile-card config). Pass the per-entry entity so more-info /

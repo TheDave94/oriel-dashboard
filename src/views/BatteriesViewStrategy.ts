@@ -97,6 +97,7 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
 
     for (const entityId of batteryEntities) {
       const state = hass.states[entityId];
+      if (!state) continue;
       if (entityId.startsWith('binary_sensor.')) {
         // Unavailable binary battery sensors aren't reporting; mirror the
         // sensor.* path and respect the user's chosen bucket.
@@ -126,8 +127,8 @@ class Simon42ViewBatteriesStrategy extends HTMLElement {
 
     // Sort each group by battery level (lowest first)
     const sortByLevel = (a: string, b: string): number => {
-      const valA = parseFloat(hass.states[a]?.state);
-      const valB = parseFloat(hass.states[b]?.state);
+      const valA = parseFloat(hass.states[a]?.state ?? '');
+      const valB = parseFloat(hass.states[b]?.state ?? '');
       if (isNaN(valA)) return -1;
       if (isNaN(valB)) return 1;
       return valA - valB;

@@ -49,7 +49,10 @@ function buildRoomModeCard(
   if (!roomModeEntity) {
     const candidates = Registry.getVisibleEntitiesForArea(areaId)
       .map((e) => e.entity_id)
-      .filter((id) => id.startsWith('input_select.') && /mode/i.test(id.split('.')[1]));
+      .filter((id) => {
+        const objectId = id.split('.')[1];
+        return id.startsWith('input_select.') && objectId !== undefined && /mode/i.test(objectId);
+      });
     if (candidates.length === 1) roomModeEntity = candidates[0];
   }
   if (!roomModeEntity || !hass.states[roomModeEntity]) return null;

@@ -46,7 +46,8 @@ function escapeRegExp(str: string): string {
 function getFriendlyName(entityId: string, hass: HomeAssistant): string | null {
   const state = hass.states[entityId];
   if (!state) return null;
-  return (state.attributes?.friendly_name as string | undefined) ?? entityId.split('.')[1].replace(/_/g, ' ');
+  const objectId = entityId.split('.')[1] ?? entityId;
+  return (state.attributes?.friendly_name as string | undefined) ?? objectId.replace(/_/g, ' ');
 }
 
 // -- Exported functions -----------------------------------------------
@@ -114,7 +115,8 @@ export function stripCoverType(entityId: string, hass: HomeAssistant): string {
   }
 
   // Fallback to original friendly name
-  return (state.attributes?.friendly_name as string | undefined) ?? entityId.split('.')[1].replace(/_/g, ' ');
+  const objectId = entityId.split('.')[1] ?? entityId;
+  return (state.attributes?.friendly_name as string | undefined) ?? objectId.replace(/_/g, ' ');
 }
 
 /**

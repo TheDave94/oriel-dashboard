@@ -292,7 +292,7 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
           if (extraCards.length > 0) {
             // Append to the last section added (handles array sections like areas)
             const lastSection = overviewSections[overviewSections.length - 1];
-            if (lastSection.cards) {
+            if (lastSection?.cards) {
               lastSection.cards.push(...extraCards);
             }
           }
