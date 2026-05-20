@@ -7,7 +7,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { Simon42StrategyConfig, SectionKey, CustomCard } from '../types/strategy';
+import type { Simon42StrategyConfig, CustomCard, CustomSection } from '../types/strategy';
 import { DEFAULT_SECTIONS_ORDER } from '../types/strategy';
 import type { LovelaceViewConfig, LovelaceSectionConfig, LovelaceBadgeConfig, LovelaceCardConfig } from '../types/lovelace';
 import { Registry } from '../Registry';
@@ -26,33 +26,32 @@ import { createMaintenanceSection } from '../sections/MaintenanceSection';
 import { createOverviewView } from '../utils/view-builder';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
 
+/** Built-in section keys (collision check for custom_sections). */
+const BUILTIN_SECTION_KEYS = new Set<string>(['overview', 'custom_cards', 'areas', 'weather', 'energy']);
+
 /**
  * Normalizes a sections_order array: removes invalid/duplicate keys,
  * appends any missing keys at the end (forward compatibility).
+ *
+ * Accepts user-defined custom_section keys alongside built-in SectionKeys.
+ * Unknown keys (typos, removed sections) are dropped silently.
  */
-function normalizeSectionsOrder(order: SectionKey[]): SectionKey[] {
-  const validKeys = new Set<SectionKey>([
-    'overview',
-    'custom_cards',
-    'areas',
-    'weather',
-    'energy',
-    'plants',
-    'agenda',
-    'todos',
-    'persons',
-    'vacuums',
-    'maintenance',
-  ]);
-  const seen = new Set<SectionKey>();
-  const result: SectionKey[] = [];
+function normalizeSectionsOrder(order: string[], customSectionKeys: string[]): string[] {
+  const validKeys = new Set<string>([...BUILTIN_SECTION_KEYS, ...customSectionKeys]);
+  const seen = new Set<string>();
+  const result: string[] = [];
   for (const key of order) {
     if (validKeys.has(key) && !seen.has(key)) {
       result.push(key);
       seen.add(key);
     }
   }
+  // Append any missing built-ins in their default order
   for (const key of DEFAULT_SECTIONS_ORDER) {
+    if (!seen.has(key)) result.push(key);
+  }
+  // Append any custom sections the user didn't explicitly position
+  for (const key of customSectionKeys) {
     if (!seen.has(key)) result.push(key);
   }
   return result;
@@ -72,6 +71,32 @@ function inheritVisibilityFromCard(parsedConfig: unknown): unknown[] | undefined
   if (pc.type === 'conditional' && Array.isArray(pc.conditions)) return pc.conditions;
   if (Array.isArray(pc.visibility)) return pc.visibility;
   return undefined;
+}
+
+/**
+ * Build a LovelaceSectionConfig from a user-declared CustomSection.
+ * Returns null when the section has no cards (auto-hide).
+ *
+ * Defensive: only accepts an array of card configs (the editor parses YAML
+ * to that shape). Malformed entries are dropped.
+ */
+function buildCustomSection(section: CustomSection): LovelaceSectionConfig | null {
+  if (!Array.isArray(section.parsed_config) || section.parsed_config.length === 0) return null;
+  const validCards = section.parsed_config.filter(
+    (c): c is LovelaceCardConfig => typeof (c as { type?: unknown }).type === 'string'
+  );
+  if (validCards.length === 0) return null;
+  const cards: LovelaceCardConfig[] = [];
+  if (section.heading) {
+    cards.push({
+      type: 'heading',
+      heading: section.heading,
+      heading_style: 'title',
+      ...(section.icon ? { icon: section.icon } : {}),
+    });
+  }
+  cards.push(...validCards);
+  return { type: 'grid', cards };
 }
 
 /**
@@ -139,9 +164,9 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     const showSearchCard = dashboardConfig.show_search_card === true;
     const groupByFloors = dashboardConfig.group_by_floors === true;
 
-    // Group custom cards by target section
+    // Group custom cards by target section (built-in OR user-defined custom_sections key)
     const allCustomCards = dashboardConfig.custom_cards || [];
-    const customCardsBySection = new Map<SectionKey, CustomCard[]>();
+    const customCardsBySection = new Map<string, CustomCard[]>();
     for (const card of allCustomCards) {
       const target = card.target_section || 'custom_cards';
       const list = customCardsBySection.get(target) || [];
@@ -152,7 +177,21 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     // Hidden section headings (per-section opt-in)
     const hiddenHeadings = new Set(dashboardConfig.hidden_section_headings || []);
 
-    // Build sections
+    // Process custom_sections: validate keys (no collision with built-ins, no duplicates)
+    // and pre-build their LovelaceSectionConfig. Invalid entries are dropped silently.
+    const rawCustomSections = dashboardConfig.custom_sections || [];
+    const seenCustomKeys = new Set<string>();
+    const customSections: { key: string; section: LovelaceSectionConfig | null }[] = [];
+    for (const cs of rawCustomSections) {
+      if (!cs.key || typeof cs.key !== 'string') continue;
+      if (BUILTIN_SECTION_KEYS.has(cs.key)) continue; // can't shadow built-ins
+      if (seenCustomKeys.has(cs.key)) continue; // first wins on duplicates
+      seenCustomKeys.add(cs.key);
+      customSections.push({ key: cs.key, section: buildCustomSection(cs) });
+    }
+    const customSectionKeys = customSections.map((s) => s.key);
+
+    // Build built-in sections
     const overviewSection = createOverviewSection({ someSensorId, showSearchCard, config: dashboardConfig, hass });
     const customCardsSection = createCustomCardsSection(
       customCardsBySection.get('custom_cards') || [],
@@ -168,8 +207,8 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       hiddenHeadings.has('areas_other'),
     );
 
-    // Section map: key → section(s) or null
-    const sectionMap = new Map<SectionKey, LovelaceSectionConfig | LovelaceSectionConfig[] | null>([
+    // Section map: key → section(s) or null. Keyed by string so custom keys fit alongside built-ins.
+    const sectionMap = new Map<string, LovelaceSectionConfig | LovelaceSectionConfig[] | null>([
       ['overview', overviewSection],
       ['custom_cards', customCardsSection],
       ['areas', areasSections],
@@ -180,7 +219,8 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
           showWeather,
           dashboardConfig.show_weather_forecast_card !== false,
           dashboardConfig.weather_sensors || [],
-          dashboardConfig.weather_presentation
+          dashboardConfig.weather_presentation,
+          hiddenHeadings.has('weather'),
         ),
       ],
       [
@@ -188,13 +228,10 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
         createEnergySection(
           showEnergy,
           dashboardConfig.energy_link_dashboard !== false,
-          dashboardConfig.show_energy_distribution_card !== false
+          dashboardConfig.show_energy_distribution_card !== false,
+          hiddenHeadings.has('energy'),
         ),
       ],
-      ['weather', createWeatherSection(weatherEntity ?? null, showWeather, hiddenHeadings.has('weather'))],
-      ['energy', createEnergySection(showEnergy, dashboardConfig.energy_link_dashboard !== false, hiddenHeadings.has('energy'))],
-      ['weather', createWeatherSection(weatherEntity ?? null, showWeather)],
-      ['energy', createEnergySection(showEnergy, dashboardConfig.energy_link_dashboard !== false)],
       ['plants', createPlantsSection(hass, dashboardConfig.show_plants_section === true)],
       ['agenda', createAgendaSection(
         hass,
@@ -206,12 +243,18 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       ['vacuums', createVacuumsSection(hass, dashboardConfig.show_vacuums_section === true)],
       ['maintenance', createMaintenanceSection(hass, dashboardConfig.show_maintenance_section === true)],
     ]);
+    for (const { key, section } of customSections) {
+      sectionMap.set(key, section);
+    }
 
     // Per-section conditional visibility (e.g. show agenda only on workdays).
     const sectionVisibility = dashboardConfig.section_visibility || {};
 
     // Assemble in configured order, appending assigned custom cards to each section
-    const sectionsOrder = normalizeSectionsOrder(dashboardConfig.sections_order ?? DEFAULT_SECTIONS_ORDER);
+    const sectionsOrder = normalizeSectionsOrder(
+      (dashboardConfig.sections_order as string[] | undefined) ?? DEFAULT_SECTIONS_ORDER,
+      customSectionKeys,
+    );
     const overviewSections: LovelaceSectionConfig[] = [];
     for (const key of sectionsOrder) {
       const rule = Reflect.get(sectionVisibility, key) as { entity?: string; state?: string } | undefined;
