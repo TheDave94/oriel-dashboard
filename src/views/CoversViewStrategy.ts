@@ -2,13 +2,24 @@
 // VIEW STRATEGY — COVERS (reactive group cards)
 // ====================================================================
 
+import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig } from '../types/lovelace';
+import type { Simon42StrategyConfig } from '../types/strategy';
 import { localize } from '../utils/localize';
 import { resolveDensity } from '../utils/density';
 
+interface CoversViewStrategyParams {
+  entities?: string[];
+  device_classes?: string[];
+  config?: Simon42StrategyConfig;
+}
+
 class Simon42ViewCoversStrategy extends HTMLElement {
-  static async generate(config: any, _hass: any): Promise<LovelaceViewConfig> {
-    const strategyConfig = config.config || {};
+  static async generate(
+    config: CoversViewStrategyParams,
+    _hass: HomeAssistant,
+  ): Promise<LovelaceViewConfig> {
+    const strategyConfig: Simon42StrategyConfig = config.config || {};
     const showPartiallyOpen = strategyConfig.show_partially_open_covers === true;
     const groupByFloors = strategyConfig.group_covers_by_floors === true;
 

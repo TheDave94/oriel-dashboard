@@ -2,12 +2,24 @@
 // VIEW STRATEGY — LIGHTS (reactive group cards)
 // ====================================================================
 
+import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig } from '../types/lovelace';
+import type { Simon42StrategyConfig } from '../types/strategy';
 import { resolveDensity } from '../utils/density';
 
+interface LightsViewStrategyParams {
+  entities?: string[];
+  /** Legacy field — strategy entrypoint passes `dashboardConfig`. */
+  config?: Simon42StrategyConfig;
+  dashboardConfig?: Simon42StrategyConfig;
+}
+
 class Simon42ViewLightsStrategy extends HTMLElement {
-  static async generate(config: any, _hass: any): Promise<LovelaceViewConfig> {
-    const dashboardConfig = config.dashboardConfig || config.config || {};
+  static async generate(
+    config: LightsViewStrategyParams,
+    _hass: HomeAssistant,
+  ): Promise<LovelaceViewConfig> {
+    const dashboardConfig: Simon42StrategyConfig = config.dashboardConfig || config.config || {};
     const groupByFloors = dashboardConfig.group_lights_by_floors === true;
     const nestedGroups = dashboardConfig.nested_light_groups === true;
     const sortBy = dashboardConfig.lights_sort_by === 'name' ? 'name' : 'last_changed';

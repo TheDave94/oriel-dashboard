@@ -69,6 +69,18 @@ const COVER_TERM_REGEXPS = COVER_TERMS.map((term) => new RegExp(`^${term}\\s+|\\
 
 const DEFAULT_DEVICE_CLASSES = ['awning', 'blind', 'curtain', 'shade', 'shutter', 'window'];
 
+/**
+ * HA's HassEntity.attributes is typed `Record<string, any>` upstream;
+ * narrow it locally for the cover-specific fields we read. Replaces
+ * three `(state.attributes as any)?.foo` sites with one typed helper.
+ */
+interface CoverAttrs {
+  device_class?: string;
+  current_position?: number;
+}
+const coverAttrs = (state: { attributes?: Record<string, unknown> } | undefined): CoverAttrs =>
+  (state?.attributes ?? {}) as CoverAttrs;
+
 class Simon42CoversGroupCard extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -182,7 +194,7 @@ class Simon42CoversGroupCard extends LitElement {
     return Registry.getVisibleEntityIdsForDomain('cover').filter((id) => {
       const state = hass.states[id];
       if (!state) return false;
-      const deviceClass = (state.attributes as any)?.device_class as string | undefined;
+      const deviceClass = coverAttrs(state).device_class;
       // Covers without device_class only match the main group (multiple classes), not specialized groups like awnings/windows
       if (!deviceClass) return this._deviceClasses.length > 1;
       return this._deviceClasses.includes(deviceClass);
@@ -199,7 +211,7 @@ class Simon42CoversGroupCard extends LitElement {
       const state = this.hass.states[id];
       if (!state) continue;
 
-      const position = (state.attributes as any)?.current_position;
+      const position = coverAttrs(state).current_position;
       const hasPosition = typeof position === 'number';
       const isMoving = state.state === 'opening' || state.state === 'closing';
 
@@ -398,7 +410,7 @@ class Simon42CoversGroupCard extends LitElement {
       .map((id) => {
         const state = this.hass?.states[id];
         if (!state) return id;
-        const position = (state.attributes as any)?.current_position;
+        const position = coverAttrs(state).current_position;
         if (typeof position === 'number') {
           return `${id}:${state.state}:${position}`;
         }

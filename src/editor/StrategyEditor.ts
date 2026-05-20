@@ -95,6 +95,16 @@ class Simon42DashboardStrategyEditor extends LitElement {
     namesVisible: string[];
     namesHidden: string[];
   }>();
+  /**
+   * Identity of the `hass.entities` snapshot the cache was built
+   * against. HA replaces the entity-registry map wholesale on
+   * registry updates (entity renames, area assignments, hidden_by
+   * flips), so an identity comparison catches every real change.
+   * Without this, the editor would show stale entity lists until
+   * the user closed and reopened it. Mirrors the Registry-level
+   * invalidation pinned in beta.19.
+   */
+  private _areaEntitiesCacheKey: unknown = null;
 
   // Drag state (not reactive — no render needed)
   private _draggedElement: HTMLElement | null = null;
@@ -105,6 +115,13 @@ class Simon42DashboardStrategyEditor extends LitElement {
   set hass(hass: HomeAssistant) {
     const oldHass = this._hass;
     this._hass = hass;
+    // Invalidate the area-entities cache when HA replaces the entity
+    // registry. Without this, renames / area moves done in HA while
+    // the editor is open don't appear until the editor reloads.
+    if (hass.entities !== this._areaEntitiesCacheKey) {
+      this._areaEntitiesCache.clear();
+      this._areaEntitiesCacheKey = hass.entities;
+    }
     if (!oldHass) this.requestUpdate();
   }
 
