@@ -27,6 +27,7 @@ import { localize } from '../utils/localize';
 import { isBadgeCandidate, isDefaultShowName, resolveShowName } from '../utils/badge-utils';
 import { renderViewsTab } from './tabs/ViewsTab';
 import { renderOverviewTab } from './tabs/OverviewTab';
+import { renderSummariesTab } from './tabs/SummariesTab';
 
 // -- Supporting types for the editor ------------------------------------
 
@@ -1527,148 +1528,28 @@ class Simon42DashboardStrategyEditor extends LitElement {
   }
 
   private _renderSummariesSection(): TemplateResult {
-    const summariesColumns = this._config.summaries_columns || 2;
-    const showLightSummary = this._config.show_light_summary !== false;
-    const groupLightsByFloors = this._config.group_lights_by_floors === true;
-    const nestedLightGroups = this._config.nested_light_groups === true;
-    const lightsSortBy = this._config.lights_sort_by === 'name' ? 'name' : 'last_changed';
-    const showCoversSummary = this._config.show_covers_summary !== false;
-    const showPartiallyOpenCovers = this._config.show_partially_open_covers === true;
-    const groupCoversByFloors = this._config.group_covers_by_floors === true;
-    const showSecuritySummary = this._config.show_security_summary !== false;
-    const showClimateSummary = this._config.show_climate_summary === true;
-    const showBatterySummary = this._config.show_battery_summary !== false;
-    const hideMobileAppBatteries = this._config.hide_mobile_app_batteries === true;
-    const hideBatteryNotesEntities = this._config.hide_battery_notes_entities === true;
-    const batteryCriticalThreshold = this._config.battery_critical_threshold ?? 20;
-    const batteryLowThreshold = this._config.battery_low_threshold ?? 50;
-    const showAreaInBatteryView = this._config.show_area_in_battery_view === true;
-    const unavailableBatteriesBucket = this._config.unavailable_batteries_bucket === 'critical' ? 'critical' : 'good';
-
-    return html`
-      <div class="section">
-        <div class="section-title">${localize('editor.section_summaries')}</div>
-
-        <div class="form-row">
-          <input type="radio" id="summaries-2-columns" name="summaries-columns" value="2"
-            ?checked=${summariesColumns === 2}
-            @change=${() => this._summariesColumnsChanged(2)} />
-          <label for="summaries-2-columns">${localize('editor.columns_2')}</label>
-        </div>
-        <div class="form-row">
-          <input type="radio" id="summaries-4-columns" name="summaries-columns" value="4"
-            ?checked=${summariesColumns === 4}
-            @change=${() => this._summariesColumnsChanged(4)} />
-          <label for="summaries-4-columns">${localize('editor.columns_4')}</label>
-        </div>
-        <div class="description">${localize('editor.columns_desc')}</div>
-
-        ${this._renderCheckbox('show-light-summary', localize('editor.show_light_summary'), showLightSummary,
-          (checked) => this._toggleChanged('show_light_summary', checked, true))}
-
-        ${this._renderCheckbox('group-lights-by-floors', localize('editor.group_lights_by_floors'), groupLightsByFloors,
-          (checked) => this._toggleChanged('group_lights_by_floors', checked, false))}
-        <div class="description">${localize('editor.group_lights_by_floors_desc')}</div>
-
-        ${this._renderCheckbox('nested-light-groups', localize('editor.nested_light_groups'), nestedLightGroups,
-          (checked) => this._toggleChanged('nested_light_groups', checked, false))}
-        <div class="description">${localize('editor.nested_light_groups_desc')}</div>
-
-        <div style="font-size: 13px; font-weight: 500; color: var(--primary-text-color); margin-top: 12px; margin-bottom: 4px;">
-          ${localize('editor.lights_sort_by')}
-        </div>
-        <div class="form-row">
-          <input type="radio" id="lights-sort-last-changed" name="lights-sort-by" value="last_changed"
-            ?checked=${lightsSortBy === 'last_changed'}
-            @change=${() => this._lightsSortByChanged('last_changed')} />
-          <label for="lights-sort-last-changed">${localize('editor.lights_sort_by_last_changed')}</label>
-        </div>
-        <div class="form-row">
-          <input type="radio" id="lights-sort-name" name="lights-sort-by" value="name"
-            ?checked=${lightsSortBy === 'name'}
-            @change=${() => this._lightsSortByChanged('name')} />
-          <label for="lights-sort-name">${localize('editor.lights_sort_by_name')}</label>
-        </div>
-        <div class="description">${localize('editor.lights_sort_by_desc')}</div>
-
-        ${this._renderCheckbox('show-covers-summary', localize('editor.show_covers_summary'), showCoversSummary,
-          (checked) => this._toggleChanged('show_covers_summary', checked, true))}
-
-        <div style="margin-left: 26px; margin-bottom: 8px;">
-          ${this._renderCheckbox('show-partially-open-covers', localize('editor.show_partially_open_covers'), showPartiallyOpenCovers,
-            (checked) => this._toggleChanged('show_partially_open_covers', checked, false))}
-          <div class="description">${localize('editor.show_partially_open_covers_desc')}</div>
-
-          ${this._renderCheckbox('group-covers-by-floors', localize('editor.group_covers_by_floors'), groupCoversByFloors,
-            (checked) => this._toggleChanged('group_covers_by_floors', checked, false))}
-          <div class="description">${localize('editor.group_covers_by_floors_desc')}</div>
-        </div>
-
-        ${this._renderCheckbox('show-security-summary', localize('editor.show_security_summary'), showSecuritySummary,
-          (checked) => this._toggleChanged('show_security_summary', checked, true))}
-
-        <div style="margin-left: 26px; margin-bottom: 8px;">
-          ${this._renderSecurityExtraEntitiesPicker()}
-        </div>
-
-        ${this._renderCheckbox('show-climate-summary', localize('editor.show_climate_summary'), showClimateSummary,
-          (checked) => this._toggleChanged('show_climate_summary', checked, false))}
-        <div class="description">${localize('editor.show_climate_summary_desc')}</div>
-
-        ${this._renderCheckbox('show-battery-summary', localize('editor.show_battery_summary'), showBatterySummary,
-          (checked) => this._toggleChanged('show_battery_summary', checked, true))}
-
-        <div style="margin-left: 26px; margin-bottom: 8px;">
-          ${this._renderCheckbox('hide-mobile-app-batteries', localize('editor.hide_mobile_app_batteries'), hideMobileAppBatteries,
-            (checked) => this._toggleChanged('hide_mobile_app_batteries', checked, false))}
-          <div class="description">${localize('editor.hide_mobile_app_batteries_desc')}</div>
-
-          ${this._renderCheckbox('show-area-in-battery-view', localize('editor.show_area_in_battery_view'), showAreaInBatteryView,
-            (checked) => this._toggleChanged('show_area_in_battery_view', checked, false))}
-          <div class="description">${localize('editor.show_area_in_battery_view_desc')}</div>
-          ${this._renderCheckbox('hide-battery-notes-entities', localize('editor.hide_battery_notes_entities'), hideBatteryNotesEntities,
-            (checked) => this._toggleChanged('hide_battery_notes_entities', checked, false))}
-          <div class="description">${localize('editor.hide_battery_notes_entities_desc')}</div>
-
-          <div style="font-size: 13px; font-weight: 500; color: var(--primary-text-color); margin-top: 12px; margin-bottom: 4px;">
-            ${localize('editor.battery_thresholds')}
-          </div>
-          <div class="form-row">
-            <label for="battery-critical-threshold" style="min-width: 140px;">${localize('editor.battery_critical_below')}</label>
-            <input type="number" id="battery-critical-threshold" min="1" max="99"
-              .value=${String(batteryCriticalThreshold)}
-              style="width: 70px;"
-              @change=${this._batteryCriticalChanged} /> %
-          </div>
-          <div class="form-row">
-            <label for="battery-low-threshold" style="min-width: 140px;">${localize('editor.battery_low_below')}</label>
-            <input type="number" id="battery-low-threshold" min="1" max="99"
-              .value=${String(batteryLowThreshold)}
-              style="width: 70px;"
-              @change=${this._batteryLowChanged} /> %
-          </div>
-          <div class="description">${localize('editor.battery_thresholds_desc')}</div>
-
-          <div style="font-size: 13px; font-weight: 500; color: var(--primary-text-color); margin-top: 12px; margin-bottom: 4px;">
-            ${localize('editor.unavailable_batteries_bucket')}
-          </div>
-          <div class="form-row">
-            <input type="radio" id="unavailable-batteries-critical" name="unavailable-batteries-bucket" value="critical"
-              ?checked=${unavailableBatteriesBucket === 'critical'}
-              @change=${() => this._unavailableBatteriesBucketChanged('critical')} />
-            <label for="unavailable-batteries-critical">${localize('editor.unavailable_batteries_critical')}</label>
-          </div>
-          <div class="form-row">
-            <input type="radio" id="unavailable-batteries-good" name="unavailable-batteries-bucket" value="good"
-              ?checked=${unavailableBatteriesBucket === 'good'}
-              @change=${() => this._unavailableBatteriesBucketChanged('good')} />
-            <label for="unavailable-batteries-good">${localize('editor.unavailable_batteries_good')}</label>
-          </div>
-          <div class="description">${localize('editor.unavailable_batteries_bucket_desc')}</div>
-        </div>
-      </div>
-    `;
+    // Migrated to ha-form in beta.22. Security extras passed as a
+    // slot since it's a stateful searchable picker — converting it
+    // to a `selector: { entity: { multiple: true } }` will land in
+    // a follow-up beta.
+    if (!this._hass) return html``;
+    return renderSummariesTab({
+      hass: this._hass,
+      config: this._config,
+      securityExtraSlot: this._renderSecurityExtraEntitiesPicker(),
+      onChange: (patch) => {
+        const newConfig: Simon42StrategyConfig = { ...this._config, ...patch };
+        for (const key of Object.keys(patch) as Array<keyof typeof patch>) {
+          if (patch[key] === undefined) {
+            delete (newConfig as Record<string, unknown>)[key as string];
+          }
+        }
+        this._config = newConfig;
+        this._fireConfigChanged(newConfig);
+      },
+    });
   }
+
 
   private _renderSecurityExtraEntitiesPicker(): TemplateResult {
     const extras = this._config.security_extra_entities || [];
