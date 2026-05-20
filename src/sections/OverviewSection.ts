@@ -26,11 +26,24 @@ import { localize } from '../utils/localize';
 const ZONE_DEVICE_CLASSES = new Set(['occupancy', 'motion', 'presence']);
 
 /**
- * Build the same room-mode tile that the Room view renders for the
- * given area, suitable for embedding in any section. Returns null when
- * neither explicit areas_options config nor the auto-detect heuristic
- * (single `input_select.*` with "mode" in the object_id, assigned to
- * the area) resolves an entity.
+ * Build the compact room-mode tile pinned into the favorites grid.
+ *
+ * Compared to RoomViewStrategy's room-mode emit (full-row, with the
+ * inline select-options chip picker), this is intentionally smaller:
+ *
+ *   - No `select-options` feature. With 6+ modes the chips wrap 2-3
+ *     rows, tripling the tile's height — too tall for a glance-tile
+ *     in the favorites grid. The full picker is reachable by tapping
+ *     the tile (default tile tap_action = more-info, which opens
+ *     HA's input_select picker dialog).
+ *   - The sticky-lock custom tile feature is preserved when
+ *     configured — it's a single icon button, doesn't bloat height.
+ *   - `columns: 6` so a sibling pinned card (zone-presence, etc.)
+ *     sits beside it on the same row. `rows: 'auto'` so the lock
+ *     feature row is reserved properly.
+ *
+ * Returns null when neither explicit areas_options config nor the
+ * auto-detect heuristic resolves an entity.
  */
 function buildRoomModeCard(
   areaId: string,
@@ -47,7 +60,7 @@ function buildRoomModeCard(
   }
   if (!roomModeEntity || !hass.states[roomModeEntity]) return null;
 
-  const features: Array<Record<string, unknown>> = [{ type: 'select-options' }];
+  const features: Array<Record<string, unknown>> = [];
   const stickyEntity = areaOpts.room_mode_sticky_entity;
   if (stickyEntity && hass.states[stickyEntity]) {
     features.push({
@@ -62,12 +75,7 @@ function buildRoomModeCard(
     name: localize('room.room_mode'),
     icon: config.room_mode_icon || 'mdi:home-account',
     color: 'accent',
-    features,
-    features_position: 'bottom',
-    // 6/12 columns (half-row) lets a sibling pinned card share the
-    // row — the favorites grid usually has space for two compact
-    // tiles side-by-side. rows: 'auto' keeps the feature row from
-    // overflowing into the next section.
+    ...(features.length > 0 ? { features, features_position: 'bottom' } : {}),
     grid_options: { columns: 6, rows: 'auto' },
   };
 }
