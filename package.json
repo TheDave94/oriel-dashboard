@@ -1,6 +1,6 @@
 {
   "name": "simon42-dashboard-strategy",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "private": true,
   "type": "module",
   "license": "CC-BY-NC-SA-4.0",
@@ -9,8 +9,8 @@
   },
   "scripts": {
     "build": "webpack",
-    "build-dev": "webpack --config webpack.dev.config.ts",
-    "watch": "webpack --config webpack.dev.config.ts --watch",
+    "build-dev": "webpack --config webpack.dev.config.cjs",
+    "watch": "webpack --config webpack.dev.config.cjs --watch",
     "format": "prettier --write \"src/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\"",
     "lint": "eslint \"src/**/*.ts\"",
@@ -36,7 +36,6 @@
     "home-assistant-js-websocket": "^9.6.0",
     "prettier": "^3.8.1",
     "ts-loader": "^9.5.4",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9",
     "webpack": "^5.105.4",

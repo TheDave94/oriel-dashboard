@@ -1,7 +1,19 @@
-import path from 'path';
-import webpack from 'webpack';
+// Webpack 5 development build — single-bundle, source-maps inline,
+// no chunk-splitting (LimitChunkCountPlugin) so the loader picks up
+// every change in one file under `dist/`.
 
-const config: webpack.Configuration = {
+'use strict';
+
+// Node 18 fallback — see webpack.config.cjs for context.
+if (!globalThis.crypto) {
+  globalThis.crypto = require('crypto').webcrypto;
+}
+
+const path = require('path');
+const webpack = require('webpack');
+
+/** @type {import('webpack').Configuration} */
+const config = {
   mode: 'development',
   devtool: 'source-map',
   entry: './src/simon42-dashboard-strategy.ts',
@@ -29,4 +41,4 @@ const config: webpack.Configuration = {
   ],
 };
 
-export default config;
+module.exports = config;

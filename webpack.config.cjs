@@ -1,17 +1,15 @@
-// Webpack 5 production build for the simon42-dashboard-strategy fork.
+// Webpack 5 production build.
 //
-// Single source of truth: this file is the production config.
-// (Webpack auto-resolves .cjs before .ts when both exist, so keeping
-// both led to silent drift between them — fixed in beta.16 by deleting
-// webpack.config.ts.)
-//
-// Dev build lives in webpack.dev.config.ts and is invoked explicitly
-// from package.json.
+// Single source of truth for the production config. Dev build lives
+// in webpack.dev.config.cjs. CI uses Node 22; engines.node is pinned
+// to >=20 in package.json.
 
 'use strict';
 
-// Node 18 polyfill — webpack 5 uses globalThis.crypto for hashing.
-// Removed once engines.node is bumped past 20 everywhere in dev.
+// Node 18 fallback — webpack 5 hashes with globalThis.crypto, which
+// only exists natively from Node 19+. Engines.node >= 20 makes this
+// unnecessary on supported Node versions, but the guard is cheap and
+// keeps the build green for contributors still on a Node 18 LTS box.
 if (!globalThis.crypto) {
   globalThis.crypto = require('crypto').webcrypto;
 }

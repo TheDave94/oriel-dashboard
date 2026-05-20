@@ -4,11 +4,19 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
+import type { Simon42StrategyConfig } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
 
+interface ClimateViewStrategyParams {
+  config?: Simon42StrategyConfig;
+}
+
 class Simon42ViewClimateStrategy extends HTMLElement {
-  static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
+  static async generate(
+    config: ClimateViewStrategyParams,
+    hass: HomeAssistant,
+  ): Promise<LovelaceViewConfig> {
     // Ensure Registry is initialized (idempotent — no-op if already done)
     Registry.initialize(hass, config.config || {});
 

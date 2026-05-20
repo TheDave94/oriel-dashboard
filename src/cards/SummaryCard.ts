@@ -115,10 +115,12 @@ class Simon42SummaryCard extends LitElement {
       background: var(--ha-card-background, var(--card-background-color));
       border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg, 12px));
     }
-    /* Compact: switch to a single horizontal row, ~½ vertical footprint. */
+    /* Compact: switch to a single horizontal row, ~½ vertical footprint.
+       Uses logical "text-align: start" so RTL inherits HA's parent
+       direction (the inline-axis flips for Arabic/Hebrew automatically). */
     :host([density="compact"]) ha-card {
       flex-direction: row;
-      text-align: left;
+      text-align: start;
       justify-content: flex-start;
     }
     ha-card:active {
