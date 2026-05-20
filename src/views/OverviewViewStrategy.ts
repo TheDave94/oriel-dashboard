@@ -23,6 +23,7 @@ import { createTodosSection } from '../sections/TodosSection';
 import { createPersonsSection } from '../sections/PersonsSection';
 import { createVacuumsSection } from '../sections/VacuumsSection';
 import { createMaintenanceSection } from '../sections/MaintenanceSection';
+import { createPresenceZonesSection } from '../sections/PresenceZonesSection';
 import { createOverviewView } from '../utils/view-builder';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
 
@@ -143,7 +144,6 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     // exists in this hass instance, otherwise fall back to auto-discovery.
     const configuredWeather = dashboardConfig.weather_entity;
     const weatherEntity =
-      // eslint-disable-next-line security/detect-object-injection -- entity ID is user-picked from the editor weather.* dropdown
       configuredWeather && hass.states[configuredWeather]
         ? configuredWeather
         : findWeatherEntity(hass);
@@ -242,6 +242,14 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       ['persons', createPersonsSection(hass, dashboardConfig.show_persons_section === true)],
       ['vacuums', createVacuumsSection(hass, dashboardConfig.show_vacuums_section === true)],
       ['maintenance', createMaintenanceSection(hass, dashboardConfig.show_maintenance_section === true)],
+      [
+        'presence',
+        createPresenceZonesSection(
+          dashboardConfig.presence_zones,
+          dashboardConfig.presence_zones_name,
+          dashboardConfig.presence_zones_icon,
+        ),
+      ],
     ]);
     for (const { key, section } of customSections) {
       sectionMap.set(key, section);
@@ -297,7 +305,6 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
     // Optional live power badge — auto-hide when entity missing
     const powerBadges: LovelaceBadgeConfig[] = [];
     const powerEntity = dashboardConfig.power_badge_entity;
-    // eslint-disable-next-line security/detect-object-injection -- entity ID is user-picked from the editor sensor dropdown
     if (powerEntity && hass.states[powerEntity]) {
       powerBadges.push({
         type: 'entity',
@@ -379,6 +386,27 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       }
     }
 
+    // Optional house-mode badge — typically an input_select.house_mode
+    // (At Home / Away / Holiday). Renders the current state right in the
+    // header so the user can see — and tap to change — without opening
+    // any submenu. Auto-hide when the configured entity is missing.
+    const houseModeBadges: LovelaceBadgeConfig[] = [];
+    const houseModeEntity = dashboardConfig.house_mode_entity;
+    if (
+      houseModeEntity &&
+      Reflect.get(hass.states as Record<string, unknown>, houseModeEntity)
+    ) {
+      houseModeBadges.push({
+        type: 'entity',
+        entity: houseModeEntity,
+        show_name: false,
+        show_state: true,
+        icon: dashboardConfig.house_mode_icon || 'mdi:home-account',
+        color: 'accent',
+        tap_action: { action: 'more-info' },
+      });
+    }
+
     // Optional sun badge — shows sun.sun with next sunrise/sunset
     // (state_content auto-picks next_dawn/next_dusk from HA's sun integration).
     // Auto-hide when no sun.sun entity present.
@@ -398,6 +426,7 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
 
     return createOverviewView(overviewSections, [
       ...personBadges,
+      ...houseModeBadges,
       ...powerBadges,
       ...alertBadges,
       ...nowPlayingBadges,
@@ -408,4 +437,4 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
   }
 }
 
-customElements.define('ll-strategy-simon42-view-overview', Simon42ViewOverviewStrategy);
+customElements.define('ll-strategy-view-simon42-view-overview', Simon42ViewOverviewStrategy);

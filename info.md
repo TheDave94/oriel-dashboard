@@ -1,32 +1,27 @@
-# Simon42 Dashboard Strategy
+# Dashboard Strategy — Enhanced Edition (v2.0+)
 
-Eine modulare und hochkonfigurierbare Dashboard-Strategy für Home Assistant, die automatisch Views basierend auf Bereichen, Entitäten und deren Zuständen generiert.
+A substantially improved fork of [simon42's dashboard strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) for Home Assistant. Auto-generates views based on areas, entities, and their states — with significant additions in custom cards, configuration UI, and architectural quality.
 
-## Features
+## What's in v2.0
 
-- **Grafischer Konfigurator** - Keine YAML-Kenntnisse erforderlich
-- **Automatische Raum-Erkennung** - Nutzt Home Assistant Areas & Devices
-- **Dynamische Gruppierung** - Entities nach Status und Typ gruppiert
-- **Spezialisierte Views** - Lichter, Rollos, Sicherheit, Batterien
-- **Performance-optimiert** - Registry-Caching und Lazy Loading
+- **Five custom cards / features**: zone-presence, summary tiles, lights group, covers group, sticky-lock feature. All with `<ha-form>` config editors, "Add card" picker integration, and container-query scaling.
+- **Six optional overview sections**: plants, agenda, todos, persons, vacuums, maintenance.
+- **Five opt-in header badges**: power, unavailable alerts, now-playing, sun, updates.
+- **Per-section + per-room conditional visibility** (entity/state predicates).
+- **`presence_entities` per-area config**: single source of truth for favorites pin + Room view zone-presence.
+- **Modern HA baseline**: 2026.5+, design tokens, CSS container queries, source maps in production, ESLint + npm audit + happy-dom card tests gated in CI.
 
 ## Installation
 
-Nach der Installation über HACS:
+HACS custom repository → `TheDave94/simon42-dashboard-strategy`, category Lovelace.
 
-1. Füge in deiner `configuration.yaml` hinzu:
-   ```yaml
-   lovelace:
-     mode: storage
-     resources:
-       - url: /local/simon42-strategy/simon42-strategies-loader.js
-         type: module
-   ```
+Then create a dashboard with:
 
-2. Erstelle ein neues Dashboard mit der Strategy:
-   ```yaml
-   strategy:
-     type: custom:simon42-dashboard
-   ```
+```yaml
+strategy:
+  type: custom:simon42-dashboard
+```
 
-Für detaillierte Anweisungen siehe das README.
+See [README](README.MD) for detailed configuration.
+
+Original by [@TheRealSimon42](https://github.com/TheRealSimon42), enhanced by [@TheDave94](https://github.com/TheDave94).

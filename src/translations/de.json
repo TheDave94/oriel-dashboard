@@ -2,6 +2,31 @@
   "dashboard": {
     "title": "Dynamisches Dashboard"
   },
+  "card": {
+    "simon42-summary-card": {
+      "summary_type": "Zusammenfassungs-Typ",
+      "density": "Dichte-Override"
+    },
+    "simon42-lights-group-card": {
+      "group_type": "Gruppentyp",
+      "group_by_floors": "Nach Etagen gruppieren",
+      "nested_groups": "Verschachtelte Lichtgruppen",
+      "default_expanded": "Gruppen standardmäßig aufklappen",
+      "sort_by": "Sortieren nach",
+      "heading_label": "Überschrift",
+      "heading_icon": "Überschrift-Icon"
+    },
+    "simon42-covers-group-card": {
+      "group_type": "Gruppentyp",
+      "show_partially_open": "Teilweise-offen-Gruppe anzeigen",
+      "group_by_floors": "Nach Etagen gruppieren"
+    },
+    "simon42-zone-presence-card": {
+      "name": "Überschrift",
+      "icon": "Überschrift-Icon",
+      "entities": "Zonen-Entitäten"
+    }
+  },
   "views": {
     "overview": "Übersicht",
     "lights": "Lichter",
@@ -112,7 +137,20 @@
     "misc": "Sonstiges",
     "automations": "Automationen",
     "scripts": "Skripte",
-    "room_pins": "Raum-Pins"
+    "room_pins": "Raum-Pins",
+    "room_mode": "Raum-Modus",
+    "sticky_lock": "Sticky"
+  },
+  "zone_presence": {
+    "title": "Anwesenheit",
+    "aria_active": "aktiv",
+    "aria_idle": "inaktiv"
+  },
+  "sticky_lock": {
+    "aria_locked": "Modus gesperrt — tippen zum Entsperren",
+    "aria_unlocked": "Modus entsperrt — tippen zum Sperren",
+    "title_on": "Sticky-Sperre an",
+    "title_off": "Sticky-Sperre aus"
   },
   "editor": {
     "section_order": "Abschnitts-Reihenfolge",
@@ -175,10 +213,9 @@
     "alarm_desc": "Wähle eine Alarm-Control-Panel-Entität aus. Wenn die Uhrzeit-Karte aktiv ist, wird das Alarm-Panel daneben angezeigt. Ohne Uhrzeit-Karte erscheint das Alarm-Panel in voller Breite.",
     "show_search_card": "Such-Karte anzeigen",
     "show_search_card_desc": "Zeigt die custom:search-card direkt unter der Uhr in der Übersicht an.",
-    "show_search_card_missing": "Benötigt <strong>custom:search-card</strong> und <strong>card-tools</strong>. Bitte installieren Sie beide Komponenten, um diese Funktion zu nutzen.",
+    "show_search_card_missing": "Benötigt <strong>custom:search-card</strong> und <strong>card-tools</strong>. Bitte installieren Sie beide Komponenten — oder wechseln Sie unten zur Variante <em>Nativer Hinweis</em> (ohne zusätzliche Komponenten).",
     "show_person_badges": "Personen-Badges im Header anzeigen",
     "show_person_badges_desc": "Automatisch erzeugte Personen-Chips erscheinen standardmäßig im Übersicht-Header. Deaktivieren, wenn du eigene Personen-Badges über Eigene Badges einbindest.",
-    "show_search_card_missing": "Benötigt <strong>custom:search-card</strong> und <strong>card-tools</strong>. Bitte installieren Sie beide Komponenten — oder wechseln Sie unten zur Variante <em>Nativer Hinweis</em> (ohne zusätzliche Komponenten).",
     "search_card_variant": "Such-Karten-Variante",
     "search_card_variant_custom": "custom:search-card (Eingabe direkt im Dashboard, benötigt HACS-Komponenten)",
     "search_card_variant_tip": "Nativer Hinweis (Cmd/Strg+E-Tipp, keine Abhängigkeiten)",
@@ -313,7 +350,6 @@
     "path_placeholder": "Pfad (z.B. mein-view)",
     "yaml_placeholder": "YAML-Code hier einfügen...",
     "card_title_placeholder": "Titel (optional, wird als Heading angezeigt)",
-    "yaml_valid": "YAML gültig",
     "domain_lights": "Beleuchtung",
     "domain_climate": "Klima",
     "domain_covers": "Rollos & Abdeckungen",

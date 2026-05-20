@@ -2,6 +2,31 @@
   "dashboard": {
     "title": "Dynamic Dashboard"
   },
+  "card": {
+    "simon42-summary-card": {
+      "summary_type": "Summary type",
+      "density": "Density override"
+    },
+    "simon42-lights-group-card": {
+      "group_type": "Group type",
+      "group_by_floors": "Group by floors",
+      "nested_groups": "Nested light groups",
+      "default_expanded": "Expand groups by default",
+      "sort_by": "Sort by",
+      "heading_label": "Heading label",
+      "heading_icon": "Heading icon"
+    },
+    "simon42-covers-group-card": {
+      "group_type": "Group type",
+      "show_partially_open": "Show partially-open bucket",
+      "group_by_floors": "Group by floors"
+    },
+    "simon42-zone-presence-card": {
+      "name": "Header name",
+      "icon": "Header icon",
+      "entities": "Zone entities"
+    }
+  },
   "views": {
     "overview": "Overview",
     "lights": "Lights",
@@ -112,7 +137,20 @@
     "misc": "Miscellaneous",
     "automations": "Automations",
     "scripts": "Scripts",
-    "room_pins": "Room Pins"
+    "room_pins": "Room Pins",
+    "room_mode": "Room Mode",
+    "sticky_lock": "Sticky"
+  },
+  "zone_presence": {
+    "title": "Presence",
+    "aria_active": "active",
+    "aria_idle": "idle"
+  },
+  "sticky_lock": {
+    "aria_locked": "Mode locked — tap to unlock",
+    "aria_unlocked": "Mode unlocked — tap to lock",
+    "title_on": "Sticky lock on",
+    "title_off": "Sticky lock off"
   },
   "editor": {
     "section_order": "Section Order",
@@ -175,10 +213,9 @@
     "alarm_desc": "Select an alarm control panel entity. When the clock card is active, the alarm panel is shown next to it. Without the clock card, the alarm panel takes the full width.",
     "show_search_card": "Show search card",
     "show_search_card_desc": "Shows the custom:search-card directly below the clock on the overview.",
-    "show_search_card_missing": "Requires <strong>custom:search-card</strong> and <strong>card-tools</strong>. Please install both components to use this feature.",
+    "show_search_card_missing": "Requires <strong>custom:search-card</strong> and <strong>card-tools</strong>. Please install both components, or switch the variant below to <em>Native tip</em> (no extra components needed).",
     "show_person_badges": "Show person badges in the header",
     "show_person_badges_desc": "Auto-generated person chips appear in the overview header by default. Disable when you supply your own person badges via Custom Badges.",
-    "show_search_card_missing": "Requires <strong>custom:search-card</strong> and <strong>card-tools</strong>. Please install both components, or switch the variant below to <em>Native tip</em> (no extra components needed).",
     "search_card_variant": "Search card variant",
     "search_card_variant_custom": "custom:search-card (inline input, needs HACS components)",
     "search_card_variant_tip": "Native tip (Cmd/Ctrl+E hint, no dependencies)",
@@ -313,7 +350,6 @@
     "path_placeholder": "Path (e.g. my-view)",
     "yaml_placeholder": "Paste YAML code here...",
     "card_title_placeholder": "Title (optional, shown as heading)",
-    "yaml_valid": "YAML valid",
     "domain_lights": "Lighting",
     "domain_climate": "Climate",
     "domain_covers": "Blinds & Covers",

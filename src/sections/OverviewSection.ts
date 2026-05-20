@@ -10,7 +10,128 @@
 import type { HomeAssistant } from '../types/homeassistant';
 import type { Simon42StrategyConfig, CustomCard } from '../types/strategy';
 import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
+import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
+import { densityProp, resolveDensity } from '../utils/density';
+
+// --------------------------------------------------------------------
+// Helpers to surface room-section cards inside the favorites grid.
+// --------------------------------------------------------------------
+// These mirror the resolution rules used in RoomViewStrategy so a card
+// pinned to favorites looks and behaves identically to the one rendered
+// at the top of the room view. We deliberately duplicate the rules
+// here (rather than importing from RoomViewStrategy) — the room view
+// is in a lazy-loaded chunk and pulling it into the overview chunk
+// would balloon initial bundle size.
+
+const ZONE_DEVICE_CLASSES = new Set(['occupancy', 'motion', 'presence']);
+
+/**
+ * Build the room-mode tile pinned into the favorites grid.
+ *
+ * Same shape as RoomViewStrategy's emit — select-options inline picker
+ * plus the sticky-lock custom tile feature — but narrower
+ * (columns:6) so a sibling pinned card sits beside it. The mode tile
+ * tends to be the taller of the two when many input_select options
+ * wrap the chip row; the favorites grid keeps row alignment via
+ * rows:'auto'.
+ *
+ * Returns null when neither explicit areas_options config nor the
+ * auto-detect heuristic resolves an entity.
+ */
+function buildRoomModeCard(
+  areaId: string,
+  config: Simon42StrategyConfig,
+  hass: HomeAssistant,
+): LovelaceCardConfig | null {
+  const areaOpts = (config.areas_options || {})[areaId] || {};
+  let roomModeEntity = areaOpts.room_mode_entity;
+  if (!roomModeEntity) {
+    const candidates = Registry.getVisibleEntitiesForArea(areaId)
+      .map((e) => e.entity_id)
+      .filter((id) => id.startsWith('input_select.') && /mode/i.test(id.split('.')[1]));
+    if (candidates.length === 1) roomModeEntity = candidates[0];
+  }
+  if (!roomModeEntity || !hass.states[roomModeEntity]) return null;
+
+  const features: Array<Record<string, unknown>> = [{ type: 'select-options' }];
+  const stickyEntity = areaOpts.room_mode_sticky_entity;
+  if (stickyEntity && hass.states[stickyEntity]) {
+    features.push({
+      type: 'custom:simon42-sticky-lock-feature',
+      sticky_entity: stickyEntity,
+    });
+  }
+
+  return {
+    type: 'tile',
+    entity: roomModeEntity,
+    name: localize('room.room_mode'),
+    icon: config.room_mode_icon || 'mdi:home-account',
+    color: 'accent',
+    features,
+    features_position: 'bottom',
+    grid_options: { columns: 6, rows: 'auto' },
+  };
+}
+
+/**
+ * Build a zone-presence card for the given area.
+ *
+ * Entity source priority:
+ *   1. Explicit `areas_options.<area>.pin_zone_presence_to_favorites_entities`
+ *      — a curated subset of entity IDs (each forwarded verbatim to
+ *      the card, so users can supply objects with name/icon/color
+ *      overrides too). Useful when the area has many occupancy
+ *      sensors but only a few are interesting at a glance.
+ *   2. Auto-detect by device_class — same rule used by the room view
+ *      (≥2 `binary_sensor.*` with device_class ∈
+ *      {occupancy, motion, presence} tagged to the area).
+ *
+ * Returns null when neither path produces ≥1 entity. (The auto-detect
+ * path still requires ≥2 — a single sensor reads fine as a regular
+ * tile.)
+ */
+function buildZonePresenceCard(
+  areaId: string,
+  config: Simon42StrategyConfig,
+  hass: HomeAssistant,
+): LovelaceCardConfig | null {
+  const areaOpts = (config.areas_options || {})[areaId] || {};
+  // Single source of truth — same field consulted by the Room view's
+  // auto-render in RoomViewStrategy.
+  const curated = areaOpts.presence_entities;
+
+  let entities: unknown[];
+  if (Array.isArray(curated) && curated.length > 0) {
+    // Trust the user's list — the card itself defends against
+    // malformed entries. Pass through verbatim so per-entry
+    // overrides (name/icon/color) work.
+    entities = curated.filter((e) => {
+      if (typeof e === 'string') return e.length > 0;
+      return typeof (e as { entity?: unknown }).entity === 'string';
+    });
+    if (entities.length === 0) return null;
+  } else {
+    const zoneEntities = Registry.getVisibleEntitiesForArea(areaId)
+      .map((e) => e.entity_id)
+      .filter((id) => {
+        if (!id.startsWith('binary_sensor.')) return false;
+        const s = hass.states[id];
+        const dc = s?.attributes?.device_class as string | undefined;
+        return dc !== undefined && ZONE_DEVICE_CLASSES.has(dc);
+      });
+    if (zoneEntities.length < 2) return null;
+    entities = zoneEntities;
+  }
+
+  return {
+    type: 'custom:simon42-zone-presence-card',
+    entities,
+    ...densityProp(config),
+    grid_options: { columns: 6, rows: 'auto' },
+  };
+}
 
 export interface OverviewSectionParams {
   someSensorId: string | null;
@@ -110,12 +231,16 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
 
   // Build summary cards based on config
   const summaryCards: LovelaceCardConfig[] = [];
+  // Density: container queries scale cards to their actual cell size
+  // by default. `dashboard_density` is the manual override.
+  const density = resolveDensity(config);
 
   if (showLightSummary) {
     summaryCards.push({
       type: 'custom:simon42-summary-card',
       summary_type: 'lights',
       areas_options: config.areas_options || {},
+      density,
     });
   }
 
@@ -124,6 +249,7 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       type: 'custom:simon42-summary-card',
       summary_type: 'covers',
       areas_options: config.areas_options || {},
+      density,
     });
   }
 
@@ -132,6 +258,7 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       type: 'custom:simon42-summary-card',
       summary_type: 'security',
       areas_options: config.areas_options || {},
+      density,
     });
   }
 
@@ -143,6 +270,7 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       hide_mobile_app_batteries: config.hide_mobile_app_batteries,
       hide_battery_notes_entities: config.hide_battery_notes_entities,
       battery_critical_threshold: config.battery_critical_threshold,
+      density,
     });
   }
 
@@ -151,6 +279,7 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       type: 'custom:simon42-summary-card',
       summary_type: 'climate',
       areas_options: config.areas_options || {},
+      density,
     });
   }
 
@@ -207,10 +336,33 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
     });
   }
 
-  // Favorites section
+  // Favorites section — three sources feed cards in here, in this order:
+  //   1. `favorite_entities[]`   — list of entity IDs rendered as tiles
+  //   2. `areas_options.<area>.pin_room_mode_to_favorites` /
+  //      `pin_zone_presence_to_favorites` — per-area flags that mirror the
+  //      Room view's auto-rendered cards into the favorites grid.
+  //   3. `favorites_cards[]`     — opaque LovelaceCardConfig list, the
+  //      "anything goes" escape hatch.
+  // The section auto-hides only when all three are empty.
   const favoriteEntities = (config.favorite_entities || []).filter((entityId) => hass.states[entityId] !== undefined);
 
-  if (favoriteEntities.length > 0) {
+  const pinnedCards: LovelaceCardConfig[] = [];
+  for (const [areaId, areaOpts] of Object.entries(config.areas_options || {})) {
+    if (areaOpts.pin_room_mode_to_favorites === true) {
+      const card = buildRoomModeCard(areaId, config, hass);
+      if (card) pinnedCards.push(card);
+    }
+    if (areaOpts.pin_zone_presence_to_favorites === true) {
+      const card = buildZonePresenceCard(areaId, config, hass);
+      if (card) pinnedCards.push(card);
+    }
+  }
+
+  const userFavoriteCards = (config.favorites_cards || []).filter(
+    (c): c is LovelaceCardConfig => !!c && typeof (c as { type?: unknown }).type === 'string',
+  );
+
+  if (favoriteEntities.length + pinnedCards.length + userFavoriteCards.length > 0) {
     if (!hidden.has('favorites')) {
       cards.push({
         type: 'heading',
@@ -233,6 +385,8 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
         ...(stateContent.length > 0 ? { state_content: stateContent } : {}),
       });
     }
+    cards.push(...pinnedCards);
+    cards.push(...userFavoriteCards);
   }
 
   // If nothing is visible, skip the entire section

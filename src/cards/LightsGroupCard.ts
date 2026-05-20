@@ -28,6 +28,8 @@ interface LightsGroupConfig {
   heading_icon?: string;
   area?: AreaRegistryEntry;
   default_expanded?: boolean;
+  /** Density variant — drives the --s42-* CSS tokens. */
+  density?: 'comfortable' | 'compact';
 }
 
 interface FloorGroup {
@@ -74,47 +76,85 @@ class Simon42LightsGroupCard extends LitElement {
     :host([hidden]) {
       display: none;
     }
+    :host {
+      container-type: inline-size;
+      container-name: s42-lights;
+
+      --s42-gap: var(--ha-space-2, 8px);
+      --s42-block-pad: var(--ha-space-3, 12px);
+      --s42-block-radius: var(--ha-border-radius-lg, 16px);
+      --s42-toggle-size: 36px;
+      --s42-tile-min: 300px;
+      --s42-child-min: 260px;
+    }
+    /* Narrow lanes (< 400px): tighter gaps, narrower tile-min so the
+       cards still fit one-per-row instead of overflowing. */
+    @container s42-lights (max-width: 400px) {
+      :host {
+        --s42-gap: var(--ha-space-1, 6px);
+        --s42-block-pad: var(--ha-space-2, 10px);
+        --s42-block-radius: var(--ha-border-radius-md, 14px);
+        --s42-toggle-size: 32px;
+        --s42-tile-min: 260px;
+        --s42-child-min: 220px;
+      }
+    }
+    /* Wide lanes (> 800px): comfortable defaults are already right;
+       no override needed. */
+    :host([density="compact"]) {
+      --s42-gap: var(--ha-space-1, 6px) !important;
+      --s42-block-pad: var(--ha-space-2, 10px) !important;
+      --s42-block-radius: var(--ha-border-radius-md, 14px) !important;
+      --s42-toggle-size: 32px !important;
+      --s42-tile-min: 280px !important;
+      --s42-child-min: 240px !important;
+    }
+    :host([density="comfortable"]) {
+      --s42-gap: var(--ha-space-2, 8px) !important;
+      --s42-block-pad: var(--ha-space-3, 12px) !important;
+      --s42-tile-min: 300px !important;
+    }
     .lights-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--s42-gap);
       width: 100%;
     }
     .light-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--s42-tile-min), 1fr));
+      gap: var(--s42-gap);
     }
     .floor-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--s42-gap);
     }
     .group-block {
       grid-column: 1 / -1;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      padding: 12px;
+      gap: var(--s42-gap);
+      padding: var(--s42-block-pad);
       border: 1px solid var(--divider-color);
-      border-radius: 16px;
+      border-radius: var(--s42-block-radius);
       background: color-mix(in srgb, var(--card-background-color) 92%, var(--primary-color) 8%);
     }
     .group-header {
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 8px;
+      gap: var(--s42-gap);
       align-items: start;
     }
     .group-toggle {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: var(--s42-toggle-size);
+      height: var(--s42-toggle-size);
       margin-top: 6px;
       border: none;
-      border-radius: 999px;
+      border-radius: var(--ha-border-radius-pill, 999px);
       background: var(--secondary-background-color);
       color: var(--primary-text-color);
       cursor: pointer;
@@ -132,9 +172,9 @@ class Simon42LightsGroupCard extends LitElement {
     }
     .group-children {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 8px;
-      padding-left: 44px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--s42-child-min), 1fr));
+      gap: var(--s42-gap);
+      padding-left: calc(var(--s42-toggle-size) + var(--s42-gap));
     }
     .group-children[hidden] {
       display: none;
@@ -146,6 +186,26 @@ class Simon42LightsGroupCard extends LitElement {
       throw new Error('You need to define group_type (on/off/all)');
     }
     this._config = config;
+    // Reflect density onto the host so the static :host([density="compact"])
+    // CSS rules pick it up. No-op when omitted (defaults to comfortable).
+    if (config.density === 'compact') {
+      this.setAttribute('density', 'compact');
+    } else {
+      this.removeAttribute('density');
+    }
+  }
+
+  // Tile-card-style: half-section, content-measured height. Lights group
+  // can grow indefinitely (10+ rows in a packed home); bound max_rows to
+  // prevent runaway, min_columns=6 keeps the per-tile readable.
+  getGridOptions(): {
+    columns: number | 'full';
+    rows: number | 'auto';
+    min_columns?: number;
+    min_rows?: number;
+    max_rows?: number;
+  } {
+    return { columns: 6, rows: 'auto', min_columns: 6, min_rows: 1, max_rows: 12 };
   }
 
   protected willUpdate(changedProps: PropertyValues): void {
@@ -297,16 +357,38 @@ class Simon42LightsGroupCard extends LitElement {
       return { topLevelIds: [...lightIds], nodes };
     }
 
+    // Candidate set starts from state-matched visible lights, but for
+    // the *purpose of nesting only* we also surface members of any
+    // visible group — even ones the user has hidden globally
+    // (`hidden_by: user`) or whose individual state doesn't match the
+    // current on/off partition. The membership relationship is
+    // authoritative inside a parent group; the visibility filter only
+    // applies to standalone tiles. Hidden / opposite-state members
+    // still won't appear at top level (see `topLevelIds` filter below);
+    // they only render nested under their parent.
     const candidateSet = new Set(lightIds);
+    for (const parentId of lightIds) {
+      const members = this._getState(parentId)?.attributes?.entity_id;
+      if (!Array.isArray(members)) continue;
+      for (const m of members) {
+        if (typeof m !== 'string' || !m.startsWith('light.')) continue;
+        if (!this._getState(m)) continue; // skip entities without state
+        candidateSet.add(m);
+      }
+    }
     const rawChildren = new Map<string, string[]>();
-    for (const entityId of lightIds) {
+    for (const entityId of candidateSet) {
       rawChildren.set(entityId, this._getGroupChildIds(entityId, candidateSet));
     }
 
     const descendantCache = new Map<string, Set<string>>();
     const nodes = new Map<string, LightHierarchyNode>();
     const allNestedChildIds = new Set<string>();
-    for (const entityId of lightIds) {
+    // Walk the *expanded* candidateSet (state-matched visible parents
+    // PLUS any group member surfaced via the expansion above) so hidden
+    // children that are themselves groups still get their own sub-tree
+    // recorded in the nodes map.
+    for (const entityId of candidateSet) {
       const directChildIds = rawChildren.get(entityId) || [];
       const prunedChildIds = directChildIds.filter((childId) => {
         return !directChildIds.some((siblingId) => {
@@ -320,6 +402,10 @@ class Simon42LightsGroupCard extends LitElement {
       }
     }
 
+    // Top-level still comes from `lightIds` (the original
+    // visible+state-matched set). Hidden children added to candidateSet
+    // are never top-level — they only render nested inside their
+    // parent's container.
     const topLevelIds = lightIds
       .filter((entityId) => !allNestedChildIds.has(entityId))
       .sort((a, b) => this._sortByLastChanged(a, b));
@@ -688,6 +774,60 @@ class Simon42LightsGroupCard extends LitElement {
     const lights = this._getRelevantLights();
     return Math.ceil(lights.length / 3) + 1;
   }
+
+  public static getStubConfig(): { group_type: 'on' | 'off' | 'all' } {
+    return { group_type: 'all' };
+  }
+
+  public static async getConfigElement(): Promise<HTMLElement> {
+    const { createSimpleConfigEditor } = await import('./SimpleConfigEditor');
+    return createSimpleConfigEditor(
+      [
+        {
+          name: 'group_type',
+          required: true,
+          selector: {
+            select: {
+              mode: 'dropdown',
+              options: [
+                { value: 'on', label: 'On' },
+                { value: 'off', label: 'Off' },
+                { value: 'all', label: 'All' },
+              ],
+            },
+          },
+        },
+        { name: 'group_by_floors', selector: { boolean: {} } },
+        { name: 'nested_groups', selector: { boolean: {} } },
+        { name: 'default_expanded', selector: { boolean: {} } },
+        {
+          name: 'sort_by',
+          selector: {
+            select: {
+              mode: 'dropdown',
+              options: [
+                { value: 'last_changed', label: 'Last changed' },
+                { value: 'name', label: 'Name' },
+              ],
+            },
+          },
+        },
+        { name: 'heading_label', selector: { text: {} } },
+        { name: 'heading_icon', selector: { icon: {} } },
+      ],
+      'card.simon42-lights-group-card',
+    );
+  }
 }
 
 customElements.define('simon42-lights-group-card', Simon42LightsGroupCard);
+
+window.customCards = window.customCards || [];
+if (!window.customCards.some((c) => c.type === 'simon42-lights-group-card')) {
+  window.customCards.push({
+    type: 'simon42-lights-group-card',
+    name: 'Simon42 Lights Group',
+    description: 'Grouped on/off light tiles with nested-group support, floor grouping, and inline batch controls.',
+    preview: true,
+  } as { type: string; name: string; description: string });
+}

@@ -15,6 +15,7 @@ import { stripAreaName, sortByLastChanged } from '../utils/name-utils';
 import { Registry } from '../Registry';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
 import { localize } from '../utils/localize';
+import { resolveDensity } from '../utils/density';
 import { BADGE_COLOR_MAP, getColorForEntity, isDefaultShowName, resolveShowName } from '../utils/badge-utils';
 
 // HA supported_features bitmask values
@@ -488,6 +489,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     };
 
     if (roomEntities.lights.length > 0) {
+      const lightsDensity = resolveDensity(dashboardConfig);
       sections.push({
         type: 'grid',
         cards: [
@@ -501,6 +503,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
             default_expanded: true,
             nested_groups: dashboardConfig.nested_light_groups === true,
             sort_by: dashboardConfig.lights_sort_by === 'name' ? 'name' : 'last_changed',
+            ...(lightsDensity ? { density: lightsDensity } : {}),
           },
         ],
       });
@@ -716,6 +719,124 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       }
     }
 
+    // Room mode tile (opt-in). Renders at the very top of the room view
+    // so the mode is the first thing the user sees / changes.
+    //
+    // Resolution order (no dashboard-wide fallback — that would bleed a
+    // global "room_mode" entity into every room view, which is what we
+    // explicitly don't want):
+    //   1. Explicit per-area config: areas_options.<area>.room_mode_entity
+    //   2. Auto-detect: a single `input_select.*` entity assigned to
+    //      this area whose object_id contains "mode" (case-insensitive).
+    //
+    // Auto-detect intentionally skips when the heuristic finds 0 or
+    // 2+ matches — silence is better than guessing wrong. Users who
+    // want a non-matching entity, or have multiple candidates, set it
+    // explicitly under areas_options.
+    const areaOpts: Record<string, unknown> =
+      (dashboardConfig.areas_options || {})[area.area_id] || {};
+    let roomModeEntity = areaOpts.room_mode_entity as string | undefined;
+
+    if (!roomModeEntity) {
+      const candidates = Registry.getVisibleEntitiesForArea(area.area_id)
+        .map((e) => e.entity_id)
+        .filter(
+          (id) =>
+            id.startsWith('input_select.') &&
+            /mode/i.test(id.split('.')[1])
+        );
+      if (candidates.length === 1) roomModeEntity = candidates[0];
+    }
+
+    if (
+      roomModeEntity &&
+      Reflect.get(hass.states as Record<string, unknown>, roomModeEntity)
+    ) {
+      // Build the tile's `features:` array. The mode picker always
+      // gets `select-options`. When a sticky entity is configured
+      // (and present), we ALSO add our custom feature in the same
+      // row — keeps the whole control in one tile, no extra height.
+      const features: Array<Record<string, unknown>> = [{ type: 'select-options' }];
+      const stickyEntity = areaOpts.room_mode_sticky_entity as string | undefined;
+      if (
+        stickyEntity &&
+        Reflect.get(hass.states as Record<string, unknown>, stickyEntity)
+      ) {
+        features.push({
+          type: 'custom:simon42-sticky-lock-feature',
+          sticky_entity: stickyEntity,
+        });
+      }
+
+      sections.unshift({
+        type: 'grid',
+        cards: [
+          {
+            type: 'tile',
+            entity: roomModeEntity,
+            name: localize('room.room_mode'),
+            icon: dashboardConfig.room_mode_icon || 'mdi:home-account',
+            color: 'accent',
+            features,
+            features_position: 'bottom',
+            grid_options: { columns: 'full', rows: 'auto' },
+          } as LovelaceCardConfig,
+        ],
+      });
+    }
+
+    // Auto-rendered zone-presence section. Two sources, priority order:
+    //   1. Curated `areas_options.<area>.presence_entities` (string[] or
+    //      `{ entity, name?, icon?, color? }` objects). Same field
+    //      consulted by the favorites pin in OverviewSection, so a
+    //      curated list shows identically in both places.
+    //   2. Auto-detect: every visible binary_sensor in this area whose
+    //      device_class is one of {occupancy, motion, presence}.
+    //
+    // Renders when ≥2 entities (curated or detected) — a single sensor
+    // reads fine as a regular tile, the card adds value above that.
+    //
+    // Opt-out: areas_options.<area>.show_zone_presence === false, or
+    // top-level show_zone_presence_in_rooms === false.
+    // Hidden via the normal `no-dboard` label / Registry hide path on a
+    // per-entity basis (visibleEntities already excludes those).
+    const showZonePresence =
+      areaOpts.show_zone_presence !== false &&
+      dashboardConfig.show_zone_presence_in_rooms !== false;
+
+    if (showZonePresence) {
+      const curatedPresence = areaOpts.presence_entities;
+      let zoneEntities: unknown[];
+      if (Array.isArray(curatedPresence) && curatedPresence.length > 0) {
+        zoneEntities = curatedPresence.filter((e) => {
+          if (typeof e === 'string') return e.length > 0;
+          return typeof (e as { entity?: unknown }).entity === 'string';
+        });
+      } else {
+        const ZONE_CLASSES = new Set(['occupancy', 'motion', 'presence']);
+        zoneEntities = visibleEntities
+          .map((e) => e.entity_id)
+          .filter((id) => {
+            if (!id.startsWith('binary_sensor.')) return false;
+            const s = hass.states[id];
+            const dc = s?.attributes?.device_class as string | undefined;
+            return dc !== undefined && ZONE_CLASSES.has(dc);
+          });
+      }
+
+      if (zoneEntities.length >= 2) {
+        sections.push({
+          type: 'grid',
+          cards: [
+            {
+              type: 'custom:simon42-zone-presence-card',
+              entities: zoneEntities,
+            } as LovelaceCardConfig,
+          ],
+        });
+      }
+    }
+
     debugLog(
       `Room ${area.area_id}: ${visibleEntities.length} visible entities, ${sections.length} sections, ${badges.length} badges`
     );
@@ -724,4 +845,4 @@ class Simon42ViewRoomStrategy extends HTMLElement {
   }
 }
 
-customElements.define('ll-strategy-simon42-view-room', Simon42ViewRoomStrategy);
+customElements.define('ll-strategy-view-simon42-view-room', Simon42ViewRoomStrategy);

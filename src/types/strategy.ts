@@ -6,6 +6,8 @@
 // used throughout the strategy codebase.
 // ====================================================================
 
+import type { LovelaceCardConfig } from './lovelace';
+
 // -- Section Ordering -------------------------------------------------
 
 export type SectionKey =
@@ -19,7 +21,8 @@ export type SectionKey =
   | 'todos'
   | 'persons'
   | 'vacuums'
-  | 'maintenance';
+  | 'maintenance'
+  | 'presence';
 
 export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'overview',
@@ -44,7 +47,8 @@ export type HeadingKey =
   | 'todos'
   | 'persons'
   | 'vacuums'
-  | 'maintenance';
+  | 'maintenance'
+  | 'presence';
 
 export const ALL_HEADING_KEYS: HeadingKey[] = [
   'overview',
@@ -60,6 +64,7 @@ export const ALL_HEADING_KEYS: HeadingKey[] = [
   'persons',
   'vacuums',
   'maintenance',
+  'presence',
 ];
 
 // -- Main Strategy Config ---------------------------------------------
@@ -99,10 +104,21 @@ export interface Simon42StrategyConfig {
   show_covers_summary?: boolean; // default: true
   show_partially_open_covers?: boolean; // default: false
   group_covers_by_floors?: boolean; // default: false
+  awning_icon_open?: string;
+  awning_icon_closed?: string;
+  awning_icon_partial?: string;
   show_clock_card?: boolean; // default: true
   show_light_summary?: boolean; // default: true
   group_lights_by_floors?: boolean; // default: false
   nested_light_groups?: boolean; // default: false
+  /**
+   * When nested_light_groups is true, whether group tiles start
+   * expanded (members visible) or collapsed (chevron-to-reveal) in
+   * the dedicated Lights view. Default true — matches the room
+   * view's behaviour and avoids the "tap-the-tile-does-nothing"
+   * surprise. Set false to keep group children collapsed by default.
+   */
+  light_groups_default_expanded?: boolean;
   lights_sort_by?: 'last_changed' | 'name'; // default: 'last_changed'
   show_security_summary?: boolean; // default: true
   show_battery_summary?: boolean; // default: true
@@ -133,6 +149,69 @@ export interface Simon42StrategyConfig {
   todos_entities?: string[]; // default: [] → all visible todo.* entities
   show_persons_section?: boolean; // default: false (auto-hides when no persons)
   power_badge_entity?: string; // default: unset (no badge). Pick a sensor (e.g. main grid power in W).
+  /**
+   * Optional house-mode badge in the overview header. Typically an
+   * `input_select.house_mode` (At Home / Away / Holiday) so users can
+   * see and change it without opening a submenu. Auto-hides when the
+   * entity does not exist. Set `house_mode_icon` to override the
+   * default icon (`mdi:home-account`).
+   */
+  house_mode_entity?: string;
+  house_mode_icon?: string;
+  /**
+   * Icon used on the room-mode tile when it renders. The room-mode tile
+   * itself is opted into per-area via
+   * `areas_options.<area_id>.room_mode_entity`, or auto-detected when an
+   * area has exactly one `input_select.*` entity whose object_id
+   * contains "mode". There is intentionally no dashboard-wide
+   * `room_mode_entity` fallback: a global input_select shouldn't appear
+   * on every room view.
+   */
+  room_mode_icon?: string;
+  /**
+   * Density of the summary tiles (lights / covers / security / batteries /
+   * climate) on the overview. 'comfortable' (default) keeps the original
+   * stacked icon + label layout. 'compact' switches to a horizontal
+   * single-row layout for ~½ the vertical footprint.
+   */
+  /**
+   * Manual density override. By default, every custom card scales
+   * dynamically to its actual rendered width via CSS container
+   * queries — no flag needed. Set this to force `compact` or
+   * `comfortable` sizing regardless of the container width. HA
+   * built-in cards (tile, area, weather-forecast) are unaffected.
+   */
+  dashboard_density?: 'compact' | 'comfortable';
+  /**
+   * Globally enable / disable the auto-rendered zone-presence card in
+   * room views. Default true: each room view picks up its
+   * binary_sensors with device_class ∈ {occupancy, motion, presence}
+   * and renders them as one compact `simon42-zone-presence-card`
+   * (only when ≥2 such sensors are present in the area — a single
+   * sensor reads fine as a normal tile). Set false to suppress
+   * across the whole dashboard.
+   */
+  show_zone_presence_in_rooms?: boolean;
+  /**
+   * Optional curated zone-presence card for the overview. When set,
+   * the strategy renders a `simon42-zone-presence-card` in its own
+   * 'presence' section on the overview with the listed entities.
+   * The list is opaque to the strategy — each entry is forwarded to
+   * the card as-is, so all per-entry overrides (name, icon, color,
+   * tap_action) work. Auto-hides when the list is empty or omitted.
+   */
+  presence_zones?: Array<string | PresenceZoneEntry>;
+  presence_zones_name?: string;
+  presence_zones_icon?: string;
+  /**
+   * Opaque list of LovelaceCardConfig objects rendered inside the
+   * overview's favorites subsection, immediately after the favorite
+   * entity tiles (and after any pin_*_to_favorites cards). The escape
+   * hatch for "I want X card inside favorites" when neither the
+   * favorite_entities tile-list nor the pin_*_to_favorites flags fit.
+   * Cards are forwarded verbatim — anything HA can render is valid.
+   */
+  favorites_cards?: LovelaceCardConfig[];
   show_unavailable_alert_badge?: boolean; // default: false (auto-hides at zero)
   show_now_playing_badge?: boolean; // default: false (auto-hides when nothing's playing)
   show_vacuums_section?: boolean; // default: false (auto-hides without vacuum/mower)
@@ -210,8 +289,78 @@ export interface AreasDisplay {
   order?: string[];
 }
 
+/**
+ * Single entry in `presence_zones[]`. Mirrors the shape the
+ * simon42-zone-presence-card accepts so the strategy can forward
+ * values verbatim. All fields besides `entity` are optional.
+ */
+export interface PresenceZoneEntry {
+  entity: string;
+  name?: string;
+  icon?: string;
+  color?: string;
+  tap_action?: Record<string, unknown>;
+  hold_action?: Record<string, unknown>;
+  double_tap_action?: Record<string, unknown>;
+}
+
 export interface AreaOptions {
   groups_options?: Record<string, GroupOptions>;
+  /**
+   * Opt this area into the room-mode tile by picking the entity. When
+   * not set, the room view auto-detects: if the area has exactly one
+   * `input_select.*` entity whose object_id contains "mode", that one
+   * is used. The tile is omitted when neither path resolves an entity.
+   */
+  room_mode_entity?: string;
+  /**
+   * Optional sticky-lock companion rendered next to the room-mode
+   * tile in the room view. Typically `input_boolean.<area>_sticky` —
+   * when on, your room automation suppresses auto-mode-changes. The
+   * companion tile is only rendered when this is set AND the
+   * room-mode tile itself rendered.
+   */
+  room_mode_sticky_entity?: string;
+  /**
+   * Per-area opt-out for the auto-rendered zone-presence card in the
+   * room view. Defaults to true. Set to false to skip the auto-render
+   * for this area only — useful when an area has many occupancy/motion
+   * sensors that you don't want grouped into a card.
+   */
+  show_zone_presence?: boolean;
+  /**
+   * Pin this area's auto-rendered room-mode tile into the overview's
+   * favorites subsection. The tile is identical to the one at the top
+   * of the room view (mode picker + sticky-lock feature when
+   * configured). Default false. Useful when the user lives in one
+   * room and wants its mode controls visible at a glance on the
+   * overview without manually setting up a custom_cards entry.
+   */
+  pin_room_mode_to_favorites?: boolean;
+  /**
+   * Pin this area's auto-rendered zone-presence card into the
+   * overview's favorites subsection. Same auto-detection rules as
+   * the room view (≥2 binary_sensors with device_class ∈
+   * {occupancy, motion, presence}). Default false.
+   */
+  pin_zone_presence_to_favorites?: boolean;
+  /**
+   * Single source of truth for the area's zone-presence card.
+   * When set, BOTH the Room view's auto-rendered presence card AND
+   * the favorites pin use this list verbatim instead of the
+   * device-class auto-detect.
+   *
+   * Each entry can be a string (entity ID) or an object
+   * `{ entity, name?, icon?, color?, tap_action?, ... }` — the same
+   * shape the zone-presence card itself accepts. Useful when an
+   * area has many occupancy sensors but you want the strategy to
+   * surface only a few, with consistent icons/colors across every
+   * surface it appears on.
+   *
+   * When unset, both surfaces auto-detect by device_class ∈
+   * {occupancy, motion, presence}.
+   */
+  presence_entities?: Array<string | PresenceZoneEntry>;
 }
 
 export interface GroupOptions {

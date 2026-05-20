@@ -4,6 +4,14 @@
 // Singleton localization function. Reads hass.locale.language once at
 // setup time. Falls back to English for missing keys/languages.
 // Pattern adapted from mushroom-strategy.
+//
+// Adding a new locale: drop `src/translations/<lang>.json` and add it
+// to the import + `languages` map below. Both edits land in this one
+// file. Webpack's static `import` syntax doesn't support runtime
+// directory globbing (that's a Vite feature) — the explicit map keeps
+// chunk splitting deterministic and the bundle small (only languages
+// the user actually has installed get loaded by the runtime). See
+// `lint-translations.mjs` for the parity-check guard.
 // ====================================================================
 
 import * as de from '../translations/de.json';

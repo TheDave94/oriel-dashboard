@@ -1,8 +1,12 @@
 {
   "name": "simon42-dashboard-strategy",
-  "version": "1.4.3-thedave",
+  "version": "2.1.0-beta.2",
   "private": true,
   "type": "module",
+  "license": "CC-BY-NC-SA-4.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "webpack",
     "build-dev": "webpack --config webpack.dev.config.ts",
@@ -28,6 +32,7 @@
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-security": "^4.0.0",
+    "happy-dom": "^20.9.0",
     "home-assistant-js-websocket": "^9.6.0",
     "prettier": "^3.8.1",
     "ts-loader": "^9.5.4",

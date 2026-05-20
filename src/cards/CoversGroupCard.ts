@@ -34,6 +34,8 @@ interface CoversGroupConfig {
   icon_closed?: string;
   icon_partial?: string;
   group_by_floors?: boolean;
+  /** Density variant — drives the --s42-* CSS tokens. */
+  density?: 'comfortable' | 'compact';
 }
 
 interface CoversFloorGroup {
@@ -67,6 +69,18 @@ const COVER_TERM_REGEXPS = COVER_TERMS.map((term) => new RegExp(`^${term}\\s+|\\
 
 const DEFAULT_DEVICE_CLASSES = ['awning', 'blind', 'curtain', 'shade', 'shutter', 'window'];
 
+/**
+ * HA's HassEntity.attributes is typed `Record<string, any>` upstream;
+ * narrow it locally for the cover-specific fields we read. Replaces
+ * three `(state.attributes as any)?.foo` sites with one typed helper.
+ */
+interface CoverAttrs {
+  device_class?: string;
+  current_position?: number;
+}
+const coverAttrs = (state: { attributes?: Record<string, unknown> } | undefined): CoverAttrs =>
+  (state?.attributes ?? {}) as CoverAttrs;
+
 class Simon42CoversGroupCard extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -87,6 +101,24 @@ class Simon42CoversGroupCard extends LitElement {
   static styles = css`
     :host {
       display: block;
+      container-type: inline-size;
+      container-name: s42-covers;
+      --s42-gap: var(--ha-space-2, 8px);
+      --s42-tile-min: 300px;
+    }
+    @container s42-covers (max-width: 400px) {
+      :host {
+        --s42-gap: var(--ha-space-1, 6px);
+        --s42-tile-min: 260px;
+      }
+    }
+    :host([density="compact"]) {
+      --s42-gap: var(--ha-space-1, 6px) !important;
+      --s42-tile-min: 280px !important;
+    }
+    :host([density="comfortable"]) {
+      --s42-gap: var(--ha-space-2, 8px) !important;
+      --s42-tile-min: 300px !important;
     }
     :host([hidden]) {
       display: none;
@@ -94,24 +126,40 @@ class Simon42CoversGroupCard extends LitElement {
     .covers-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--s42-gap);
       width: 100%;
     }
     .cover-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--s42-tile-min), 1fr));
+      gap: var(--s42-gap);
     }
     .floor-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--s42-gap);
     }
   `;
 
   setConfig(config: CoversGroupConfig): void {
     this._config = config;
     this._deviceClasses = config.device_classes || DEFAULT_DEVICE_CLASSES;
+    if (config.density === 'compact') {
+      this.setAttribute('density', 'compact');
+    } else {
+      this.removeAttribute('density');
+    }
+  }
+
+  // Same shape as LightsGroupCard — half-section, content-measured.
+  getGridOptions(): {
+    columns: number | 'full';
+    rows: number | 'auto';
+    min_columns?: number;
+    min_rows?: number;
+    max_rows?: number;
+  } {
+    return { columns: 6, rows: 'auto', min_columns: 6, min_rows: 1, max_rows: 12 };
   }
 
   protected willUpdate(changedProps: PropertyValues): void {
@@ -146,7 +194,7 @@ class Simon42CoversGroupCard extends LitElement {
     return Registry.getVisibleEntityIdsForDomain('cover').filter((id) => {
       const state = hass.states[id];
       if (!state) return false;
-      const deviceClass = (state.attributes as any)?.device_class as string | undefined;
+      const deviceClass = coverAttrs(state).device_class;
       // Covers without device_class only match the main group (multiple classes), not specialized groups like awnings/windows
       if (!deviceClass) return this._deviceClasses.length > 1;
       return this._deviceClasses.includes(deviceClass);
@@ -163,7 +211,7 @@ class Simon42CoversGroupCard extends LitElement {
       const state = this.hass.states[id];
       if (!state) continue;
 
-      const position = (state.attributes as any)?.current_position;
+      const position = coverAttrs(state).current_position;
       const hasPosition = typeof position === 'number';
       const isMoving = state.state === 'opening' || state.state === 'closing';
 
@@ -247,7 +295,6 @@ class Simon42CoversGroupCard extends LitElement {
     ];
 
     return sortedKeys.map((floorId) => {
-      // eslint-disable-next-line security/detect-object-injection -- floorId comes from HA floor registry keys
       const floor = floorId ? floors[floorId] : null;
       return {
         floorId,
@@ -363,7 +410,7 @@ class Simon42CoversGroupCard extends LitElement {
       .map((id) => {
         const state = this.hass?.states[id];
         if (!state) return id;
-        const position = (state.attributes as any)?.current_position;
+        const position = coverAttrs(state).current_position;
         if (typeof position === 'number') {
           return `${id}:${state.state}:${position}`;
         }
@@ -536,6 +583,45 @@ class Simon42CoversGroupCard extends LitElement {
     const covers = this._getRelevantCovers();
     return Math.ceil(covers.length / 3) + 1;
   }
+
+  public static getStubConfig(): { group_type: 'open' | 'closed' | 'partially_open' } {
+    return { group_type: 'open' };
+  }
+
+  public static async getConfigElement(): Promise<HTMLElement> {
+    const { createSimpleConfigEditor } = await import('./SimpleConfigEditor');
+    return createSimpleConfigEditor(
+      [
+        {
+          name: 'group_type',
+          required: true,
+          selector: {
+            select: {
+              mode: 'dropdown',
+              options: [
+                { value: 'open', label: 'Open' },
+                { value: 'closed', label: 'Closed' },
+                { value: 'partially_open', label: 'Partially open' },
+              ],
+            },
+          },
+        },
+        { name: 'show_partially_open', selector: { boolean: {} } },
+        { name: 'group_by_floors', selector: { boolean: {} } },
+      ],
+      'card.simon42-covers-group-card',
+    );
+  }
 }
 
 customElements.define('simon42-covers-group-card', Simon42CoversGroupCard);
+
+window.customCards = window.customCards || [];
+if (!window.customCards.some((c) => c.type === 'simon42-covers-group-card')) {
+  window.customCards.push({
+    type: 'simon42-covers-group-card',
+    name: 'Simon42 Covers Group',
+    description: 'Grouped open/closed cover tiles with optional partially-open bucket, awnings, and windows.',
+    preview: true,
+  } as { type: string; name: string; description: string });
+}

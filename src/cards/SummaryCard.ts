@@ -8,6 +8,7 @@ import { Registry } from '../Registry';
 import { trackHassUpdate, debugLog, timeStart, timeEnd } from '../utils/debug';
 import { localize } from '../utils/localize';
 import { getBatteryEntities, SECURITY_EXCLUDED_PLATFORMS } from '../utils/entity-filter';
+import { bindActionHandler, type ActionHandlerEvent } from '../utils/action-handler';
 
 declare global {
   interface Window {
@@ -22,6 +23,13 @@ interface SummaryCardConfig {
   hide_mobile_app_batteries?: boolean;
   hide_battery_notes_entities?: boolean;
   battery_critical_threshold?: number;
+  /**
+   * Density of the tile. 'comfortable' (default) is the original layout —
+   * stacked icon + label, generous padding. 'compact' is a horizontal
+   * single-row layout that halves the tile's vertical footprint, useful
+   * when the user wants the summary row to take less of the overview.
+   */
+  density?: 'compact' | 'comfortable';
 }
 
 interface DisplayConfig {
@@ -59,40 +67,103 @@ class Simon42SummaryCard extends LitElement {
     :host {
       display: block;
       cursor: pointer;
+      /* Container queries scale to the tile's actual rendered width. */
+      container-type: inline-size;
+      container-name: s42-summary;
+
+      --s42-pad: var(--ha-space-3, 12px);
+      --s42-gap: var(--ha-space-2, 8px);
+      --s42-icon: 28px;
+      --s42-name: var(--ha-font-size-s, 13px);
+    }
+    /* Narrow (< 160px wide cell): half-summary in a 4-col strip. */
+    @container s42-summary (max-width: 160px) {
+      :host {
+        --s42-pad: var(--ha-space-2, 10px) var(--ha-space-3, 14px);
+        --s42-gap: var(--ha-space-3, 10px);
+        --s42-icon: 24px;
+      }
+    }
+    /* Wide (> 280px): summary card in a generous lane. */
+    @container s42-summary (min-width: 280px) {
+      :host {
+        --s42-icon: 32px;
+      }
+    }
+    /* Manual overrides win against the container queries. */
+    :host([density="compact"]) {
+      --s42-pad: var(--ha-space-2, 10px) var(--ha-space-3, 14px) !important;
+      --s42-gap: var(--ha-space-3, 10px) !important;
+      --s42-icon: 26px !important;
+    }
+    :host([density="comfortable"]) {
+      --s42-pad: var(--ha-space-3, 12px) !important;
+      --s42-gap: var(--ha-space-2, 8px) !important;
+      --s42-icon: 28px !important;
     }
     ha-card {
-      padding: 12px;
+      padding: var(--s42-pad);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      gap: 8px;
+      gap: var(--s42-gap);
       height: 100%;
       box-sizing: border-box;
       --ha-card-border-width: 0;
-      background: var(--ha-card-background, var(--card-background-color, #fff));
-      border-radius: var(--ha-card-border-radius, 12px);
+      background: var(--ha-card-background, var(--card-background-color));
+      border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg, 12px));
+    }
+    /* Compact: switch to a single horizontal row, ~½ vertical footprint. */
+    :host([density="compact"]) ha-card {
+      flex-direction: row;
+      text-align: left;
+      justify-content: flex-start;
     }
     ha-card:active {
       transform: scale(0.97);
       transition: transform 0.1s;
     }
     .icon {
-      --mdc-icon-size: 28px;
+      --mdc-icon-size: var(--s42-icon);
       transition: color 0.3s;
     }
+    :host([density="compact"]) .icon {
+      flex: 0 0 auto;
+    }
     .name {
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.2;
+      font-size: var(--s42-name);
+      font-weight: var(--ha-font-weight-medium, 500);
+      line-height: var(--ha-line-height-condensed, 1.2);
       color: var(--primary-text-color);
+    }
+    :host([density="compact"]) .name {
+      flex: 1 1 auto;
     }
   `;
 
   setConfig(config: SummaryCardConfig): void {
+    // HA convention: setConfig throws on invalid input so the visual
+    // editor surfaces the error inline instead of silently rendering
+    // an empty count.
+    if (!config || typeof config !== 'object') {
+      throw new Error('simon42-summary-card: config object required');
+    }
+    if (
+      !['lights', 'covers', 'security', 'batteries', 'climate'].includes(config.summary_type)
+    ) {
+      throw new Error(
+        "simon42-summary-card: summary_type must be one of 'lights' | 'covers' | 'security' | 'batteries' | 'climate'",
+      );
+    }
     this._config = config;
     this._relevantEntityIds = null;
+    if (config.density === 'compact' || config.density === 'comfortable') {
+      this.setAttribute('density', config.density);
+    } else {
+      this.removeAttribute('density');
+    }
   }
 
   protected willUpdate(changedProps: PropertyValues): void {
@@ -304,33 +375,57 @@ class Simon42SummaryCard extends LitElement {
     return configs[this._config.summary_type];
   }
 
-  private _handleClick(): void {
-    if (!this.hass) return;
+  // Action dispatch — uses HA's action-handler directive (attached in
+  // updated()) so tap/hold/double-tap all work, plus Enter/Space when
+  // the card has focus. Matches the ZonePresenceCard contract; the
+  // SummaryCard config is always a navigate to its summary view.
+  private _onAction(ev: ActionHandlerEvent): void {
+    if (!this.hass || !this._config) return;
+    const action = ev.detail.action;
+    // Hold and double-tap default to more-info on the summary's first
+    // relevant entity (when available). Tap navigates to the view.
     const displayConfig = this._getDisplayConfig();
+    const first = this._relevantEntityIds && [...this._relevantEntityIds][0];
+    const config =
+      action === 'tap'
+        ? { tap_action: { action: 'navigate', navigation_path: displayConfig.path } }
+        : first
+          ? { entity: first, hold_action: { action: 'more-info' }, double_tap_action: { action: 'more-info' } }
+          : { tap_action: { action: 'navigate', navigation_path: displayConfig.path } };
     this.dispatchEvent(
       new CustomEvent('hass-action', {
         bubbles: true,
         composed: true,
-        detail: {
-          config: {
-            tap_action: {
-              action: 'navigate',
-              navigation_path: displayConfig.path,
-            },
-          },
-          action: 'tap',
-        },
-      })
+        detail: { config, action },
+      }),
     );
   }
 
-  protected render() {
+  protected updated(changed: PropertyValues): void {
+    if (!this.hass) return;
+    // Bind HA's global <action-handler> custom element to the
+    // ha-card once, so tap/hold/double-tap all dispatch a single
+    // @action event with `detail.action` set. Same pattern as
+    // ZonePresenceCard — see /tmp/simon42_audit_2026.md §2.2 for
+    // the rationale (raw @click loses keyboard + hold).
+    if (!changed.has('hass') && !changed.has('_config')) return;
+    const card = this.shadowRoot?.querySelector<HTMLElement>('ha-card');
+    if (!card) return;
+    bindActionHandler(card, { hasHold: true, hasDoubleClick: true });
+  }
 
+  protected render() {
+    if (!this._config) return html``;
     const display = this._getDisplayConfig();
     const colorCss = COLOR_MAP[display.color] || COLOR_MAP.grey;
 
     return html`
-      <ha-card @click=${() => this._handleClick()}>
+      <ha-card
+        role="button"
+        tabindex="0"
+        aria-label=${display.name}
+        @action=${this._onAction}
+      >
         <ha-icon class="icon" .icon=${display.icon} style="color: ${colorCss}"></ha-icon>
         <div class="name">${display.name}</div>
       </ha-card>
@@ -340,6 +435,67 @@ class Simon42SummaryCard extends LitElement {
   getCardSize(): number {
     return 1;
   }
+
+  // Tile-card pattern: half-section default, never narrower than 3
+  // columns (icon + label needs that minimum to look right). rows: 1
+  // is enough for either density variant. See research note 6.1 in
+  // commit history for the rationale.
+  getGridOptions(): {
+    columns: number | 'full';
+    rows: number | 'auto';
+    min_columns?: number;
+    min_rows?: number;
+  } {
+    return { columns: 6, rows: 1, min_columns: 3, min_rows: 1 };
+  }
+
+  // Picker preview — HA's "Add card" dialog calls this to seed the
+  // YAML when the user picks the card. We default to the lights
+  // summary (the most universally useful starting point).
+  public static getStubConfig(): SummaryCardConfig {
+    return { summary_type: 'lights' };
+  }
+
+  // Visual config editor — surfaces in HA's "Edit card" dialog instead
+  // of the raw YAML fallback. Lazy-imported so SimpleConfigEditor only
+  // joins the editor chunk when the user opens an edit dialog.
+  public static async getConfigElement(): Promise<HTMLElement> {
+    const { createSimpleConfigEditor } = await import('./SimpleConfigEditor');
+    return createSimpleConfigEditor(
+      [
+        {
+          name: 'summary_type',
+          required: true,
+          selector: {
+            select: {
+              mode: 'dropdown',
+              options: [
+                { value: 'lights', label: 'Lights' },
+                { value: 'covers', label: 'Covers' },
+                { value: 'security', label: 'Security' },
+                { value: 'batteries', label: 'Batteries' },
+                { value: 'climate', label: 'Climate' },
+              ],
+            },
+          },
+        },
+        {
+          name: 'density',
+          selector: {
+            select: {
+              mode: 'dropdown',
+              options: [
+                { value: '', label: 'Auto (container query)' },
+                { value: 'comfortable', label: 'Comfortable' },
+                { value: 'compact', label: 'Compact' },
+              ],
+            },
+          },
+        },
+      ],
+      'card.simon42-summary-card',
+    );
+  }
 }
 
 customElements.define('simon42-summary-card', Simon42SummaryCard);
@@ -348,5 +504,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'simon42-summary-card',
   name: 'Simon42 Summary Card',
-  description: 'Reactive summary card that counts entities dynamically',
-});
+  description: 'Reactive summary tile that counts entities (lights / covers / security / batteries / climate)',
+  preview: true,
+} as { type: string; name: string; description: string });
