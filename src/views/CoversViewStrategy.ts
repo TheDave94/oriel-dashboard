@@ -17,7 +17,12 @@ class Simon42ViewCoversStrategy extends HTMLElement {
     const hasAwnings = allDeviceClasses.includes('awning');
     const hasWindows = allDeviceClasses.includes('window');
 
-    const baseConfig = { entities: config.entities, config: config.config };
+    const density = strategyConfig.dashboard_density === 'compact' ? 'compact' : undefined;
+    const baseConfig = {
+      entities: config.entities,
+      config: config.config,
+      ...(density ? { density } : {}),
+    };
 
     // Rollos & Vorhänge
     const cards: any[] = [

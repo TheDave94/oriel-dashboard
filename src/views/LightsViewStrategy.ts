@@ -16,34 +16,26 @@ class Simon42ViewLightsStrategy extends HTMLElement {
     // expand wasn't discoverable. Matches RoomViewStrategy's behaviour
     // for its inline lights section. Users can override.
     const defaultExpanded = dashboardConfig.light_groups_default_expanded !== false;
+    const density = dashboardConfig.dashboard_density === 'compact' ? 'compact' : undefined;
+
+    const card = (group_type: 'on' | 'off') => ({
+      type: 'custom:simon42-lights-group-card',
+      entities: config.entities,
+      config: config.config,
+      group_type,
+      group_by_floors: groupByFloors,
+      nested_groups: nestedGroups,
+      default_expanded: defaultExpanded,
+      sort_by: sortBy,
+      ...(density ? { density } : {}),
+    });
 
     return {
       type: 'sections',
       sections: [
         {
           type: 'grid',
-          cards: [
-            {
-              type: 'custom:simon42-lights-group-card',
-              entities: config.entities,
-              config: config.config,
-              group_type: 'on',
-              group_by_floors: groupByFloors,
-              nested_groups: nestedGroups,
-              default_expanded: defaultExpanded,
-              sort_by: sortBy,
-            },
-            {
-              type: 'custom:simon42-lights-group-card',
-              entities: config.entities,
-              config: config.config,
-              group_type: 'off',
-              group_by_floors: groupByFloors,
-              nested_groups: nestedGroups,
-              default_expanded: defaultExpanded,
-              sort_by: sortBy,
-            },
-          ],
+          cards: [card('on'), card('off')],
         },
       ],
     };

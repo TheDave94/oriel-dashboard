@@ -488,6 +488,8 @@ class Simon42ViewRoomStrategy extends HTMLElement {
     };
 
     if (roomEntities.lights.length > 0) {
+      const lightsDensity =
+        dashboardConfig.dashboard_density === 'compact' ? 'compact' : undefined;
       sections.push({
         type: 'grid',
         cards: [
@@ -501,6 +503,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
             default_expanded: true,
             nested_groups: dashboardConfig.nested_light_groups === true,
             sort_by: dashboardConfig.lights_sort_by === 'name' ? 'name' : 'last_changed',
+            ...(lightsDensity ? { density: lightsDensity } : {}),
           },
         ],
       });

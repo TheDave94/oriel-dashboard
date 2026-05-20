@@ -122,9 +122,11 @@ function buildZonePresenceCard(
     entities = zoneEntities;
   }
 
+  const density = config.dashboard_density === 'compact' ? 'compact' : undefined;
   return {
     type: 'custom:simon42-zone-presence-card',
     entities,
+    ...(density ? { density } : {}),
     grid_options: { columns: 6, rows: 'auto' },
   };
 }
@@ -227,9 +229,17 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
 
   // Build summary cards based on config
   const summaryCards: LovelaceCardConfig[] = [];
-  // 'comfortable' default keeps the original layout; 'compact' switches each
-  // summary tile to a horizontal single-row layout (~½ the vertical space).
-  const density = config.summary_card_density === 'compact' ? 'compact' : 'comfortable';
+  // Density resolution: per-section override (summary_card_density) wins
+  // when set, otherwise inherit the strategy-wide `dashboard_density`.
+  // Both default to 'comfortable' (HA's standard sizing).
+  const density: 'comfortable' | 'compact' =
+    config.summary_card_density === 'compact'
+      ? 'compact'
+      : config.summary_card_density === 'comfortable'
+        ? 'comfortable'
+        : config.dashboard_density === 'compact'
+          ? 'compact'
+          : 'comfortable';
 
   if (showLightSummary) {
     summaryCards.push({

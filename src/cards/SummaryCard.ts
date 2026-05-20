@@ -66,50 +66,59 @@ class Simon42SummaryCard extends LitElement {
     :host {
       display: block;
       cursor: pointer;
+      /* Per-density tokens. The values below resolve to HA's design
+         tokens (--ha-space-N = N*4px) so themes can re-skin them, and
+         the compact variant just rebinds the four locals at the host
+         level — the rest of the CSS reads only --s42-* and inherits
+         consistently. */
+      --s42-pad: var(--ha-space-3, 12px);
+      --s42-gap: var(--ha-space-2, 8px);
+      --s42-icon: 28px;
+      --s42-name: var(--ha-font-size-s, 13px);
+    }
+    :host([density="compact"]) {
+      --s42-pad: var(--ha-space-2, 8px) var(--ha-space-3, 12px);
+      --s42-gap: var(--ha-space-3, 12px);
+      --s42-icon: 22px;
     }
     ha-card {
-      padding: 12px;
+      padding: var(--s42-pad);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      gap: 8px;
+      gap: var(--s42-gap);
       height: 100%;
       box-sizing: border-box;
       --ha-card-border-width: 0;
-      background: var(--ha-card-background, var(--card-background-color, #fff));
-      border-radius: var(--ha-card-border-radius, 12px);
+      background: var(--ha-card-background, var(--card-background-color));
+      border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg, 12px));
+    }
+    /* Compact: switch to a single horizontal row, ~½ vertical footprint. */
+    :host([density="compact"]) ha-card {
+      flex-direction: row;
+      text-align: left;
+      justify-content: flex-start;
     }
     ha-card:active {
       transform: scale(0.97);
       transition: transform 0.1s;
     }
     .icon {
-      --mdc-icon-size: 28px;
+      --mdc-icon-size: var(--s42-icon);
       transition: color 0.3s;
     }
-    .name {
-      font-size: 13px;
-      font-weight: 500;
-      line-height: 1.2;
-      color: var(--primary-text-color);
-    }
-    /* Compact density: single-row layout, smaller padding, ~½ the
-       vertical footprint of the comfortable variant. */
-    :host([density="compact"]) ha-card {
-      padding: 8px 12px;
-      flex-direction: row;
-      gap: 12px;
-      text-align: left;
-      justify-content: flex-start;
-    }
     :host([density="compact"]) .icon {
-      --mdc-icon-size: 22px;
       flex: 0 0 auto;
     }
+    .name {
+      font-size: var(--s42-name);
+      font-weight: var(--ha-font-weight-medium, 500);
+      line-height: var(--ha-line-height-condensed, 1.2);
+      color: var(--primary-text-color);
+    }
     :host([density="compact"]) .name {
-      font-size: 13px;
       flex: 1 1 auto;
     }
   `;
@@ -371,6 +380,19 @@ class Simon42SummaryCard extends LitElement {
 
   getCardSize(): number {
     return 1;
+  }
+
+  // Tile-card pattern: half-section default, never narrower than 3
+  // columns (icon + label needs that minimum to look right). rows: 1
+  // is enough for either density variant. See research note 6.1 in
+  // commit history for the rationale.
+  getGridOptions(): {
+    columns: number | 'full';
+    rows: number | 'auto';
+    min_columns?: number;
+    min_rows?: number;
+  } {
+    return { columns: 6, rows: 1, min_columns: 3, min_rows: 1 };
   }
 }
 
