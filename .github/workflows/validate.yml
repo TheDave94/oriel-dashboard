@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-18
+      - uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-20
         with:
           category: plugin
 
@@ -69,3 +69,43 @@ jobs:
       # so a vitest dev-only vulnerability doesn't block the release
       # pipeline, but anything user-installable through HACS gates here.
       - run: npm audit --audit-level=high --omit=dev
+
+  bundle-size:
+    name: Bundle size budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      # Per-chunk gzipped size budgets — fails the build if any chunk
+      # crosses a threshold. Tune the limits up only with a deliberate
+      # PR; surprise regressions get caught here.
+      - name: Check bundle sizes
+        run: |
+          set -e
+          fail=0
+          check() { # check <pattern> <max_kb>
+            local pat="$1" max="$2"
+            local file=$(ls dist/$pat 2>/dev/null | head -1)
+            if [ -z "$file" ]; then
+              echo "  MISSING: $pat"; fail=1; return
+            fi
+            local size=$(stat -c%s "$file")
+            local kb=$((size / 1024))
+            if [ "$kb" -gt "$max" ]; then
+              echo "  OVER:  $file = ${kb}KB (limit ${max}KB)"; fail=1
+            else
+              echo "  OK:    $file = ${kb}KB / ${max}KB"
+            fi
+          }
+          echo "Bundle-size budget (gzipped):"
+          check "simon42-dashboard-strategy.js.gz" 5
+          check "simon42-dashboard-strategy-core.*.js.gz" 50
+          check "simon42-dashboard-strategy-views.*.js.gz" 20
+          check "simon42-dashboard-strategy-editor.*.js.gz" 80
+          check "simon42-dashboard-strategy-lit.*.js.gz" 25
+          exit $fail

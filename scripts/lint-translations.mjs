@@ -1,37 +1,43 @@
 #!/usr/bin/env node
-/* eslint-disable security/detect-object-injection
+/* eslint-disable security/detect-non-literal-fs-filename, security/detect-object-injection
  *  -- this script runs only in CI against translation files committed
- *     to this repo. There is no user-controlled input. The object accesses
- *     are over known, fixed structures (parsed JSON / character indices
- *     in the source file).
+ *     to this repo. There is no user-controlled input. File paths come
+ *     from a readdir of the locked translations directory; object
+ *     accesses are over the resulting parsed JSON.
  */
 // Translation file linter — catches three classes of bug:
 //   1. Invalid JSON
 //   2. Duplicate keys in any object (JSON.parse silently keeps the last value)
-//   3. Key-parity drift between en.json and de.json (key in one, missing in the other)
+//   3. Key-parity drift between en.json and every other locale (missing keys
+//      in either direction)
 //
 // JSON.parse drops duplicate keys without raising, so for (2) we re-tokenize
 // the raw text and walk the object structure ourselves.
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
-const EN_PATH = 'src/translations/en.json';
-const DE_PATH = 'src/translations/de.json';
+const TRANSLATIONS_DIR = 'src/translations';
+const REFERENCE_LANG = 'en';
+const REFERENCE_PATH = path.join(TRANSLATIONS_DIR, `${REFERENCE_LANG}.json`);
+
+// Discover every JSON file in the translations directory. New locales
+// require nothing more than dropping a file alongside en.json.
+const localeFiles = readdirSync(TRANSLATIONS_DIR)
+  .filter((name) => name.endsWith('.json'))
+  .map((name) => path.join(TRANSLATIONS_DIR, name))
+  .sort();
+
+if (!localeFiles.includes(REFERENCE_PATH)) {
+  console.error(`[lint-translations] ${REFERENCE_PATH} missing — that's the reference locale.`);
+  process.exit(1);
+}
 
 let problems = 0;
 
 function report(file, msg) {
   console.error(`[lint-translations] ${file}: ${msg}`);
   problems++;
-}
-
-// Read with a fixed-set of literal paths to satisfy
-// security/detect-non-literal-fs-filename — the only legitimate inputs are
-// EN_PATH and DE_PATH; anything else is a programmer error here.
-function readTranslation(file) {
-  if (file === EN_PATH) return readFileSync(EN_PATH, 'utf8');
-  if (file === DE_PATH) return readFileSync(DE_PATH, 'utf8');
-  throw new Error(`unknown translation file: ${file}`);
 }
 
 // Walk a JSON.parse-able text and report duplicate keys.
@@ -90,26 +96,37 @@ function collectKeys(obj, prefix = '') {
   return out;
 }
 
-const parsedEn = (() => {
-  try { return JSON.parse(readTranslation(EN_PATH)); }
-  catch (e) { report(EN_PATH, `invalid JSON: ${e.message}`); return null; }
-})();
-const parsedDe = (() => {
-  try { return JSON.parse(readTranslation(DE_PATH)); }
-  catch (e) { report(DE_PATH, `invalid JSON: ${e.message}`); return null; }
-})();
-
-if (parsedEn) findDuplicateKeys(EN_PATH, readTranslation(EN_PATH));
-if (parsedDe) findDuplicateKeys(DE_PATH, readTranslation(DE_PATH));
-
-if (parsedEn && parsedDe) {
-  const enKeys = new Set(collectKeys(parsedEn));
-  const deKeys = new Set(collectKeys(parsedDe));
-  for (const k of enKeys) {
-    if (!deKeys.has(k)) report(DE_PATH, `missing key '${k}' (present in en.json)`);
+// Parse each locale file. Track raw text so we can run the duplicate-key
+// detector against it (JSON.parse drops dupes silently).
+const parsed = {};
+for (const file of localeFiles) {
+  const text = readFileSync(file, 'utf8');
+  try {
+    parsed[file] = { json: JSON.parse(text), text };
+  } catch (e) {
+    report(file, `invalid JSON: ${e.message}`);
+    parsed[file] = null;
   }
-  for (const k of deKeys) {
-    if (!enKeys.has(k)) report(EN_PATH, `missing key '${k}' (present in de.json)`);
+}
+
+for (const file of localeFiles) {
+  if (parsed[file]) findDuplicateKeys(file, parsed[file].text);
+}
+
+// Parity check: every locale must have the same keys as the reference.
+const reference = parsed[REFERENCE_PATH];
+if (reference) {
+  const refKeys = new Set(collectKeys(reference.json));
+  for (const file of localeFiles) {
+    if (file === REFERENCE_PATH) continue;
+    if (!parsed[file]) continue;
+    const localeKeys = new Set(collectKeys(parsed[file].json));
+    for (const k of refKeys) {
+      if (!localeKeys.has(k)) report(file, `missing key '${k}' (present in ${REFERENCE_PATH})`);
+    }
+    for (const k of localeKeys) {
+      if (!refKeys.has(k)) report(REFERENCE_PATH, `missing key '${k}' (present in ${file})`);
+    }
   }
 }
 
@@ -117,4 +134,4 @@ if (problems > 0) {
   console.error(`\n[lint-translations] ${problems} problem(s) found.`);
   process.exit(1);
 }
-console.log('[lint-translations] OK');
+console.log(`[lint-translations] OK (${localeFiles.length} locale(s))`);

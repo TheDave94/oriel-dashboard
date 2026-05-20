@@ -4,9 +4,14 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
+import type { Simon42StrategyConfig } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
 import { getBatteryEntities } from '../utils/entity-filter';
+
+interface BatteriesViewStrategyParams {
+  config?: Simon42StrategyConfig;
+}
 
 function getAreaNameForEntity(entityId: string, hass: HomeAssistant): string | null {
   const entity = Registry.getEntity(entityId);
@@ -63,14 +68,15 @@ function createBatterySection(
 }
 
 class Simon42ViewBatteriesStrategy extends HTMLElement {
-  static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
+  static async generate(
+    config: BatteriesViewStrategyParams,
+    hass: HomeAssistant,
+  ): Promise<LovelaceViewConfig> {
     // Ensure Registry is initialized (idempotent — no-op if already done)
     Registry.initialize(hass, config.config || {});
 
-    const batteryEntities = getBatteryEntities(hass, config.config);
-
-    // Group by status
     const strategyConfig = config.config || {};
+    const batteryEntities = getBatteryEntities(hass, strategyConfig);
     const criticalThreshold = strategyConfig.battery_critical_threshold ?? 20;
     const lowThreshold = strategyConfig.battery_low_threshold ?? 50;
     const showArea = strategyConfig.show_area_in_battery_view === true;

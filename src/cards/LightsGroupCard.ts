@@ -174,7 +174,9 @@ class Simon42LightsGroupCard extends LitElement {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(var(--s42-child-min), 1fr));
       gap: var(--s42-gap);
-      padding-left: calc(var(--s42-toggle-size) + var(--s42-gap));
+      /* Logical inline-start: matches the toggle's left side in LTR,
+         right side in RTL — inherits HA's parent dir. */
+      padding-inline-start: calc(var(--s42-toggle-size) + var(--s42-gap));
     }
     .group-children[hidden] {
       display: none;

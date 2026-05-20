@@ -127,8 +127,15 @@ function renderCustomCards(cards: CustomCard[]): LovelaceCardConfig[] {
   return result;
 }
 
+interface OverviewViewStrategyParams {
+  dashboardConfig?: Simon42StrategyConfig;
+}
+
 class Simon42ViewOverviewStrategy extends HTMLElement {
-  static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
+  static async generate(
+    config: OverviewViewStrategyParams,
+    hass: HomeAssistant,
+  ): Promise<LovelaceViewConfig> {
     timeStart('overview-generate');
     const dashboardConfig: Simon42StrategyConfig = config.dashboardConfig || {};
 
