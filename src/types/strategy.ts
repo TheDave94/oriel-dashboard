@@ -173,6 +173,24 @@ export interface Simon42StrategyConfig {
    */
   summary_card_density?: 'compact' | 'comfortable';
   /**
+   * Strategy-wide density toggle. When set to 'compact', every
+   * custom card emitted by the strategy (summary tiles, lights
+   * group, covers group, zone-presence) receives `density: compact`
+   * in its config, which rebinds the card's `--s42-*` CSS tokens to
+   * tighter values — smaller padding, smaller icon wraps, condensed
+   * grids. HA built-in cards (tile, area, weather-forecast) are
+   * unaffected: the strategy emits the same configs and they keep
+   * HA's standard sizing.
+   *
+   * Default 'comfortable' (HA's standard sizing).
+   *
+   * `summary_card_density` remains a per-section override for
+   * backward compatibility — when set, it wins for the summary
+   * tiles specifically. New configurations should prefer
+   * `dashboard_density`.
+   */
+  dashboard_density?: 'compact' | 'comfortable';
+  /**
    * Globally enable / disable the auto-rendered zone-presence card in
    * room views. Default true: each room view picks up its
    * binary_sensors with device_class ∈ {occupancy, motion, presence}

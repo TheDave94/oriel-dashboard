@@ -135,6 +135,8 @@ interface ZonePresenceCardConfig {
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
   double_tap_action?: ActionConfig;
+  /** Density variant — drives the --s42-* CSS tokens. */
+  density?: 'comfortable' | 'compact';
 }
 
 interface LovelaceGridOptions {
@@ -181,22 +183,44 @@ class Simon42ZonePresenceCard extends LitElement {
   static styles = css`
     :host {
       display: block;
+      --s42-pad-block: var(--ha-space-3, 12px);
+      --s42-pad-inline: var(--ha-space-4, 16px);
+      --s42-header-gap: var(--ha-space-2, 8px);
+      --s42-header-mb: var(--ha-space-3, 10px);
+      --s42-zone-gap-row: var(--ha-space-2, 6px);
+      --s42-zone-gap-col: var(--ha-space-3, 12px);
+      --s42-zone-pad: var(--ha-space-2, 8px) var(--ha-space-1, 4px);
+      --s42-zone-radius: var(--ha-border-radius-md, 10px);
+      --s42-zone-label-gap: var(--ha-space-1, 4px);
+      --s42-icon-wrap: 36px;
+      --s42-icon-size: 22px;
+      --s42-label: var(--ha-font-size-xs, 11px);
+      --s42-header-size: var(--ha-font-size-m, 14px);
+    }
+    :host([density="compact"]) {
+      --s42-pad-block: var(--ha-space-2, 8px);
+      --s42-pad-inline: var(--ha-space-3, 12px);
+      --s42-header-mb: var(--ha-space-2, 6px);
+      --s42-zone-gap-col: var(--ha-space-2, 8px);
+      --s42-zone-pad: var(--ha-space-1, 4px) var(--ha-space-1, 2px);
+      --s42-icon-wrap: 28px;
+      --s42-icon-size: 18px;
     }
     ha-card {
-      padding: 12px 16px;
+      padding: var(--s42-pad-block) var(--s42-pad-inline);
       background: var(--ha-card-background, var(--card-background-color));
-      border-radius: var(--ha-card-border-radius, 12px);
+      border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg, 12px));
       box-sizing: border-box;
     }
     .header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
+      gap: var(--s42-header-gap);
+      margin-bottom: var(--s42-header-mb);
       color: var(--primary-text-color);
-      font-weight: 500;
-      font-size: 14px;
-      line-height: 1.2;
+      font-weight: var(--ha-font-weight-medium, 500);
+      font-size: var(--s42-header-size);
+      line-height: var(--ha-line-height-condensed, 1.2);
     }
     .header ha-icon {
       --mdc-icon-size: 18px;
@@ -205,7 +229,7 @@ class Simon42ZonePresenceCard extends LitElement {
     .zones {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px 12px;
+      gap: var(--s42-zone-gap-row) var(--s42-zone-gap-col);
       align-items: flex-start;
     }
     .zone {
@@ -214,9 +238,9 @@ class Simon42ZonePresenceCard extends LitElement {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 8px 4px;
-      border-radius: 10px;
+      gap: var(--s42-zone-label-gap);
+      padding: var(--s42-zone-pad);
+      border-radius: var(--s42-zone-radius);
       cursor: pointer;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
@@ -237,8 +261,8 @@ class Simon42ZonePresenceCard extends LitElement {
     .icon-wrap {
       --dot-color: var(--state-active-color, var(--primary-color));
       --dot-inactive: var(--state-inactive-color, var(--disabled-text-color));
-      width: 36px;
-      height: 36px;
+      width: var(--s42-icon-wrap);
+      height: var(--s42-icon-wrap);
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -247,7 +271,7 @@ class Simon42ZonePresenceCard extends LitElement {
       transition: background-color 200ms ease, box-shadow 200ms ease, transform 180ms ease;
     }
     .icon-wrap ha-icon {
-      --mdc-icon-size: 22px;
+      --mdc-icon-size: var(--s42-icon-size);
       color: var(--dot-inactive);
       transition: color 200ms ease;
     }
@@ -264,7 +288,7 @@ class Simon42ZonePresenceCard extends LitElement {
       border: 1.5px dashed var(--dot-inactive);
     }
     .label {
-      font-size: 11px;
+      font-size: var(--s42-label);
       line-height: 1.15;
       color: var(--secondary-text-color);
       text-align: center;
@@ -291,6 +315,11 @@ class Simon42ZonePresenceCard extends LitElement {
       hold_action: { action: 'more-info' },
       ...config,
     };
+    if (config.density === 'compact') {
+      this.setAttribute('density', 'compact');
+    } else {
+      this.removeAttribute('density');
+    }
   }
 
   public getCardSize(): number {
@@ -298,10 +327,16 @@ class Simon42ZonePresenceCard extends LitElement {
   }
 
   public getGridOptions(): LovelaceGridOptions {
-    // Use rows: 'auto' so HA reserves vertical space proportional to the
-    // actual content (wrapped multi-row icon strips don't get clipped
-    // and bleed visually into the next section).
-    return { rows: 'auto', columns: 'full', min_rows: 1, min_columns: 3 };
+    // Icon-strip card: defaults to 6 cols (half-section) so a sibling
+    // card can share the row. The icon row wraps naturally inside the
+    // card when the zone count exceeds what fits — rows: 'auto' lets
+    // HA reserve the right vertical space. min_columns: 3 keeps the
+    // icons readable even at the smallest reasonable width.
+    //
+    // YAML `grid_options:` overrides win (HA's reconciler is
+    // `{...element, ...config}`), so users can still emit columns:'full'
+    // when they want a presence strip to span the whole section.
+    return { columns: 6, rows: 'auto', min_columns: 3, min_rows: 1 };
   }
 
   // Pick a representative binary_sensor for the picker preview.

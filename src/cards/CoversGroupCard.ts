@@ -34,6 +34,8 @@ interface CoversGroupConfig {
   icon_closed?: string;
   icon_partial?: string;
   group_by_floors?: boolean;
+  /** Density variant — drives the --s42-* CSS tokens. */
+  density?: 'comfortable' | 'compact';
 }
 
 interface CoversFloorGroup {
@@ -87,6 +89,12 @@ class Simon42CoversGroupCard extends LitElement {
   static styles = css`
     :host {
       display: block;
+      --s42-gap: var(--ha-space-2, 8px);
+      --s42-tile-min: 300px;
+    }
+    :host([density="compact"]) {
+      --s42-gap: var(--ha-space-1, 4px);
+      --s42-tile-min: 240px;
     }
     :host([hidden]) {
       display: none;
@@ -94,24 +102,40 @@ class Simon42CoversGroupCard extends LitElement {
     .covers-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--s42-gap);
       width: 100%;
     }
     .cover-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--s42-tile-min), 1fr));
+      gap: var(--s42-gap);
     }
     .floor-section {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: var(--s42-gap);
     }
   `;
 
   setConfig(config: CoversGroupConfig): void {
     this._config = config;
     this._deviceClasses = config.device_classes || DEFAULT_DEVICE_CLASSES;
+    if (config.density === 'compact') {
+      this.setAttribute('density', 'compact');
+    } else {
+      this.removeAttribute('density');
+    }
+  }
+
+  // Same shape as LightsGroupCard — half-section, content-measured.
+  getGridOptions(): {
+    columns: number | 'full';
+    rows: number | 'auto';
+    min_columns?: number;
+    min_rows?: number;
+    max_rows?: number;
+  } {
+    return { columns: 6, rows: 'auto', min_columns: 6, min_rows: 1, max_rows: 12 };
   }
 
   protected willUpdate(changedProps: PropertyValues): void {
