@@ -298,7 +298,10 @@ class Simon42ZonePresenceCard extends LitElement {
   }
 
   public getGridOptions(): LovelaceGridOptions {
-    return { rows: 1, columns: 6, min_rows: 1, min_columns: 3, max_rows: 1 };
+    // Use rows: 'auto' so HA reserves vertical space proportional to the
+    // actual content (wrapped multi-row icon strips don't get clipped
+    // and bleed visually into the next section).
+    return { rows: 'auto', columns: 'full', min_rows: 1, min_columns: 3 };
   }
 
   // Pick a representative binary_sensor for the picker preview.

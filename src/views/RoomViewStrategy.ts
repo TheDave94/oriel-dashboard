@@ -776,7 +776,7 @@ class Simon42ViewRoomStrategy extends HTMLElement {
             color: 'accent',
             features,
             features_position: 'bottom',
-            grid_options: { columns: 'full' },
+            grid_options: { columns: 'full', rows: 'auto' },
           } as LovelaceCardConfig,
         ],
       });
