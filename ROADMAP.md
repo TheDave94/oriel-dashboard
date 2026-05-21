@@ -35,7 +35,7 @@ Based on a survey of the HA forum, Reddit, GitHub frontend/core issues, and comp
 - **SmartThings** — routines as first-class dashboard primitives (not buried in settings).
 - **SharpTools** — visual rule engine that can target the dashboard itself (`flash_view`, `surface_tile` as service calls).
 - **Bubble Card** — pop-up sub-views / sub-buttons — one tap reveals a contextual drawer instead of navigating away.
-- **Mushroom** — ubiquitous `<ha-form>` visual editor (already adopted by this fork).
+- **Mushroom** — ubiquitous `<ha-form>` visual editor (already adopted by Oriel).
 - **Mini-graph-card / ApexCharts** — micro-history inline with the entity.
 - **HomeKit-Dashboard / apple-home-dashboard** — state-aware iconography (closed-vs-open garage, locked-vs-unlocked) that "speaks the right visual language" without per-entity config.
 - **visionOS** — glanceable widgets that persist in space; sub-2-second status reads.
@@ -48,12 +48,12 @@ This is the prioritised list. Cross-referenced with the entries below — items 
 1. **Per-user/per-role layout resolution** — fixes the #1 family-usability complaint. (→ Part B A10, expanded)
 2. **Density / viewport presets baked into the strategy** — three-line config addresses Sections-resize pain. (→ NEW: see C1 below)
 3. **LLM "describe your dashboard" generator** — strategy is uniquely positioned (it already owns layout synthesis). (→ Part B A1)
-4. **Context-aware re-ordering driven by `room_mode` / `house_mode`** — fork already depends on these modes; promote/demote sections by mode is small code, high perceived intelligence. (→ Part B A2 reframed)
+4. **Context-aware re-ordering driven by `room_mode` / `house_mode`** — already depends on these modes; promote/demote sections by mode is small code, high perceived intelligence. (→ Part B A2 reframed)
 5. **Sparkline + secondary-metric slots on the summary tile** — addresses HA dev team's own ask. (→ Part B A5 + Part A #6)
 6. **First-class Routines auto-view from scenes/scripts ranked by usage** — exploits data HA already records. (→ Part B A8)
 7. **Wall-panel variant with screensaver + thumb-reach safe-area** — small CSS + a `panel: wall` flag. (→ NEW: see C2)
 8. **Voice FAB on every view, view-aware context** — bridges the "voice exists but feels bolted-on" gap. (→ Part B A7)
-9. **Visibility editor rewrite (roles, time-of-day, mode) in ha-form** — the visual-editor pillar of this fork extended to its weakest area. (→ Part A #7 expanded)
+9. **Visibility editor rewrite (roles, time-of-day, mode) in ha-form** — the visual-editor pillar of Oriel extended to its weakest area. (→ Part A #7 expanded)
 10. **Ephemeral alert banner slot** (doorbell / smoke / intruder) — turns dashboards from "dumb display" into a notification surface. (→ Part B A9)
 
 ---
@@ -909,7 +909,7 @@ Features surfaced by the research synthesis in Part 0 that weren't in the origin
 
 ### Problem
 
-HA Sections view has hard-coded card min-sizes. Users can't fit more than 2-3 cards per row on phones. The fork's container queries already adapt, but the user can't tell the strategy "I want it denser" at the dashboard level.
+HA Sections view has hard-coded card min-sizes. Users can't fit more than 2-3 cards per row on phones. Oriel's container queries already adapt, but the user can't tell the strategy "I want it denser" at the dashboard level.
 
 ### Idea
 
@@ -947,7 +947,7 @@ The dashboard mode that fits 8 tiles on a phone is a single config line away. No
 
 ## 🎯 C2. Wall-panel / kiosk variant
 
-**Effort:** M. **Impact:** high (Part 0 #7 community pain). Makes the fork the obvious choice for tablet installs.
+**Effort:** M. **Impact:** high (Part 0 #7 community pain). Makes Oriel the obvious choice for tablet installs.
 
 ### Problem
 
@@ -1022,7 +1022,7 @@ Per-view opt-in via `swipe_nav: true` (or default-on with `panel_mode: 'wall'`).
 
 ### Problem
 
-Sections are a fixed order. But what matters at 7am (lights, calendar, energy) is different from what matters at 10pm (security, scenes for bedtime). The fork already depends on `room_mode` and `house_mode` for room-level behavior — extend to top-level.
+Sections are a fixed order. But what matters at 7am (lights, calendar, energy) is different from what matters at 10pm (security, scenes for bedtime). Oriel already depends on `room_mode` and `house_mode` for room-level behavior — extend to top-level.
 
 ### Idea
 
@@ -1085,7 +1085,7 @@ Editor expands to surface these as `<ha-form>` schema-driven fields per section.
 
 ### Why it's a win
 
-Replaces a frequent forum question ("how do I hide X from kids?") with one config block. Builds on the fork's existing visibility primitive instead of starting fresh.
+Replaces a frequent forum question ("how do I hide X from kids?") with one config block. Builds on Oriel's existing visibility primitive instead of starting fresh.
 
 ---
 

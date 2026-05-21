@@ -1,14 +1,16 @@
-# Migrating from the Simon42 Dashboard Strategy → Oriel Dashboard
+# Migrating from Simon42 → Oriel
 
-This guide is for users coming from the **upstream [TheRealSimon42/simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy)** plugin who want to switch to Oriel Dashboard. The two share a common ancestor but have diverged: different feature set, different identifiers, different release cadence. Switching is a one-time YAML edit + a HACS swap.
+For users on [simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) who want to switch to Oriel.
 
-> Migrating from a previous Oriel release? Versions before v4.1.0 used different brand names — see git history. Easiest path: uninstall the old version, reinstall, run the Setup wizard.
+> **Oriel isn't trying to replace Simon42.** Simon42 owns the auto-generation core and ships clean, focused defaults that work great for a lot of users — and the upstream remains actively developed. Oriel sits on top of that base, adding configurability and integration surface for users who want more handles to pull. If you're happy with Simon42, stay on it. Move over to Oriel when you want one of the features it layers on top.
+
+Switching is a one-shot YAML edit + a HACS swap.
+
+> Coming from a pre-v4.1.0 Oriel release? Those used different brand names. Cleanest path: uninstall, reinstall, run the Setup wizard.
 
 ---
 
-## What Oriel adds on top of Simon42
-
-If you're weighing whether to switch, here are the headline features that aren't in the upstream:
+## What you get on Oriel that isn't in Simon42
 
 - **Setup wizard** in the editor — auto-detects installed HACS plugins (Bubble Card, ApexCharts, decluttering-card, floorplan-card) and surfaces every advanced feature with an install hint when missing.
 - **Per-user / per-role dashboards** — different layouts per HA user or label.
