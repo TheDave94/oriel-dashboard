@@ -187,21 +187,41 @@ function isValidBadgeShape(value: unknown): value is LovelaceBadgeConfig {
 }
 
 /**
+ * HTML-escape a string for safe interpolation into the markdown card's
+ * `content` field. The pluginKey is attacker-controlled under the v2
+ * trust model (anyone can register a key like `<img onerror=...>`),
+ * and HA's markdown card renders the content through a sanitizer we
+ * don't own. Defense-in-depth: escape at our boundary so the safety
+ * claim doesn't depend on a downstream sanitizer's behaviour.
+ */
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Wrap a section config with an attribution footer card. The footer is
  * a tiny markdown card emitted at the bottom of the plugin's section,
  * styled as text_only with a small "via <key>" marker. Gives users a
  * visible signal that the contents come from a specific plugin —
  * trust + provenance for the hostile-plugin case.
+ *
+ * Plugin keys are HTML-escaped before interpolation (see escapeHtml).
  */
 function withAttribution(
   section: LovelaceSectionConfig,
   pluginKey: string,
 ): LovelaceSectionConfig {
   const existingCards = Array.isArray(section.cards) ? section.cards : [];
+  const safeKey = escapeHtml(pluginKey);
   const footer: LovelaceCardConfig = {
     type: 'markdown',
     text_only: true,
-    content: `<span style="font-size: 0.72em; opacity: 0.55;">via ${pluginKey}</span>`,
+    content: `<span style="font-size: 0.72em; opacity: 0.55;">via ${safeKey}</span>`,
   };
   return {
     ...section,

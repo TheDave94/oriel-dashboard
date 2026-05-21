@@ -242,6 +242,83 @@ describe('Extension API — attribution footer', () => {
   });
 });
 
+describe('Extension API — attribution footer XSS safety (v2 trust model)', () => {
+  it('escapes hostile HTML in plugin keys before interpolating into markdown content', async () => {
+    const oriel = (window as Record<string, unknown> & {
+      oriel?: { registerSection: (s: unknown) => void };
+    }).oriel!;
+    // Plugin keys are attacker-controlled under v2 — anything can be
+    // registered. The strategy must escape on its side; we don't rely
+    // on HA's markdown sanitizer downstream.
+    oriel.registerSection({
+      apiVersion: 2,
+      key: '<img src=x onerror=alert(1)>',
+      label: 'Hostile',
+      build: () => ({ type: 'grid', cards: [] }),
+    });
+    const result = await buildExtensionSections(makeCtx());
+    const cards = result[0]?.cards as Array<{ type: string; content?: string }>;
+    const footer = cards.find((c) => c.type === 'markdown');
+    expect(footer).toBeDefined();
+    const content = footer?.content ?? '';
+    // The raw `<img` tag must NOT appear in the emitted content —
+    // would render as an actual image element through HA's markdown.
+    // (The word "onerror" as escaped text is harmless: it's literal
+    // text, not an HTML attribute. What matters is no unescaped < or >.)
+    expect(content).not.toContain('<img');
+    expect(content).not.toMatch(/<\/?img/);
+    // The escaped form is what we want to see
+    expect(content).toContain('&lt;img');
+    expect(content).toContain('&gt;');
+    // The original quote characters in the user-controlled portion are
+    // escaped — confirm by checking that the surrounding template quotes
+    // (legitimate use) appear only in the expected places. Hostile keys
+    // with quotes would otherwise break out of the style attribute.
+    const userControlledPortion = content.split('via ')[1] ?? '';
+    expect(userControlledPortion).not.toMatch(/(?<!&#39;|&quot;|&amp;)["']/);
+  });
+
+  it('escapes ampersand + quote variants in plugin keys', async () => {
+    const oriel = (window as Record<string, unknown> & {
+      oriel?: { registerSection: (s: unknown) => void };
+    }).oriel!;
+    oriel.registerSection({
+      apiVersion: 2,
+      key: 'a&b"c\'d',
+      label: 'Special',
+      build: () => ({ type: 'grid', cards: [] }),
+    });
+    const result = await buildExtensionSections(makeCtx());
+    const cards = result[0]?.cards as Array<{ type: string; content?: string }>;
+    const footer = cards.find((c) => c.type === 'markdown');
+    const content = footer?.content ?? '';
+    expect(content).toContain('a&amp;b');
+    expect(content).toContain('&quot;c');
+    expect(content).toContain('&#39;d');
+    // Original unescaped chars must NOT appear in user-controlled portion
+    // (the surrounding HTML uses quotes legitimately so check for the
+    // dangerous-context-specific encoding instead)
+    expect(content).not.toContain('a&b');
+    expect(content).not.toContain('"c');
+  });
+
+  it('regular ASCII plugin keys render unchanged', async () => {
+    const oriel = (window as Record<string, unknown> & {
+      oriel?: { registerSection: (s: unknown) => void };
+    }).oriel!;
+    oriel.registerSection({
+      apiVersion: 2,
+      key: 'oriel-energy-plugin',
+      label: 'Energy',
+      build: () => ({ type: 'grid', cards: [] }),
+    });
+    const result = await buildExtensionSections(makeCtx());
+    const cards = result[0]?.cards as Array<{ type: string; content?: string }>;
+    const footer = cards.find((c) => c.type === 'markdown');
+    expect(footer?.content).toContain('via oriel-energy-plugin');
+  });
+});
+
 describe('Extension API — robustness (review §S-4)', () => {
   it('isolates a throwing plugin from the others', async () => {
     const oriel = (window as Record<string, unknown> & {
