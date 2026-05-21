@@ -420,6 +420,7 @@
     "live_preview_views": "Views",
     "live_preview_sections": "Sections",
     "live_preview_cards": "Cards",
-    "live_preview_ms": "ms"
+    "live_preview_ms": "ms",
+    "new_badge": "New badge"
   }
 }
