@@ -2,7 +2,7 @@
 // SUMMARY CARD — Reactive summary tile for lights/covers/security/batteries (LitElement)
 // ====================================================================
 
-import { LitElement, html, css, type PropertyValues } from 'lit';
+import { LitElement, html, css, type PropertyValues, type TemplateResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 import { Registry } from '../Registry';
@@ -31,6 +31,25 @@ interface SummaryCardConfig {
    * when the user wants the summary row to take less of the overview.
    */
   density?: 'compact' | 'comfortable';
+  /**
+   * What to render as the tile's secondary line. Mirrors HA's tile-card
+   * `state_content` convention. Currently supported values: `count`
+   * (shows the relevant entity count, e.g. "3 on"). Omitting the field
+   * keeps the original icon+name layout. Accepts a string or array of
+   * strings; array variants concatenate with " · " separators.
+   *
+   * Available since v3.3.
+   */
+  state_content?: string | string[];
+  /**
+   * Show a delta indicator comparing the current count to yesterday's
+   * at-the-same-time count. Fires one history API call on mount + an
+   * hourly refresh. No effect when neither value resolves (e.g. less
+   * than 24h of history). Default false.
+   *
+   * Available since v3.4.
+   */
+  show_delta?: boolean;
 }
 
 interface DisplayConfig {
@@ -56,9 +75,14 @@ const COLOR_MAP: Record<string, string> = {
 class Simon42SummaryCard extends LitElement {
   @property({ attribute: false }) accessor hass: HomeAssistant | undefined;
   @state() accessor _count = 0;
+  // Yesterday's count at the same time, when `show_delta: true`.
+  // null = not fetched yet (or fetch failed), number = delta vs today.
+  @state() accessor _yesterdayCount: number | null = null;
 
   private _config!: SummaryCardConfig;
   private _relevantEntityIds: Set<string> | null = null;
+  private _deltaRefreshTimer?: number;
+  private _yesterdayFetched = false;
 
   static styles = css`
     :host {
@@ -140,6 +164,24 @@ class Simon42SummaryCard extends LitElement {
     :host([density="compact"]) .name {
       flex: 1 1 auto;
     }
+    .state-content {
+      font-size: var(--ha-font-size-xs, 11px);
+      color: var(--secondary-text-color);
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
+    :host([density="compact"]) .state-content {
+      margin-top: 0;
+      margin-left: auto;
+    }
+    .delta {
+      margin-left: 6px;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.95em;
+    }
+    .delta-up   { color: var(--warning-color, #ff9800); }
+    .delta-down { color: var(--success-color, #4caf50); }
+    .delta-zero { color: var(--secondary-text-color); opacity: 0.7; }
   `;
 
   setConfig(config: SummaryCardConfig): void {
@@ -180,6 +222,86 @@ class Simon42SummaryCard extends LitElement {
     if (this._count !== newCount) {
       this._count = newCount;
     }
+
+    // Kick the yesterday-count fetch on first hass arrival when
+    // `show_delta: true`. Idempotent — only fires once per mount,
+    // then a 1h refresh timer keeps it current.
+    if (
+      this._config.show_delta === true &&
+      !this._yesterdayFetched &&
+      this.hass
+    ) {
+      this._yesterdayFetched = true;
+      void this._fetchYesterdayCount();
+      this._deltaRefreshTimer = window.setInterval(
+        () => void this._fetchYesterdayCount(),
+        60 * 60 * 1000,
+      );
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this._deltaRefreshTimer !== undefined) {
+      window.clearInterval(this._deltaRefreshTimer);
+      this._deltaRefreshTimer = undefined;
+    }
+  }
+
+  /**
+   * Fetch yesterday's count via the history API. We look up each
+   * relevant entity at the timestamp 24h ago and count the ones in
+   * the "active" state for this summary_type. Costs N requests in
+   * the worst case but HA's history endpoint batches by URL.
+   */
+  private async _fetchYesterdayCount(): Promise<void> {
+    if (!this.hass || !this._relevantEntityIds) return;
+    const ids = [...this._relevantEntityIds];
+    if (ids.length === 0) {
+      this._yesterdayCount = null;
+      return;
+    }
+    const now = Date.now();
+    const yesterday = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+    const oneHourLater = new Date(now - 23 * 60 * 60 * 1000).toISOString();
+    try {
+      const callApi = (this.hass as unknown as {
+        callApi: <T>(method: string, path: string) => Promise<T>;
+      }).callApi;
+      // History API: a single GET fetches all entities at the start
+      // boundary (= the state-as-of). We slice to the first state per
+      // entity (HA returns them in time order).
+      const path =
+        `history/period/${yesterday}` +
+        `?end_time=${encodeURIComponent(oneHourLater)}` +
+        `&filter_entity_id=${encodeURIComponent(ids.join(','))}` +
+        `&minimal_response&no_attributes`;
+      const result = await callApi<Array<Array<{ state: string }>>>('GET', path);
+      let count = 0;
+      for (const series of result || []) {
+        const first = series?.[0];
+        if (!first) continue;
+        if (this._isStateActive(first.state)) count++;
+      }
+      this._yesterdayCount = count;
+    } catch {
+      this._yesterdayCount = null;
+    }
+  }
+
+  /** Whether a state value is "active" for the current summary_type. */
+  private _isStateActive(state: string): boolean {
+    const type = this._config.summary_type;
+    if (type === 'lights') return state === 'on';
+    if (type === 'covers') return state === 'open' || state === 'opening';
+    if (type === 'security') return state === 'on' || state === 'open' || state === 'unlocked';
+    if (type === 'batteries') {
+      const n = Number(state);
+      return Number.isFinite(n) && n <= (this._config.battery_critical_threshold ?? 20);
+    }
+    if (type === 'climate')
+      return state !== 'off' && state !== 'unavailable' && state !== 'unknown';
+    return false;
   }
 
   private _isEntityRelevant(id: string, _state: HassEntity): boolean {
@@ -413,10 +535,43 @@ class Simon42SummaryCard extends LitElement {
     bindActionHandler(card, { hasHold: true, hasDoubleClick: true });
   }
 
+  /**
+   * Mirror of HA tile-card's `state_content`. Returns the rendered
+   * secondary line text, or undefined to skip rendering.
+   */
+  private _renderStateContent(): string | undefined {
+    const sc = this._config?.state_content;
+    if (!sc) return undefined;
+    const parts = (Array.isArray(sc) ? sc : [sc])
+      .map((key) => {
+        switch (key) {
+          case 'count':
+            return this._count > 0 ? `${this._count}` : '0';
+          default:
+            return '';
+        }
+      })
+      .filter((s) => s.length > 0);
+    return parts.length > 0 ? parts.join(' · ') : undefined;
+  }
+
+  /** Render the today-vs-yesterday delta indicator. */
+  private _renderDelta(): TemplateResult | undefined {
+    if (this._config?.show_delta !== true) return undefined;
+    if (this._yesterdayCount === null) return undefined;
+    const delta = this._count - this._yesterdayCount;
+    if (delta === 0) return html`<span class="delta delta-zero">±0</span>`;
+    const symbol = delta > 0 ? '↑' : '↓';
+    const cls = delta > 0 ? 'delta-up' : 'delta-down';
+    return html`<span class="delta ${cls}">${symbol}${Math.abs(delta)}</span>`;
+  }
+
   protected render() {
     if (!this._config) return html``;
     const display = this._getDisplayConfig();
     const colorCss = COLOR_MAP[display.color] || COLOR_MAP.grey;
+    const stateLine = this._renderStateContent();
+    const delta = this._renderDelta();
 
     return html`
       <ha-card
@@ -427,6 +582,11 @@ class Simon42SummaryCard extends LitElement {
       >
         <ha-icon class="icon" .icon=${display.icon} style="color: ${colorCss}"></ha-icon>
         <div class="name">${display.name}</div>
+        ${stateLine
+          ? html`<div class="state-content">${stateLine}${delta ? html` ${delta}` : ''}</div>`
+          : delta
+            ? html`<div class="state-content">${delta}</div>`
+            : ''}
       </ha-card>
     `;
   }

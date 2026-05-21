@@ -44,6 +44,16 @@ export function timeEnd(label: string): void {
 export function debugLog(message: string, ...args: unknown[]): void {
   if (!isDebugActive()) return;
   console.log(`[s42-debug] ${message}`, ...args);
+  // Also feed the floating debug panel — lazy-imported so the panel
+  // module isn't part of the main chunk in production.
+  void import('./debug-panel').then(({ pushLog, installDebugPanel }) => {
+    installDebugPanel();
+    pushLog(
+      args.length > 0
+        ? `${message} ${args.map((a) => JSON.stringify(a)).join(' ')}`
+        : message,
+    );
+  });
 }
 
 /** Track how often set hass() is called on a component */

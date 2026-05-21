@@ -277,6 +277,73 @@ export interface Simon42StrategyConfig {
     }
   >;
   /**
+   * Set to true once the user has dismissed the Setup wizard (or it
+   * has been opened at least once). The wizard auto-collapses on
+   * subsequent edits but is never permanently hidden — the header
+   * stays clickable.
+   *
+   * Available since v3.1.
+   */
+  _onboarding_seen?: boolean;
+  /**
+   * Opt-in: when Bubble Card (HACS) is installed, emit bubble-card
+   * pop-ups for tile expansions instead of HA's more-info dialog.
+   * Auto-falls-back to more-info when bubble-card isn't loaded.
+   *
+   * Available since v3.2.
+   */
+  use_bubble_drawers?: boolean;
+  /**
+   * Opt-in: when apexcharts-card (HACS) is installed, replace built-in
+   * simon42-sparkline-card emissions with apexcharts-card configs.
+   *
+   * Available since v3.2.
+   */
+  use_apexcharts_sparklines?: boolean;
+  /**
+   * Dashboard-level decluttering-card templates. Pass through verbatim
+   * to HA so `custom:decluttering-card` instances in custom_cards /
+   * custom_views can reference them by name. The strategy doesn't
+   * interpret the template bodies; it just forwards the map.
+   *
+   * Requires the `decluttering-card` HACS plugin to be installed.
+   *
+   * Available since v3.2.
+   */
+  decluttering_templates?: Record<string, unknown>;
+  /**
+   * When set, emit a dedicated "Floorplan" view containing a single
+   * `custom:floorplan-card` instance. The `config` object is forwarded
+   * verbatim to floorplan-card; refer to the plugin's docs for the
+   * full schema (entity rules, action rules, image url, etc.).
+   *
+   * Requires the `floorplan-card` HACS plugin (pkozul/ha-floorplan).
+   *
+   * Available since v3.2.
+   */
+  floorplan_view?: {
+    title?: string;
+    path?: string;
+    icon?: string;
+    config: Record<string, unknown>;
+  };
+  /**
+   * Opt-in: render a floating voice-command FAB on every view, wired
+   * to HA's Assist pipeline via `<ha-voice-command-button>`.
+   *
+   * Available since v3.2.
+   */
+  show_voice_fab?: boolean;
+  /**
+   * Opt-in: enable horizontal swipe-gesture navigation between
+   * dashboard views. Swipe left → next view; swipe right → previous.
+   * Skips swipes that originate on interactive controls (sliders,
+   * inputs). Most useful with `panel_mode: wall` on tablets.
+   *
+   * Available since v3.5.
+   */
+  swipe_nav?: boolean;
+  /**
    * Emit a Routines section on the overview (collected scenes +
    * scripts, ranked by last-used). Default false — opt-in.
    */
@@ -381,7 +448,22 @@ export interface Simon42StrategyConfig {
   weather_entity?: string; // explicit weather entity for the weather section;
   // defaults to the first visible weather.* entity when omitted. Falls back
   // to auto-discovery if the configured entity is unavailable at render time.
-  favorite_entities?: string[];
+  /**
+   * Favorite entity IDs surfaced in the overview's favorites grid.
+   *
+   * v3.5.5 added a viewport-keyed map variant:
+   *   favorite_entities:
+   *     default: [light.living, lock.front]      # always (fallback)
+   *     phone:   [lock.front]                    # narrow screen
+   *     tablet:  [light.living, lock.front]
+   *     wall:    [light.living, climate.bedroom] # large screen
+   *
+   * The legacy `string[]` shape still works; existing dashboards
+   * aren't affected.
+   */
+  favorite_entities?:
+    | string[]
+    | { default?: string[]; phone?: string[]; tablet?: string[]; wall?: string[] };
   room_pin_entities?: string[];
   security_extra_entities?: string[];
   light_favorite_entities?: string[]; // light.* glance row on overview (#176)
@@ -496,6 +578,26 @@ export interface AreaOptions {
    * baby monitor, garage). Works best with a single camera per area.
    */
   camera_hero?: boolean;
+  /**
+   * Per-area room view layout overrides (v3.4.0). When set, the
+   * provided `sections` either replace or extend the auto-generated
+   * room layout:
+   *
+   *   room_view_overrides:
+   *     sections:
+   *       - { type: heading, heading: Tools }
+   *       - { type: tile, entity: switch.workshop_compressor }
+   *     append_default: false   # replace; default true (extend)
+   *
+   * Useful for one weird room (workshop, server cabinet, kid's room)
+   * where the automatic layout doesn't fit. Other rooms stay
+   * auto-generated. The override is forwarded verbatim to HA — any
+   * Lovelace section config is valid.
+   */
+  room_view_overrides?: {
+    sections?: unknown[];
+    append_default?: boolean;
+  };
 }
 
 export interface GroupOptions {

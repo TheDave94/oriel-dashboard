@@ -17,6 +17,7 @@ import { timeStart, timeEnd, debugLog } from '../utils/debug';
 import { localize } from '../utils/localize';
 import { resolveDensity } from '../utils/density';
 import { BADGE_COLOR_MAP, getColorForEntity, isDefaultShowName, resolveShowName } from '../utils/badge-utils';
+import { applyStateIcon } from '../utils/state-iconography';
 
 // HA supported_features bitmask values
 const FAN_SET_SPEED = 1;
@@ -552,15 +553,21 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       });
     }
 
-    domainSection(roomEntities.locks, localize('room.locks'), 'mdi:lock', (e) => ({
-      type: 'tile',
-      entity: e,
-      name: stripAreaName(e, area, hass),
-      features: [{ type: 'lock-commands' }],
-      features_position: 'inline',
-      vertical: false,
-      state_content: 'last_changed',
-    }));
+    domainSection(roomEntities.locks, localize('room.locks'), 'mdi:lock', (e) =>
+      applyStateIcon(
+        {
+          type: 'tile',
+          entity: e,
+          name: stripAreaName(e, area, hass),
+          features: [{ type: 'lock-commands' }],
+          features_position: 'inline',
+          vertical: false,
+          state_content: 'last_changed',
+        },
+        hass,
+        e,
+      ),
+    );
 
     domainSection(roomEntities.climate, localize('room.climate'), 'mdi:thermostat', (e) => ({
       type: 'tile',
@@ -572,35 +579,53 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       state_content: ['hvac_action', 'current_temperature'],
     }));
 
-    domainSection(roomEntities.covers, localize('room.covers'), 'mdi:window-shutter', (e) => ({
-      type: 'tile',
-      entity: e,
-      name: stripAreaName(e, area, hass),
-      features: [{ type: 'cover-open-close' }],
-      vertical: false,
-      features_position: 'inline',
-      state_content: ['current_position', 'last_changed'],
-    }));
+    domainSection(roomEntities.covers, localize('room.covers'), 'mdi:window-shutter', (e) =>
+      applyStateIcon(
+        {
+          type: 'tile',
+          entity: e,
+          name: stripAreaName(e, area, hass),
+          features: [{ type: 'cover-open-close' }],
+          vertical: false,
+          features_position: 'inline',
+          state_content: ['current_position', 'last_changed'],
+        },
+        hass,
+        e,
+      ),
+    );
 
-    domainSection(roomEntities.covers_curtain, localize('room.curtains'), 'mdi:curtains', (e) => ({
-      type: 'tile',
-      entity: e,
-      name: stripAreaName(e, area, hass),
-      features: [{ type: 'cover-open-close' }],
-      vertical: false,
-      features_position: 'inline',
-      state_content: ['current_position', 'last_changed'],
-    }));
+    domainSection(roomEntities.covers_curtain, localize('room.curtains'), 'mdi:curtains', (e) =>
+      applyStateIcon(
+        {
+          type: 'tile',
+          entity: e,
+          name: stripAreaName(e, area, hass),
+          features: [{ type: 'cover-open-close' }],
+          vertical: false,
+          features_position: 'inline',
+          state_content: ['current_position', 'last_changed'],
+        },
+        hass,
+        e,
+      ),
+    );
 
-    domainSection(roomEntities.covers_window, localize('room.windows'), 'mdi:window-open-variant', (e) => ({
-      type: 'tile',
-      entity: e,
-      name: stripAreaName(e, area, hass),
-      features: [{ type: 'cover-open-close' }],
-      vertical: false,
-      features_position: 'inline',
-      state_content: ['current_position', 'last_changed'],
-    }));
+    domainSection(roomEntities.covers_window, localize('room.windows'), 'mdi:window-open-variant', (e) =>
+      applyStateIcon(
+        {
+          type: 'tile',
+          entity: e,
+          name: stripAreaName(e, area, hass),
+          features: [{ type: 'cover-open-close' }],
+          vertical: false,
+          features_position: 'inline',
+          state_content: ['current_position', 'last_changed'],
+        },
+        hass,
+        e,
+      ),
+    );
 
     domainSection(roomEntities.media_player, localize('room.media'), 'mdi:speaker', (e) => {
       const state = hass.states[e];
@@ -879,11 +904,31 @@ class Simon42ViewRoomStrategy extends HTMLElement {
       }
     }
 
+    // Per-area room view overrides (v3.4.0). When the user has set
+    // `areas_options.<area>.room_view_overrides.sections`, either
+    // append them to the auto-generated layout (`append_default: true`,
+    // default) or replace it entirely (`append_default: false`).
+    // Schema validation happens at editor time; here we trust the
+    // parsed config and forward verbatim.
+    const overrides = (areaOpts as { room_view_overrides?: {
+      sections?: LovelaceSectionConfig[];
+      append_default?: boolean;
+    } }).room_view_overrides;
+
+    let finalSections: LovelaceSectionConfig[] = sections;
+    if (overrides && Array.isArray(overrides.sections) && overrides.sections.length > 0) {
+      if (overrides.append_default === false) {
+        finalSections = overrides.sections;
+      } else {
+        finalSections = [...sections, ...overrides.sections];
+      }
+    }
+
     debugLog(
-      `Room ${area.area_id}: ${visibleEntities.length} visible entities, ${sections.length} sections, ${badges.length} badges`
+      `Room ${area.area_id}: ${visibleEntities.length} visible entities, ${finalSections.length} sections, ${badges.length} badges${overrides ? ' (override)' : ''}`
     );
     timeEnd(`room-generate-${area.area_id}`);
-    return { type: 'sections', header: { badges_position: 'bottom' }, sections, badges };
+    return { type: 'sections', header: { badges_position: 'bottom' }, sections: finalSections, badges };
   }
 }
 

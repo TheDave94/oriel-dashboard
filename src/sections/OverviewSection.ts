@@ -347,7 +347,26 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
   //   3. `favorites_cards[]`     — opaque LovelaceCardConfig list, the
   //      "anything goes" escape hatch.
   // The section auto-hides only when all three are empty.
-  const favoriteEntities = (config.favorite_entities || []).filter((entityId) => hass.states[entityId] !== undefined);
+  //
+  // v3.5.5: `favorite_entities` now accepts a viewport-keyed map
+  // ({ phone: [...], tablet: [...], wall: [...], default: [...] }).
+  // The legacy string[] shape still works. Detection runs once at
+  // generate() time using window.innerWidth.
+  const rawFavorites = config.favorite_entities;
+  let favoriteEntities: string[];
+  if (Array.isArray(rawFavorites)) {
+    favoriteEntities = rawFavorites;
+  } else if (rawFavorites && typeof rawFavorites === 'object') {
+    // Lazy-import so the legacy single-list path doesn't pull the
+    // viewport detector into its closure.
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const vp = w < 640 ? 'phone' : w < 1280 ? 'tablet' : 'wall';
+    const rec = rawFavorites as Record<string, string[]>;
+    favoriteEntities = rec[vp] ?? rec.default ?? [];
+  } else {
+    favoriteEntities = [];
+  }
+  favoriteEntities = favoriteEntities.filter((entityId) => hass.states[entityId] !== undefined);
 
   const pinnedCards: LovelaceCardConfig[] = [];
   for (const [areaId, areaOpts] of Object.entries(config.areas_options || {})) {

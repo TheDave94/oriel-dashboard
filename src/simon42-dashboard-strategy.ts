@@ -13,6 +13,31 @@ import type { LovelaceConfig, LovelaceViewConfig } from './types/lovelace';
 // Injected at build time by webpack DefinePlugin from package.json#version.
 // `as unknown as string` keeps TS happy since the value isn't declared
 // in any .d.ts (an alternative is a global.d.ts; this is cheaper).
+// Install the plugin extension entry point (v3.5.0). Runs at module
+// load, before any HA strategy lifecycle method — so plugins can call
+// `window.simon42Strategy.registerSection(...)` from their own
+// `customElements.define()`-time modules.
+import { installExtensionEntryPoint } from './extension/registry';
+installExtensionEntryPoint();
+
+// Usage tracking (v3.5.1) — listen for HA's "hass-more-info" events
+// at document level, the standard dispatch that fires when any tile
+// or card is tapped. Counts are local-only (localStorage) and feed
+// the editor's "suggested layout" banner.
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'hass-more-info' as keyof DocumentEventMap,
+    (ev: Event) => {
+      const detail = (ev as CustomEvent<{ entityId?: string }>).detail;
+      if (!detail?.entityId) return;
+      void import('./utils/usage-tracker').then(({ trackTap }) =>
+        trackTap(detail.entityId),
+      );
+    },
+    { passive: true },
+  );
+}
+
 declare const __SIMON42_VERSION__: string;
 const STRATEGY_VERSION =
   typeof __SIMON42_VERSION__ !== 'undefined'
@@ -37,7 +62,9 @@ const modulesPromise = Promise.all([
   import('./cards/NotificationCard'),
   import('./cards/SparklineCard'),
   import('./cards/RoutinesCard'),
+  import('./cards/VoiceFabCard'),
   import('./features/StickyLockFeature'),
+  import('./features/CostOverlayFeature'),
   import('./views/OverviewViewStrategy'),
   import('./views/LightsViewStrategy'),
   import('./views/CoversViewStrategy'),
@@ -70,6 +97,13 @@ class Simon42DashboardStrategy extends HTMLElement {
     const config = resolveUserConfig(rawConfig, hass);
     if (config !== rawConfig) {
       t('user-overrides applied');
+    }
+
+    // Swipe-nav (v3.5.4) — install once when the config opts in. The
+    // listener is module-level + idempotent, so re-running generate
+    // doesn't re-add it.
+    if (config.swipe_nav === true) {
+      void import('./utils/swipe-nav').then(({ installSwipeNav }) => installSwipeNav());
     }
     t('imports done');
 
@@ -196,12 +230,43 @@ class Simon42DashboardStrategy extends HTMLElement {
       }
     }
 
+    // Floorplan view (v3.2.3) — emit a dedicated view containing a
+    // single `custom:floorplan-card`. The view auto-hides when
+    // floorplan-card isn't installed (HA shows a "card type doesn't
+    // exist" placeholder, which is the standard signal that a HACS
+    // plugin is missing). The view is always emitted; the strategy
+    // doesn't probe for the plugin so users can configure ahead of
+    // installing.
+    if (config.floorplan_view && config.floorplan_view.config) {
+      const fp = config.floorplan_view;
+      views.push(densityOverlay({
+        title: fp.title ?? 'Floorplan',
+        path: fp.path ?? 'floorplan',
+        icon: fp.icon ?? 'mdi:floor-plan',
+        type: 'panel',
+        cards: [
+          {
+            type: 'custom:floorplan-card',
+            ...fp.config,
+          },
+        ],
+      } as LovelaceViewConfig));
+    }
+
     t(`generate() done — ${views.length} views`);
 
+    // Top-level decluttering-card templates (v3.2.2). HA's lovelace
+    // root supports the `decluttering_templates` key directly; we
+    // forward it verbatim so users can reference templates by name
+    // from custom_cards / custom_views.
+    const decluttering = config.decluttering_templates;
     return {
       title: localize('dashboard.title'),
       views,
-    };
+      ...(decluttering && Object.keys(decluttering).length > 0
+        ? { decluttering_templates: decluttering }
+        : {}),
+    } as LovelaceConfig;
   }
 
   static async getConfigElement(): Promise<HTMLElement> {

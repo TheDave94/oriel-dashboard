@@ -390,6 +390,62 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       });
     }
 
+    // Bubble Card pop-up registrations — when `use_bubble_drawers` is
+    // enabled AND `bubble-card` is loaded, emit one pop-up definition
+    // per actionable entity (light / climate / cover / fan / media_player).
+    // Pop-ups are invisible until their hash is active, so adding them
+    // here doesn't change the visible overview. The strategy's emitted
+    // tiles keep their existing tap_action (more-info) — full tile
+    // rewiring is deferred to a later patch to avoid breaking users
+    // who haven't tested bubble-card with the rest of their dashboard.
+    if (dashboardConfig.use_bubble_drawers === true) {
+      const { isBubbleCardInstalled, buildBubblePopupCards, collectBubbleCandidates } =
+        await import('../utils/bubble-integration');
+      if (isBubbleCardInstalled()) {
+        const candidates = collectBubbleCandidates(hass);
+        const popupCards = buildBubblePopupCards(candidates, hass);
+        if (popupCards.length > 0) {
+          overviewSections.push({
+            type: 'grid',
+            cards: popupCards,
+          });
+        }
+      }
+    }
+
+    // Plugin extension sections (v3.5.0) — append plugin-contributed
+    // sections at the end of the overview. Each plugin's build()
+    // failures are caught + logged inside buildExtensionSections so
+    // a buggy plugin never breaks the dashboard. Badges live in a
+    // separate array that's merged into the final return statement.
+    const pluginBadges: LovelaceBadgeConfig[] = [];
+    try {
+      const { buildExtensionSections, buildExtensionBadges } = await import(
+        '../extension/registry'
+      );
+      const pluginSections = await buildExtensionSections({ hass, dashboardConfig });
+      for (const s of pluginSections) overviewSections.push(s);
+      const extBadges = await buildExtensionBadges({ hass, dashboardConfig });
+      for (const b of extBadges) pluginBadges.push(b);
+    } catch (err) {
+      debugLog('extension registry import failed', err);
+    }
+
+    // Voice FAB (v3.2.4) — when `show_voice_fab: true`, append a
+    // floating mic button to the overview. The card is position:fixed
+    // so it floats over the layout; sections is just a mount point.
+    if (dashboardConfig.show_voice_fab === true) {
+      overviewSections.push({
+        type: 'grid',
+        cards: [
+          {
+            type: 'custom:simon42-voice-fab',
+            grid_options: { columns: 'full', rows: 0 },
+          } as LovelaceCardConfig,
+        ],
+      });
+    }
+
     // Wall-panel screensaver — when `panel_mode: 'wall'`, append a
     // single full-screen screensaver card to the overview. The card
     // itself is `position: fixed` so it sits above everything; the
@@ -551,6 +607,7 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
       ...updatesBadges,
       ...sunBadges,
       ...customBadges,
+      ...pluginBadges,
     ]);
   }
 }
