@@ -26,8 +26,10 @@ strategy:
 
 See [README](README.MD) for the full configuration surface.
 
-## Acknowledgments
+## Origin
 
-Started as a fork of [@TheRealSimon42](https://github.com/TheRealSimon42)'s dashboard strategy. See [MIGRATION.md](MIGRATION.md) for the upstream-to-Oriel migration guide.
+Built on the foundation [@TheRealSimon42](https://github.com/TheRealSimon42)'s dashboard strategy established — credit there for the auto-generation pattern. Oriel adds a setup wizard, plugin extension API, per-user dashboards, HACS-plugin awareness, and the rest of the surface above on top.
 
-Enhanced by [@TheDave94](https://github.com/TheDave94).
+**Not a replacement for Simon42.** Different design point; both projects valid for different needs. Migrate over when you want one of the features Oriel layers on. See [MIGRATION.md](MIGRATION.md).
+
+Built by [@TheDave94](https://github.com/TheDave94).

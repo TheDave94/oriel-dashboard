@@ -203,13 +203,19 @@ See [MIGRATION.md](MIGRATION.md) for the full guide. Tl;dr: replace `custom:simo
 
 ## Versioning
 
-Oriel follows [Semantic Versioning](https://semver.org). The current line is **v4.x** on the HA 2026.5+ baseline. See [release notes](https://github.com/TheDave94/oriel-dashboard/releases) per version.
+Semver — current line is **v4.x** on the HA 2026.5+ baseline. Release notes per version in [GitHub releases](https://github.com/TheDave94/oriel-dashboard/releases).
 
-The plugin started life as a fork of the upstream simon42 dashboard strategy and was rebranded in v4.1.0. The v1.x–v3.x history reflects intermediate brand names — those releases are not supported.
+The v1.x–v3.x history covers intermediate brand names from before the v4.1.0 rebrand. Those releases aren't supported; if you're on one, uninstall and reinstall.
 
-## Acknowledgments
+## Origin
 
-This project began as a fork of [TheRealSimon42/simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) — credit to [@TheRealSimon42](https://github.com/TheRealSimon42) for establishing the UX foundation (auto-generated room views, summary tiles, area grid) preserved here. As of v4.0 the project has diverged substantially: setup wizard, plugin extension API, per-user dashboards, HACS-plugin auto-detection, custom cards beyond the original five, the migration-assistant infrastructure, and an HA 2026.5+ architectural baseline — none of which are intended to go back upstream.
+Built on the foundation [simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) established — auto-generated room views, summary tiles, area grid. Credit to [@TheRealSimon42](https://github.com/TheRealSimon42) for that core pattern; it's still the load-bearing idea.
+
+Oriel layers power-user features on top: setup wizard, plugin extension API, per-user / per-role layouts, HACS-plugin auto-detection, mode-driven section reorder, composable visibility rules, wall-panel mode, lazy-mounting, migration assistants, additional custom cards and tile features, the HA 2026.5+ architectural baseline.
+
+**Not a replacement for Simon42.** If you want a clean, focused, opinionated auto-dashboard, Simon42 stays the right pick — and the upstream remains actively developed. Oriel is for users who want to extend that base with more configurability and integration surface. Different design points; both valid.
+
+Migrating is a YAML edit — see [MIGRATION.md](MIGRATION.md).
 
 ## License
 

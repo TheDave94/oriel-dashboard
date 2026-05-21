@@ -1,12 +1,14 @@
-# Oriel
+# Oriel Dashboard
 
-Custom Lovelace Dashboard Strategy for Home Assistant. Generates dynamic dashboards from area/device/entity metadata with flexible user configuration. This project is actively used by Simons loved YouTube viewers — clean, stable code is top priority.
+Custom Lovelace strategy for Home Assistant — auto-generates the whole dashboard from area / device / entity metadata, then layers a setup wizard, per-user layouts, HACS plugin shims (Bubble Card, ApexCharts, decluttering-card, floorplan-card), a plugin extension API, and ten custom cards on top.
+
+Built on the foundation [simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) established (auto-generated room views, summary tiles, area grid) and extends it with power-user surface above. Not aimed at replacing the upstream — Simon42 remains the right pick for users who want a focused, opinionated auto-dashboard. Oriel is for those who want more handles to pull. Simon42 users can migrate over with a one-shot YAML edit; see MIGRATION.md.
 
 ## Architecture
 
 **Language:** TypeScript (ES2020, strict mode)
 **Build:** Webpack → code-split chunks (main + lit + core + views + editor on-demand)
-**Distribution:** HACS-compatible (Custom Repository), deployed to `/config/www/community/oriel/`
+**Distribution:** HACS-compatible (Custom Repository), deployed to `/config/www/community/oriel-dashboard/`
 
 ### Module Overview
 
@@ -145,7 +147,7 @@ These files require extra care — changes here most likely cause regressions:
 
 1. Create a feature branch from `main` (e.g. `feature/climate-summary-view`)
 2. Build: `npm run build` (production) or `npm run build-dev` (with source maps)
-3. Deploy: copy `dist/` contents to `/Volumes/config/www/community/oriel/`
+3. Deploy: copy `dist/` contents to `/Volumes/config/www/community/oriel-dashboard/`
 4. Delete stale `.gz` and `.br` files after copying (HA serves compressed over `.js` if present)
 5. Hard-refresh browser (Cmd+Shift+R). HA restart only needed for structural changes, not logic changes
 6. **Test on the live system** — always before pushing to GitHub!

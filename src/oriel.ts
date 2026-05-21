@@ -343,7 +343,7 @@ class Oriel extends HTMLElement {
 
 // Register the strategy custom element under HA's current naming
 // convention (`ll-strategy-<type>-<name>`). HA 2026.5+ enforces this
-// strictly and the fork no longer carries a pre-2025 fallback.
+// strictly; Oriel doesn't carry a pre-2025 fallback.
 customElements.define('ll-strategy-dashboard-oriel', Oriel);
 
 console.log(`Oriel Dashboard v${STRATEGY_VERSION} loaded`);
