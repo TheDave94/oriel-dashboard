@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.7.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.6.0...v4.7.0) (2026-05-21)
+
+
+### Features
+
+* v4.7 follow-up [#2](https://github.com/TheDave94/oriel-dashboard/issues/2) — lit-a11y, HA pin audit, card design-tokens, registry churn bench ([#26](https://github.com/TheDave94/oriel-dashboard/issues/26)) ([3483945](https://github.com/TheDave94/oriel-dashboard/commit/3483945efdf81345e82ef15f6e58a8389eaccc03))
+
 ## [4.6.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.5.0...v4.6.0) (2026-05-21)
 
 
