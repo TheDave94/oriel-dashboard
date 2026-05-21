@@ -411,6 +411,15 @@
     "favorites_split_help": "Switch to per-viewport favorites (phone / tablet / wall)",
     "favorites_merge": "Merge to single list",
     "favorites_merge_help": "Merge all viewports back into a single flat list (preserves union)",
-    "favorites_flat_hint": "Single list shown on every device. Split per device to differentiate."
+    "favorites_flat_hint": "Single list shown on every device. Split per device to differentiate.",
+    "live_preview_title": "Live preview",
+    "live_preview_show": "Show preview",
+    "live_preview_hide": "Hide preview",
+    "live_preview_toggle_help": "Show the YAML that would be emitted for the current config",
+    "live_preview_pending": "Waiting for first config change…",
+    "live_preview_views": "Views",
+    "live_preview_sections": "Sections",
+    "live_preview_cards": "Cards",
+    "live_preview_ms": "ms"
   }
 }

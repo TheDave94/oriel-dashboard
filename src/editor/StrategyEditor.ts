@@ -50,6 +50,12 @@ import { renderModeOrderTab } from './tabs/ModeOrderTab';
 import { renderFloorplanTab } from './tabs/FloorplanTab';
 import { renderRoomOverridesTab } from './tabs/RoomOverridesTab';
 import { renderHealthTab } from './tabs/HealthTab';
+import {
+  LivePreviewRunner,
+  renderLivePreviewPanel,
+  renderLivePreviewToggle,
+  type LivePreviewState,
+} from './LivePreview';
 import { renderSetupTab, SETUP_TAB_CSS } from './tabs/SetupTab';
 import { unsafeCSS } from 'lit';
 import { FEATURE_REGISTRY, findFeature } from '../onboarding/features';
@@ -107,6 +113,11 @@ class OrielEditor extends LitElement {
    *  favorite_entities is in viewport-keyed shape (F-8). Default
    *  matches the most-common edit target. */
   @state() accessor _favoritesActiveViewport: FavoritesViewport = 'default';
+  /** Live-preview state (F-5). Default-off so users opt in. */
+  @state() accessor _livePreviewState: LivePreviewState = { visible: false, busy: false };
+  /** Owned LivePreviewRunner — created on demand when the panel
+   *  first goes visible. Cleared on disconnectedCallback. */
+  private _livePreviewRunner: LivePreviewRunner | undefined;
 
   // hass is set externally by HA — use a setter, not a Lit property
   private _hass: HomeAssistant | null = null;
@@ -1200,6 +1211,44 @@ class OrielEditor extends LitElement {
    * iframe sandbox, but eliminating the "navigate manually to see
    * the result" friction is the bulk of the UX win.
    */
+  /**
+   * Toggle the live-preview side panel. First-time enable lazy-
+   * instantiates the runner + kicks off an initial generate(). Disable
+   * cancels any pending timer and clears state. The runner is reused
+   * across visible/hidden cycles within the same editor lifetime to
+   * avoid re-importing the strategy module on every toggle.
+   */
+  private _toggleLivePreview(): void {
+    if (this._livePreviewState.visible) {
+      this._livePreviewRunner?.cancel();
+      this._livePreviewState = { ...this._livePreviewState, visible: false };
+      return;
+    }
+    if (!this._livePreviewRunner) {
+      this._livePreviewRunner = new LivePreviewRunner(
+        (result, error) => {
+          this._livePreviewState = {
+            ...this._livePreviewState,
+            result,
+            error,
+          };
+        },
+        (busy) => {
+          this._livePreviewState = { ...this._livePreviewState, busy };
+        },
+      );
+    }
+    this._livePreviewState = { ...this._livePreviewState, visible: true };
+    if (this._hass) {
+      this._livePreviewRunner.schedule(this._config, this._hass);
+    }
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._livePreviewRunner?.cancel();
+  }
+
   private _openPreview = (): void => {
     // Try to extract the dashboard path. HA's edit-dashboard URL
     // looks like /lovelace/0 or /<url_path>/0 — we strip the
@@ -1222,7 +1271,13 @@ class OrielEditor extends LitElement {
 
     return html`
       <div class="card-config">
-        <div class="preview-action" style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+        <div class="preview-action" style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px;">
+          ${renderLivePreviewToggle({
+            hass: this._hass,
+            config: this._config,
+            state: this._livePreviewState,
+            onTogglePanel: () => this._toggleLivePreview(),
+          })}
           <button
             class="btn-primary"
             @click=${this._openPreview}
@@ -1231,6 +1286,12 @@ class OrielEditor extends LitElement {
             ${localize('editor.preview_dashboard') || '👁  Preview dashboard'}
           </button>
         </div>
+        ${renderLivePreviewPanel({
+          hass: this._hass,
+          config: this._config,
+          state: this._livePreviewState,
+          onTogglePanel: () => this._toggleLivePreview(),
+        })}
         ${this._renderMigrationBanner()}
         ${this._renderUsageSuggestion()}
         ${this._renderHealthSection()}
@@ -3866,6 +3927,13 @@ class OrielEditor extends LitElement {
 
   private _fireConfigChanged(config: OrielConfig): void {
     this._isUpdatingConfig = true;
+
+    // Live preview (F-5) — schedule a debounced re-render whenever
+    // config changes. The runner handles its own debouncing; this
+    // call is cheap (just resets a timer).
+    if (this._livePreviewState.visible && this._livePreviewRunner && this._hass) {
+      this._livePreviewRunner.schedule(config, this._hass);
+    }
 
     // Strip internal fields before saving
     const cleanConfig: OrielConfig = { ...config };

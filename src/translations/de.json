@@ -411,6 +411,15 @@
     "favorites_split_help": "Auf gerätespezifische Favoriten umstellen (Mobil / Tablet / Wand)",
     "favorites_merge": "Zu einer Liste zusammenführen",
     "favorites_merge_help": "Alle Viewports in eine einzige Liste zusammenführen (Union bleibt erhalten)",
-    "favorites_flat_hint": "Eine Liste auf allen Geräten. Pro Gerät aufteilen für unterschiedliche Favoriten."
+    "favorites_flat_hint": "Eine Liste auf allen Geräten. Pro Gerät aufteilen für unterschiedliche Favoriten.",
+    "live_preview_title": "Live-Vorschau",
+    "live_preview_show": "Vorschau einblenden",
+    "live_preview_hide": "Vorschau ausblenden",
+    "live_preview_toggle_help": "YAML anzeigen, das für die aktuelle Konfiguration ausgegeben würde",
+    "live_preview_pending": "Warte auf erste Konfigurationsänderung…",
+    "live_preview_views": "Views",
+    "live_preview_sections": "Sektionen",
+    "live_preview_cards": "Karten",
+    "live_preview_ms": "ms"
   }
 }
