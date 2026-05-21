@@ -19,7 +19,7 @@ import { test, expect } from '@playwright/test';
 
 const HA_URL = process.env.HA_URL;
 const HA_TOKEN = process.env.HA_TOKEN;
-const DASHBOARD_PATH = process.env.HA_DASHBOARD_URL_PATH || 'dashboard-simon42';
+const DASHBOARD_PATH = process.env.HA_DASHBOARD_URL_PATH || 'oriel-dashboard';
 
 test.skip(!HA_URL || !HA_TOKEN, 'HA_URL and HA_TOKEN env vars are required');
 

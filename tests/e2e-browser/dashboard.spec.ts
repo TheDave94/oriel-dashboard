@@ -16,9 +16,10 @@ import { test, expect } from '@playwright/test';
 const HA_URL = process.env.HA_URL;
 const HA_TOKEN = process.env.HA_TOKEN;
 // The dashboard URL path is whatever the user named their dashboard;
-// independent of the strategy type. Default matches the test HA setup
-// from before the v4.0.0 rename — override via HA_DASHBOARD_URL_PATH.
-const DASHBOARD_PATH = process.env.HA_DASHBOARD_URL_PATH || 'dashboard-simon42';
+// independent of the strategy type. Default 'oriel-dashboard' matches
+// the v4.1.0 setup — override via HA_DASHBOARD_URL_PATH if your
+// dashboard lives elsewhere.
+const DASHBOARD_PATH = process.env.HA_DASHBOARD_URL_PATH || 'oriel-dashboard';
 
 test.skip(!HA_URL || !HA_TOKEN, 'HA_URL and HA_TOKEN env vars are required');
 
