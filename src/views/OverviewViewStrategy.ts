@@ -237,8 +237,13 @@ class OrielViewOverview extends HTMLElement {
         createEnergySection(
           showEnergy,
           dashboardConfig.energy_link_dashboard !== false,
+          // Legacy boolean still controls the built-in distribution card
+          // when energy_presentation is unset. When set, createEnergySection
+          // routes to either the built-in, a registry-known custom card,
+          // or no card at all.
           dashboardConfig.show_energy_distribution_card !== false,
           hiddenHeadings.has('energy'),
+          dashboardConfig.energy_presentation,
         ),
       ],
       ['plants', createPlantsSection(hass, dashboardConfig.show_plants_section === true)],

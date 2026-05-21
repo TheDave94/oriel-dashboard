@@ -24,8 +24,10 @@ import type {
   OrielConfig,
   SectionKey,
   WeatherPresentation,
+  EnergyPresentation,
 } from '../../types/strategy';
 import { localize } from '../../utils/localize';
+import { detectAvailable, type KnownCard } from '../../utils/section-card-registry';
 
 export interface SectionMeta {
   icon: string;
@@ -49,6 +51,7 @@ export interface SectionOrderTabContext {
   // Mutators — wired to the editor's existing methods
   onToggleChange: (key: string, value: boolean, defaultValue: boolean) => void;
   onSetWeatherPresentation: (v: WeatherPresentation) => void;
+  onSetEnergyPresentation: (v: EnergyPresentation) => void;
   onWeatherEntityChange: (ev: Event) => void;
   onPowerBadgeEntityChange: (ev: Event) => void;
   onToggleSectionVisibility: (key: SectionKey, visible: boolean) => void;
@@ -151,6 +154,10 @@ function renderWeatherSub(
     (ctx.config.show_weather_forecast_card === false ? 'none' : 'forecast_daily');
   const weatherEntity = ctx.config.weather_entity || '';
 
+  // Auto-detect installed HACS weather cards via the registry.
+  // Each detected card becomes an additional dropdown option; the
+  // strategy emits the right `custom:...-card` when picked.
+  const detectedWeatherCards: KnownCard[] = detectAvailable('weather');
   const presentationDropdown = html`
     <div class="section-order-sub" style="flex-wrap: wrap;">
       <label for="weather-presentation">${localize('editor.weather_presentation')}</label>
@@ -162,14 +169,35 @@ function renderWeatherSub(
             (e.target as HTMLSelectElement).value as WeatherPresentation,
           )}
       >
-        ${(['forecast_daily', 'forecast_hourly', 'forecast_twice_daily', 'tile', 'none'] as const).map(
-          (v) => html`
-            <option value=${v} ?selected=${weatherPresentation === v}>
-              ${localize(`editor.weather_presentation_${v}`)}
-            </option>
-          `,
-        )}
+        <optgroup label=${localize('editor.weather_presentation_builtin_group') || 'Built-in'}>
+          ${(['forecast_daily', 'forecast_hourly', 'forecast_twice_daily', 'tile', 'none'] as const).map(
+            (v) => html`
+              <option value=${v} ?selected=${weatherPresentation === v}>
+                ${localize(`editor.weather_presentation_${v}`)}
+              </option>
+            `,
+          )}
+        </optgroup>
+        ${detectedWeatherCards.length > 0
+          ? html`
+              <optgroup label=${localize('editor.weather_presentation_hacs_group') || 'Installed HACS cards'}>
+                ${detectedWeatherCards.map(
+                  (c) => html`
+                    <option value=${c.id} ?selected=${weatherPresentation === c.id}>
+                      ${c.label}
+                    </option>
+                  `,
+                )}
+              </optgroup>
+            `
+          : nothing}
       </select>
+      ${weatherPresentation === 'none'
+        ? html`<small class="section-order-hint">${
+            localize('editor.weather_presentation_none_hint') ||
+            'Heading + slot kept; add your own card via custom_cards with target_section: weather'
+          }</small>`
+        : nothing}
     </div>
   `;
 
@@ -216,7 +244,54 @@ function renderEnergySub(
   const showEnergyDistributionCard = ctx.config.show_energy_distribution_card !== false;
   const powerBadgeEntity = ctx.config.power_badge_entity || '';
 
+  // Resolved energy presentation — explicit value wins, otherwise infer
+  // from the legacy boolean. Default 'distribution'.
+  const energyPresentation: EnergyPresentation =
+    ctx.config.energy_presentation ??
+    (showEnergyDistributionCard ? 'distribution' : 'none');
+
+  const detectedEnergyCards: KnownCard[] = detectAvailable('energy');
+
   return html`
+    <div class="section-order-sub" style="flex-wrap: wrap;">
+      <label for="energy-presentation">${localize('editor.energy_presentation') || 'Energy card'}</label>
+      <select
+        id="energy-presentation"
+        .value=${energyPresentation}
+        @change=${(e: Event) =>
+          ctx.onSetEnergyPresentation(
+            (e.target as HTMLSelectElement).value as EnergyPresentation,
+          )}
+      >
+        <optgroup label=${localize('editor.energy_presentation_builtin_group') || 'Built-in'}>
+          <option value="distribution" ?selected=${energyPresentation === 'distribution'}>
+            ${localize('editor.energy_presentation_distribution') || 'Energy distribution (default)'}
+          </option>
+          <option value="none" ?selected=${energyPresentation === 'none'}>
+            ${localize('editor.energy_presentation_none') || 'None (custom_cards only)'}
+          </option>
+        </optgroup>
+        ${detectedEnergyCards.length > 0
+          ? html`
+              <optgroup label=${localize('editor.energy_presentation_hacs_group') || 'Installed HACS cards'}>
+                ${detectedEnergyCards.map(
+                  (c) => html`
+                    <option value=${c.id} ?selected=${energyPresentation === c.id}>
+                      ${c.label}
+                    </option>
+                  `,
+                )}
+              </optgroup>
+            `
+          : nothing}
+      </select>
+      ${energyPresentation === 'none'
+        ? html`<small class="section-order-hint">${
+            localize('editor.energy_presentation_none_hint') ||
+            'Heading + slot kept; add your own card via custom_cards with target_section: energy'
+          }</small>`
+        : nothing}
+    </div>
     <div class="section-order-sub">
       <input
         type="checkbox"
@@ -230,22 +305,6 @@ function renderEnergySub(
           )}
       />
       <label for="energy-link-dashboard">${localize('editor.energy_link_dashboard')}</label>
-    </div>
-    <div class="section-order-sub">
-      <input
-        type="checkbox"
-        id="show-energy-distribution-card"
-        ?checked=${showEnergyDistributionCard}
-        @change=${(e: Event) =>
-          ctx.onToggleChange(
-            'show_energy_distribution_card',
-            (e.target as HTMLInputElement).checked,
-            true,
-          )}
-      />
-      <label for="show-energy-distribution-card">
-        ${localize('editor.show_energy_distribution_card')}
-      </label>
     </div>
     ${ctx.powerSensorEntities.length > 0
       ? html`

@@ -86,9 +86,22 @@ export interface OrielConfig {
   // outdoor sensors (temperature, humidity, wind, pressure...) alongside or
   // in place of the built-in forecast card.
   show_energy?: boolean; // default: true
-  show_energy_distribution_card?: boolean; // default: true — same behaviour for
-  // the energy section: false keeps the section so custom_cards can render
-  // here without the built-in energy-distribution card alongside
+  show_energy_distribution_card?: boolean; // (legacy) default: true. Keeps the
+  // section so custom_cards can render here without the built-in
+  // energy-distribution card. Superseded by `energy_presentation` but still
+  // honoured for backwards-compat when no explicit `energy_presentation` is set.
+  /**
+   * Which kind of energy card to render in the energy section. Mirrors
+   * the weather_presentation pattern.
+   *
+   * - `distribution` (default) — HA's built-in `energy-distribution` card
+   * - `none`                    — omit the built-in card. Section keeps
+   *                               heading + slot for custom_cards
+   *                               targeting `energy` via `target_section`.
+   *
+   * Available since v4.2.
+   */
+  energy_presentation?: EnergyPresentation;
   show_search_card?: boolean; // default: false
   /**
    * Which kind of search affordance to render when show_search_card is true.
@@ -343,6 +356,19 @@ export interface OrielConfig {
    * Available since v3.5.
    */
   swipe_nav?: boolean;
+  /**
+   * Auto-navigate back to the dashboard's home view after N minutes
+   * of no user activity. Different from `panel_screensaver_after_minutes`
+   * which shows an overlay — this actively navigates so the user
+   * lands on the overview when they return.
+   *
+   * Watches document-level pointer / key / wheel / touch events.
+   * Skips the navigation when already on `/home`. Useful with
+   * `panel_mode: wall` but works in any setup.
+   *
+   * Available since v4.2.
+   */
+  idle_return_to_home_after_minutes?: number;
   /**
    * Emit a Routines section on the overview (collected scenes +
    * scripts, ranked by last-used). Default false — opt-in.
@@ -622,12 +648,45 @@ export interface GroupOptions {
  * - `tile`                 — HA core `tile` card bound to the weather entity
  * - `none`                 — omit built-in card; section keeps heading + slot
  */
+/**
+ * Weather section presentation variant.
+ *
+ * Built-in values:
+ *   - 'forecast_daily' / 'forecast_hourly' / 'forecast_twice_daily'
+ *     — HA's `weather-forecast` card at the given granularity
+ *   - 'tile'  — HA core `tile` card bound to the weather entity
+ *   - 'none'  — omit the built-in card; section keeps heading + slot
+ *               for custom_cards via `target_section: weather`
+ *
+ * Additional values come from `src/utils/section-card-registry.ts`:
+ * any registered card whose section is 'weather' (e.g.
+ * 'clock-weather-card', 'simple-weather-card', 'meteoalarm-card').
+ * The editor surfaces those automatically when the matching HACS
+ * plugin is installed. The string is intentionally open-ended so new
+ * registry entries don't require a type update.
+ */
 export type WeatherPresentation =
   | 'forecast_daily'
   | 'forecast_hourly'
   | 'forecast_twice_daily'
   | 'tile'
-  | 'none';
+  | 'none'
+  | (string & {});
+
+/**
+ * Energy section presentation variant.
+ *
+ * Built-in values:
+ *   - 'distribution' (default) — HA's built-in `energy-distribution` card
+ *   - 'none'  — omit built-in; section keeps heading + slot for
+ *               custom_cards via `target_section: energy`
+ *
+ * Additional values come from `src/utils/section-card-registry.ts`
+ * (e.g. 'power-flow-card-plus', 'energy-flow-card-plus',
+ * 'tesla-style-solar-power-card', 'sankey-chart-card'). Surfaces in
+ * the editor when the matching HACS plugin is installed.
+ */
+export type EnergyPresentation = 'distribution' | 'none' | (string & {});
 
 // -- Weather Sensors --------------------------------------------------
 

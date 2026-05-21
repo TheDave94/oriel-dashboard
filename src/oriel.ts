@@ -105,6 +105,14 @@ class Oriel extends HTMLElement {
     if (config.swipe_nav === true) {
       void import('./utils/swipe-nav').then(({ installSwipeNav }) => installSwipeNav());
     }
+    // Idle-nav (v4.2.0) — installs / re-arms / uninstalls based on
+    // the configured minutes. Module-level + idempotent (handles
+    // re-arm with new interval on config change).
+    if (typeof config.idle_return_to_home_after_minutes === 'number') {
+      void import('./utils/idle-nav').then(({ installIdleNav }) =>
+        installIdleNav(config.idle_return_to_home_after_minutes as number),
+      );
+    }
     t('imports done');
 
     const getStrategy = (tag: string): any => customElements.get(tag);

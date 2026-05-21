@@ -8,6 +8,7 @@
 import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { WeatherPresentation, WeatherSensorConfig } from '../types/strategy';
 import { localize } from '../utils/localize';
+import { findKnownCard } from '../utils/section-card-registry';
 
 // Entity ids follow `domain.object_id` where each part is lowercase
 // letters/digits/underscores. Anything else is a malformed config value
@@ -109,8 +110,20 @@ function buildPresentationCard(
     case 'tile':
       return { type: 'tile', entity: weatherEntity };
     case 'none':
-    default:
       return null;
+    default: {
+      // Open-enum extension (v4.2+): the value may be a known custom-card
+      // id registered in src/utils/section-card-registry.ts. When the
+      // user has the matching HACS plugin installed, the editor surfaces
+      // it as a dropdown option and stores its `id` as the presentation
+      // value. We hand off to the registry's buildConfig to produce the
+      // emitted card.
+      const known = findKnownCard(presentation as unknown as string);
+      if (known && known.section === 'weather') {
+        return known.buildConfig(weatherEntity) as LovelaceCardConfig;
+      }
+      return null;
+    }
   }
 }
 
@@ -175,6 +188,7 @@ export function createEnergySection(
   linkDashboard: boolean = true,
   showDistributionCard: boolean = true,
   hideHeading: boolean = false,
+  presentation?: string,
 ): LovelaceSectionConfig | null {
   if (!showEnergy) return null;
 
@@ -186,6 +200,22 @@ export function createEnergySection(
       heading_style: 'title',
       icon: 'mdi:lightning-bolt',
     });
+  }
+
+  // If the user picked a HACS-detected energy card via the registry,
+  // emit it instead of the built-in distribution card. `distribution`
+  // + undefined both fall through to legacy behaviour gated on
+  // `showDistributionCard`.
+  if (presentation && presentation !== 'distribution' && presentation !== 'none') {
+    const known = findKnownCard(presentation);
+    if (known && known.section === 'energy') {
+      cards.push(known.buildConfig() as LovelaceCardConfig);
+      return { type: 'grid', cards };
+    }
+  }
+
+  if (presentation === 'none') {
+    return { type: 'grid', cards };
   }
 
   if (showDistributionCard) {

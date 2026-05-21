@@ -20,6 +20,7 @@ import type {
   RoomEntities,
   SectionKey,
   WeatherPresentation,
+  EnergyPresentation,
   WeatherSensorConfig,
 } from '../types/strategy';
 import { DEFAULT_SECTIONS_ORDER } from '../types/strategy';
@@ -1493,6 +1494,21 @@ class OrielEditor extends LitElement {
     this._fireConfigChanged(newConfig);
   }
 
+  /**
+   * Persist an energy_presentation pick. Mirrors the weather variant —
+   * the explicit `energy_presentation` field supersedes the legacy
+   * `show_energy_distribution_card` boolean.
+   */
+  private _setEnergyPresentation(presentation: EnergyPresentation): void {
+    const newConfig: OrielConfig = {
+      ...this._config,
+      energy_presentation: presentation,
+    };
+    delete newConfig.show_energy_distribution_card;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
   private _renderSectionOrderPanel(): TemplateResult {
     // Section-order render template lives in a per-tab module; drag-drop
     // state + every mutator stays on the editor class. See
@@ -1509,6 +1525,7 @@ class OrielEditor extends LitElement {
       isSectionToggleable: (k) => this._isSectionToggleable(k),
       onToggleChange: (k, v, d) => this._toggleChanged(k, v, d),
       onSetWeatherPresentation: (v) => this._setWeatherPresentation(v),
+      onSetEnergyPresentation: (v) => this._setEnergyPresentation(v),
       onWeatherEntityChange: (e) => this._weatherEntityChanged(e),
       onPowerBadgeEntityChange: (e) => this._powerBadgeEntityChanged(e),
       onToggleSectionVisibility: (k, v) => this._toggleSectionVisibility(k, v),
