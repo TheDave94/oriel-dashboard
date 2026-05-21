@@ -35,6 +35,19 @@ export default [
       // density was high and signal was zero.
       'security/detect-object-injection': 'off',
       'security/detect-non-literal-fs-filename': 'off',
+      // Ban the `unsafeHTML(localize(...))` pattern that v4.5.0 §S-1
+      // refactored away. The canonical replacement is renderLocalized()
+      // from src/utils/safe-localize.ts. Any new call site would
+      // re-introduce the translation-XSS sink described in the review.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.name='unsafeHTML'][arguments.0.type='CallExpression'][arguments.0.callee.name='localize']",
+          message:
+            "unsafeHTML(localize(...)) is banned — translation strings can ship arbitrary HTML and become an XSS sink. Use renderLocalized() from src/utils/safe-localize.ts instead, which only allows <strong> and <em>. See review §S-1.",
+        },
+      ],
     },
   },
   {
