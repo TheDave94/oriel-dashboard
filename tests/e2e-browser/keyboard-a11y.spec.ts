@@ -145,14 +145,17 @@ test.describe('Keyboard a11y', () => {
       host = document.createElement('div');
       host.id = 'oriel-a11y-host';
       document.body.appendChild(host);
+      // _active is the @state field; setting it triggers reactive
+      // re-render (Lit @state accessors are regular public fields at
+      // runtime, the TS underscore prefix is convention only).
       const card = document.createElement('oriel-screensaver-card') as HTMLElement & {
         setConfig: (cfg: unknown) => void;
-        active?: boolean;
+        _active?: boolean;
         updateComplete?: Promise<unknown>;
       };
       card.setConfig({ type: 'custom:oriel-screensaver-card' });
-      card.active = true;
       host.appendChild(card);
+      card._active = true;
       if (card.updateComplete) await card.updateComplete;
       // Allow another microtask so the @state-driven render settles.
       await new Promise((r) => setTimeout(r, 50));
