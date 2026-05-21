@@ -1,24 +1,64 @@
 // ====================================================================
-// Plugin extension API (v3.5.0)
+// Plugin extension API (v4.6.0 — apiVersion: 2)
 // ====================================================================
 // Third-party HACS plugins can extend the strategy at load time by
 // calling `window.oriel.registerSection(spec)` or
 // `registerBadge(spec)`. The strategy reads both registries at
 // generate() and merges plugin contributions alongside built-ins.
 //
-// Each spec carries an `apiVersion` so the strategy can reject
-// incompatible plugins gracefully (warn + skip).
+// ## Trust model
+//
+// **The ctx passed to a plugin's build() is the full hass object.**
+// Plugins have the same authority any HACS card has on the page —
+// they can read every state, call every service, and observe the
+// active user's identity. This is the standard HA frontend model and
+// the strategy doesn't (and can't, from the client side) sandbox it.
+//
+// What we DO enforce at the plugin boundary:
+//   1. apiVersion gate — plugins declare an apiVersion; strategy
+//      rejects anything newer than EXTENSION_API_VERSION.
+//   2. Per-build 2-second wall-clock timeout (review §S-4).
+//   3. Try/catch — thrown errors are logged + skipped, never break
+//      generate().
+//   4. v2+: return-shape validation — built configs must be plain
+//      objects with a `type: string`. Malformed return values are
+//      rejected at our boundary instead of at HA's downstream render.
+//   5. v2+: attribution footer — every plugin-rendered section emits
+//      a small "via <plugin-key>" marker so users can identify the
+//      origin of every piece of their dashboard.
+//
+// What we DON'T do:
+//   - Sandbox ctx.hass — by design (would break the API's usefulness).
+//   - Restrict which entities a plugin can read — same.
+//   - Verify plugin authorship / signature — HACS handles plugin
+//     distribution + install; Oriel trusts whatever the user has
+//     loaded via HACS.
+//
+// Plugin authors building against this API: assume ctx.hass is the
+// real hass object. Don't store it, don't ship it off-device, and
+// document any service calls or write operations clearly in your
+// plugin README.
+//
+// ## v1 ↔ v2 compatibility
+//
+// v1 plugins keep working unchanged. The strategy:
+//   - Accepts apiVersion: 1 and apiVersion: 2
+//   - Skips return-shape validation for v1 plugins (lenient: their
+//     return shape was never specified)
+//   - Still applies the attribution footer to v1 outputs (uniform
+//     user-visible signal across all plugins)
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type {
   LovelaceSectionConfig,
   LovelaceBadgeConfig,
+  LovelaceCardConfig,
 } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 
-/** Highest API version this strategy understands. */
-export const EXTENSION_API_VERSION = 1;
+/** Highest API version this strategy understands. Bumped to 2 in v4.6.0. */
+export const EXTENSION_API_VERSION = 2;
 
 export interface ExtensionContext {
   hass: HomeAssistant;
@@ -100,6 +140,12 @@ export function listBadges(): BadgeExtensionSpec[] {
   return [...badgeRegistry.values()];
 }
 
+/** Reset both registries — for tests. */
+export function _resetExtensionRegistries(): void {
+  sectionRegistry.clear();
+  badgeRegistry.clear();
+}
+
 /** Max wall-clock per plugin build() call. A buggy or hostile plugin that
  *  hangs (returns `await new Promise(() => {})`, fetches a slow endpoint,
  *  etc.) must not stall the whole dashboard generate(). Closes review §S-4. */
@@ -120,9 +166,55 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 }
 
 /**
+ * v2 return-shape validation for section configs. A valid section must
+ * be a plain object with a string `type` field. We intentionally don't
+ * deep-validate the `cards` array — HA does that downstream and
+ * forwards card-level errors to its own placeholder UI. Our gate
+ * exists to catch the obvious cases (build returned a string, a number,
+ * an array directly, or an object missing `type`) at our boundary so
+ * the failure surfaces with the plugin key for diagnosis.
+ */
+function isValidSectionShape(value: unknown): value is LovelaceSectionConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const t = (value as Record<string, unknown>).type;
+  return typeof t === 'string' && t.length > 0;
+}
+
+function isValidBadgeShape(value: unknown): value is LovelaceBadgeConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const t = (value as Record<string, unknown>).type;
+  return typeof t === 'string' && t.length > 0;
+}
+
+/**
+ * Wrap a section config with an attribution footer card. The footer is
+ * a tiny markdown card emitted at the bottom of the plugin's section,
+ * styled as text_only with a small "via <key>" marker. Gives users a
+ * visible signal that the contents come from a specific plugin —
+ * trust + provenance for the hostile-plugin case.
+ */
+function withAttribution(
+  section: LovelaceSectionConfig,
+  pluginKey: string,
+): LovelaceSectionConfig {
+  const existingCards = Array.isArray(section.cards) ? section.cards : [];
+  const footer: LovelaceCardConfig = {
+    type: 'markdown',
+    text_only: true,
+    content: `<span style="font-size: 0.72em; opacity: 0.55;">via ${pluginKey}</span>`,
+  };
+  return {
+    ...section,
+    cards: [...existingCards, footer],
+  };
+}
+
+/**
  * Build every registered section in registry-insertion order. Failed
- * builds (rejected promises, thrown sync errors, OR timeouts) are
- * logged + skipped — a buggy plugin must not break the dashboard.
+ * builds (rejected promises, thrown sync errors, timeouts, OR invalid
+ * return shapes for v2 plugins) are logged + skipped — a buggy plugin
+ * must not break the dashboard. Every successful build is annotated
+ * with the plugin's attribution footer.
  */
 export async function buildExtensionSections(
   ctx: ExtensionContext,
@@ -135,7 +227,18 @@ export async function buildExtensionSections(
         EXTENSION_BUILD_TIMEOUT_MS,
         `extension section "${spec.key}"`,
       );
-      if (result) out.push(result);
+      if (result == null) continue;
+      // v2 plugins: validate the return shape. v1 plugins kept as-is
+      // for backwards-compat (their return contract was never specified
+      // formally, so retroactively rejecting them would break installs).
+      if (spec.apiVersion >= 2 && !isValidSectionShape(result)) {
+        console.warn(
+          `[oriel] extension section "${spec.key}" returned an invalid shape (missing or non-string \`type\`); skipping.`,
+          result,
+        );
+        continue;
+      }
+      out.push(withAttribution(result as LovelaceSectionConfig, spec.key));
     } catch (err) {
       console.warn(`[oriel] extension section "${spec.key}" failed:`, err);
     }
@@ -154,7 +257,15 @@ export async function buildExtensionBadges(
         EXTENSION_BUILD_TIMEOUT_MS,
         `extension badge "${spec.key}"`,
       );
-      if (result) out.push(result);
+      if (result == null) continue;
+      if (spec.apiVersion >= 2 && !isValidBadgeShape(result)) {
+        console.warn(
+          `[oriel] extension badge "${spec.key}" returned an invalid shape (missing or non-string \`type\`); skipping.`,
+          result,
+        );
+        continue;
+      }
+      out.push(result as LovelaceBadgeConfig);
     } catch (err) {
       console.warn(`[oriel] extension badge "${spec.key}" failed:`, err);
     }
