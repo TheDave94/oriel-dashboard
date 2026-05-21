@@ -1,5 +1,5 @@
 // ====================================================================
-// SIMON42 DASHBOARD STRATEGY - Registry (Singleton)
+// DASHBOARD ENHANCED STRATEGY - Registry (Singleton)
 // ====================================================================
 // Central data access layer. Replaces scattered entity filtering across
 // multiple JS files with pre-computed Maps and Sets for O(1) lookups.

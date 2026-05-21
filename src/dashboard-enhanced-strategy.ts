@@ -1,5 +1,5 @@
 // ====================================================================
-// SIMON42 DASHBOARD STRATEGY — Main Entry Point
+// DASHBOARD ENHANCED STRATEGY — Main Entry Point
 // ====================================================================
 // Minimal entry point for fast custom element registration.
 // Cards, views, and heavy dependencies are lazy-loaded in generate().
@@ -76,7 +76,7 @@ const modulesPromise = Promise.all([
 
 void modulesPromise.then(() => { t('all chunks loaded'); });
 
-class DashboardEnhancedDashboardStrategy extends HTMLElement {
+class DashboardEnhancedStrategy extends HTMLElement {
   static async generate(rawConfig: DashboardEnhancedStrategyConfig, hass: HomeAssistant): Promise<LovelaceConfig> {
     generateCallCount++;
     t(`generate() called (#${generateCallCount})`);
@@ -344,6 +344,6 @@ class DashboardEnhancedDashboardStrategy extends HTMLElement {
 // Register the strategy custom element under HA's current naming
 // convention (`ll-strategy-<type>-<name>`). HA 2026.5+ enforces this
 // strictly and the fork no longer carries a pre-2025 fallback.
-customElements.define('ll-strategy-dashboard-dashboard-enhanced', DashboardEnhancedDashboardStrategy);
+customElements.define('ll-strategy-dashboard-dashboard-enhanced', DashboardEnhancedStrategy);
 
 console.log(`Dashboard Enhanced Strategy v${STRATEGY_VERSION} loaded`);

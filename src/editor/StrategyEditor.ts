@@ -1,5 +1,5 @@
 // ====================================================================
-// SIMON42 DASHBOARD STRATEGY - EDITOR (LitElement)
+// DASHBOARD ENHANCED STRATEGY - EDITOR (LitElement)
 // ====================================================================
 // Single-file LitElement editor replacing the previous 4-file
 // vanilla HTMLElement + innerHTML pattern.
@@ -80,7 +80,7 @@ declare global {
 // Editor Class
 // ====================================================================
 
-class DashboardEnhancedDashboardStrategyEditor extends LitElement {
+class DashboardEnhancedStrategyEditor extends LitElement {
   @state() accessor _config: DashboardEnhancedStrategyConfig = {};
   @state() accessor _expandedAreas = new Set<string>();
   @state() accessor _expandedGroups = new Map<string, Set<string>>();
@@ -1502,7 +1502,7 @@ class DashboardEnhancedDashboardStrategyEditor extends LitElement {
       hass: this._hass,
       config: this._config,
       order: this._getSectionsOrder(),
-      sectionMeta: DashboardEnhancedDashboardStrategyEditor._sectionMeta,
+      sectionMeta: DashboardEnhancedStrategyEditor._sectionMeta,
       weatherEntities: this._getWeatherEntities(),
       powerSensorEntities: this._getPowerSensorEntities(),
       isSectionDisabled: (k) => this._isSectionDisabled(k),
@@ -1935,13 +1935,13 @@ class DashboardEnhancedDashboardStrategyEditor extends LitElement {
 
     const deviceClass = typeof attrs.device_class === 'string' ? attrs.device_class : undefined;
     const classDefaults = deviceClass
-      ? DashboardEnhancedDashboardStrategyEditor._DEVICE_CLASS_DEFAULTS[deviceClass]
+      ? DashboardEnhancedStrategyEditor._DEVICE_CLASS_DEFAULTS[deviceClass]
       : undefined;
 
     // Icon: prefer explicit entity icon → device_class map → omit
     const explicitIcon = typeof attrs.icon === 'string' ? attrs.icon : undefined;
     const icon = explicitIcon || classDefaults?.icon;
-    if (icon && DashboardEnhancedDashboardStrategyEditor._ICON_RE.test(icon)) {
+    if (icon && DashboardEnhancedStrategyEditor._ICON_RE.test(icon)) {
       out.icon = icon;
     }
 
@@ -2125,7 +2125,7 @@ class DashboardEnhancedDashboardStrategyEditor extends LitElement {
     if (!this._hass) return html``;
     return renderCustomCardsTab({
       config: this._config,
-      sectionMeta: DashboardEnhancedDashboardStrategyEditor._sectionMeta,
+      sectionMeta: DashboardEnhancedStrategyEditor._sectionMeta,
       onHeadingChange: (value) => this._customCardsHeadingChanged({ target: { value } } as unknown as Event),
       onIconChange: (value) => this._customCardsIconChanged({ target: { value } } as unknown as Event),
       onAddCard: () => this._addCustomCard(),
@@ -3783,4 +3783,4 @@ function getEntityOrdersForArea(areaId: string, config: DashboardEnhancedStrateg
 }
 
 // Register custom element
-customElements.define('dashboard-enhanced-strategy-editor', DashboardEnhancedDashboardStrategyEditor);
+customElements.define('dashboard-enhanced-strategy-editor', DashboardEnhancedStrategyEditor);
