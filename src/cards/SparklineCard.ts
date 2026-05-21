@@ -28,6 +28,12 @@ interface SparklineCardConfig {
   show_value?: boolean;
   /** Show min/max labels at the ends. Default false. */
   show_extrema?: boolean;
+  /**
+   * When true AND `apexcharts-card` is installed (HACS), delegate
+   * rendering to apexcharts-card instead of the built-in SVG. Default
+   * false. See v3.2.1 release notes.
+   */
+  use_apexcharts?: boolean;
 }
 
 interface HistoryPoint {
@@ -230,8 +236,58 @@ class Simon42SparklineCard extends LitElement {
     </svg>`;
   }
 
+  /**
+   * Should we delegate to apexcharts-card? Requires the per-card
+   * `use_apexcharts` flag AND a runtime-loaded `apexcharts-card`
+   * custom element. Falls back to built-in SVG when either is missing.
+   */
+  private _shouldUseApex(): boolean {
+    if (this._config?.use_apexcharts !== true) return false;
+    try {
+      return !!customElements.get('apexcharts-card');
+    } catch {
+      return false;
+    }
+  }
+
+  /** Build an apexcharts-card config from sparkline config. */
+  private _buildApexConfig(): Record<string, unknown> {
+    const hours = this._config.hours ?? 24;
+    return {
+      type: 'custom:apexcharts-card',
+      graph_span: `${hours}h`,
+      header: { show: true, title: this._config.name ?? '' },
+      apex_config: {
+        chart: { height: 80, sparkline: { enabled: !this._config.show_extrema } },
+      },
+      series: [
+        {
+          entity: this._config.entity,
+          type: 'line',
+          stroke_width: 2,
+          opacity: 0.18,
+          ...(this._config.color ? { color: this._config.color } : {}),
+        },
+      ],
+    };
+  }
+
   protected render(): TemplateResult {
     if (!this.hass || !this._config) return html``;
+
+    if (this._shouldUseApex()) {
+      // apexcharts-card is a third-party custom element; the type
+      // assertion is purely to satisfy lit-html attribute binding.
+      // The card reads `.hass` and `.config` via property setters.
+      const apexConfig = this._buildApexConfig();
+      return html`
+        <apexcharts-card
+          .hass=${this.hass}
+          .config=${apexConfig}
+        ></apexcharts-card>
+      `;
+    }
+
     const stateObj = this.hass.states[this._config.entity];
     const name =
       this._config.name ||

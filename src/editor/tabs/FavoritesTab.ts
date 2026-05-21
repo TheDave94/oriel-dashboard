@@ -32,7 +32,10 @@ export interface FavoritesTabContext {
 }
 
 export function renderFavoritesTab(ctx: FavoritesTabContext): TemplateResult {
-  const favoriteEntities = ctx.config.favorite_entities || [];
+  // Editor surfaces only the legacy string[] shape. Viewport-keyed
+  // map (v3.5.5) is YAML-only; treat any non-array config as empty.
+  const _favRaw = ctx.config.favorite_entities;
+  const favoriteEntities: string[] = Array.isArray(_favRaw) ? _favRaw : [];
   const favoritesShowState = ctx.config.favorites_show_state === true;
   const favoritesHideLastChanged = ctx.config.favorites_hide_last_changed === true;
 

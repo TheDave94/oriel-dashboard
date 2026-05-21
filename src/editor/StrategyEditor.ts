@@ -39,6 +39,15 @@ import { renderCustomCardsTab } from './tabs/CustomCardsTab';
 import { renderCustomSectionsTab } from './tabs/CustomSectionsTab';
 import { renderCustomBadgesTab } from './tabs/CustomBadgesTab';
 import { renderCustomViewsTab } from './tabs/CustomViewsTab';
+import { renderSetupTab, SETUP_TAB_CSS } from './tabs/SetupTab';
+import { unsafeCSS } from 'lit';
+import { FEATURE_REGISTRY, findFeature } from '../onboarding/features';
+import { detectMigrations, applyAllMigrations, type Migration } from '../utils/migrations';
+import {
+  hasEnoughData as usageHasEnough,
+  recommendSectionsOrder,
+  getTotalTaps,
+} from '../utils/usage-tracker';
 
 // -- Supporting types for the editor ------------------------------------
 
@@ -75,6 +84,10 @@ class Simon42DashboardStrategyEditor extends LitElement {
   @state() accessor _config: Simon42StrategyConfig = {};
   @state() accessor _expandedAreas = new Set<string>();
   @state() accessor _expandedGroups = new Map<string, Set<string>>();
+  // Setup wizard expanded/collapsed UI state. Starts inverse of
+  // _onboarding_seen on each mount; _onboarding_seen persists with
+  // dashboard config so the panel auto-collapses on subsequent edits.
+  @state() accessor _setupCollapsedOverride: boolean | undefined = undefined;
 
   // hass is set externally by HA — use a setter, not a Lit property
   private _hass: HomeAssistant | null = null;
@@ -1061,6 +1074,93 @@ class Simon42DashboardStrategyEditor extends LitElement {
         font-size: 13px;
       }
     }
+
+    /* -- Setup wizard (v3.1.0) ----------------------------------------- */
+    ${unsafeCSS(SETUP_TAB_CSS)}
+
+    /* -- Migration banner (v3.4.3) ------------------------------------- */
+    .s42-migration-banner {
+      background: color-mix(in srgb, var(--info-color, #2196f3) 12%, transparent);
+      border: 1px solid var(--info-color, #2196f3);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
+    .s42-migration-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .s42-migration-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid color-mix(in srgb, var(--info-color, #2196f3) 30%, transparent);
+    }
+    .s42-migration-label { font-weight: 500; }
+    .s42-migration-desc {
+      color: var(--secondary-text-color);
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+    .s42-migration-apply, .s42-migration-applyall {
+      background: var(--primary-color);
+      color: var(--text-primary-color, white);
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .s42-migration-footer {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* -- Usage suggestion banner (v3.5.1) ------------------------------ */
+    .s42-usage-banner {
+      background: color-mix(in srgb, var(--accent-color, #ff9800) 12%, transparent);
+      border: 1px solid var(--accent-color, #ff9800);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+    }
+    .s42-usage-title { display: flex; align-items: center; gap: 8px; }
+    .s42-usage-stats { color: var(--secondary-text-color); font-size: 0.85rem; }
+    .s42-usage-body {
+      margin: 8px 0;
+      color: var(--secondary-text-color);
+      font-size: 0.9rem;
+    }
+    .s42-usage-order { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .s42-usage-chip {
+      background: var(--card-background-color);
+      border: 1px solid var(--divider-color);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.85rem;
+    }
+    .s42-usage-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+    .s42-usage-apply {
+      background: var(--primary-color);
+      color: var(--text-primary-color, white);
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+    .s42-usage-dismiss {
+      background: transparent;
+      color: var(--secondary-text-color);
+      border: 1px solid var(--divider-color);
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
   `;
 
   // -- Main render ------------------------------------------------------
@@ -1108,6 +1208,9 @@ class Simon42DashboardStrategyEditor extends LitElement {
             ${localize('editor.preview_dashboard') || '👁  Preview dashboard'}
           </button>
         </div>
+        ${this._renderMigrationBanner()}
+        ${this._renderUsageSuggestion()}
+        ${this._renderSetupSection()}
         ${this._renderOverviewSection()}
         ${this._renderSummariesSection()}
         ${this._renderFavoritesSection()}
@@ -1142,6 +1245,158 @@ class Simon42DashboardStrategyEditor extends LitElement {
   // ====================================================================
   // SECTION RENDERERS
   // ====================================================================
+
+  // -- Usage-aware section ordering banner (v3.5.1) ---------------------
+
+  private _renderUsageSuggestion(): TemplateResult {
+    if (!this._hass) return html``;
+    if (!usageHasEnough()) return html``;
+    // Skip the banner if user explicitly dismissed it for this config.
+    if ((this._config as { _usage_suggestion_dismissed?: boolean })._usage_suggestion_dismissed) {
+      return html``;
+    }
+    const currentOrder = this._getSectionsOrder();
+    const recommendation = recommendSectionsOrder(currentOrder as string[]);
+    if (!recommendation) return html``;
+    const totalTaps = getTotalTaps();
+    return html`
+      <div class="s42-usage-banner">
+        <div class="s42-usage-title">
+          <ha-icon icon="mdi:lightbulb-on-outline"></ha-icon>
+          <strong>Suggested layout from your usage</strong>
+          <span class="s42-usage-stats">(based on ${totalTaps} taps)</span>
+        </div>
+        <div class="s42-usage-body">
+          Your most-used sections aren't currently at the top. Apply the
+          suggested order or dismiss to keep the current layout.
+        </div>
+        <div class="s42-usage-order">
+          ${recommendation.order.map(
+            (k, i) => html`<span class="s42-usage-chip">${i + 1}. ${k}</span>`,
+          )}
+        </div>
+        <div class="s42-usage-actions">
+          <button class="s42-usage-apply"
+                  @click=${() => this._applyUsageSuggestion(recommendation.order)}>
+            Apply
+          </button>
+          <button class="s42-usage-dismiss" @click=${this._dismissUsageSuggestion}>
+            Dismiss
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _applyUsageSuggestion(order: string[]): void {
+    // Cast as SectionKey[] — the recommender preserves the existing
+    // section keys, so the runtime types match.
+    this._updateSectionsOrder(order as unknown as SectionKey[]);
+  }
+
+  private _dismissUsageSuggestion = (): void => {
+    const newConfig = { ...this._config, _usage_suggestion_dismissed: true } as Simon42StrategyConfig;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  };
+
+  // -- Migration banner (v3.4.3) ----------------------------------------
+
+  private _renderMigrationBanner(): TemplateResult {
+    if (!this._hass) return html``;
+    const pending = detectMigrations(this._config);
+    if (pending.length === 0) return html``;
+    return html`
+      <div class="s42-migration-banner">
+        <div class="s42-migration-title">
+          <ha-icon icon="mdi:update"></ha-icon>
+          <strong>${pending.length} config update${pending.length === 1 ? '' : 's'} available</strong>
+        </div>
+        ${pending.map(
+          (m: Migration) => html`
+            <div class="s42-migration-row">
+              <div>
+                <div class="s42-migration-label">${m.label}</div>
+                <div class="s42-migration-desc">${m.description}</div>
+              </div>
+              <button class="s42-migration-apply" @click=${() => this._applyMigration(m)}>
+                Apply
+              </button>
+            </div>
+          `,
+        )}
+        <div class="s42-migration-footer">
+          <button class="s42-migration-applyall" @click=${this._applyAllMigrations}>
+            Apply all
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private _applyMigration(m: Migration): void {
+    const newConfig = m.apply(this._config);
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _applyAllMigrations = (): void => {
+    const newConfig = applyAllMigrations(this._config);
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  };
+
+  // -- Setup wizard ------------------------------------------------------
+
+  private _renderSetupSection(): TemplateResult {
+    if (!this._hass) return html``;
+    const seen = (this._config as { _onboarding_seen?: boolean })._onboarding_seen === true;
+    const collapsed = this._setupCollapsedOverride ?? seen;
+    return renderSetupTab({
+      hass: this._hass,
+      config: this._config,
+      collapsed,
+      onToggleCollapsed: () => {
+        // When the user manually toggles, override the persisted state
+        // for this session — but don't mutate _onboarding_seen on every
+        // chevron click (only "Hide this section" persists).
+        this._setupCollapsedOverride = !collapsed;
+        this.requestUpdate();
+      },
+      onDismiss: () => {
+        const newConfig: Simon42StrategyConfig = {
+          ...this._config,
+          _onboarding_seen: true,
+        } as Simon42StrategyConfig;
+        this._config = newConfig;
+        this._setupCollapsedOverride = true;
+        this._fireConfigChanged(newConfig);
+      },
+      onFeatureToggle: (id, enabled) => this._onFeatureToggle(id, enabled),
+    });
+  }
+
+  /**
+   * Apply a feature registry toggle. The feature's `toggle(enabled)`
+   * returns a config patch; we merge it into `_config` and fire the
+   * change event. Features without a `toggle` handler are read-only in
+   * the wizard (the user configures them elsewhere).
+   */
+  private _onFeatureToggle(id: string, enabled: boolean): void {
+    const f = findFeature(id);
+    if (!f || !f.toggle) return;
+    const patch = f.toggle(enabled);
+    const newConfig: Simon42StrategyConfig = { ...this._config } as Simon42StrategyConfig;
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) {
+        delete (newConfig as Record<string, unknown>)[key];
+      } else {
+        (newConfig as Record<string, unknown>)[key] = value;
+      }
+    }
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
 
   // -- Section order panel -----------------------------------------------
 
@@ -2405,7 +2660,10 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
   private _addFavoriteEntity(entityId: string): void {
     if (!this._hass) return;
-    const currentFavorites = this._config.favorite_entities || [];
+    // Editor only handles the legacy string[] shape. Users who opt
+    // into the viewport-keyed map (v3.5.5) edit it via YAML directly.
+    const existing = this._config.favorite_entities;
+    const currentFavorites: string[] = Array.isArray(existing) ? existing : [];
     if (currentFavorites.includes(entityId)) return;
 
     const newConfig: Simon42StrategyConfig = {
@@ -2419,7 +2677,8 @@ class Simon42DashboardStrategyEditor extends LitElement {
 
   private _removeFavoriteEntity(entityId: string): void {
     if (!this._hass) return;
-    const currentFavorites = this._config.favorite_entities || [];
+    const existing = this._config.favorite_entities;
+    const currentFavorites: string[] = Array.isArray(existing) ? existing : [];
     const newFavorites = currentFavorites.filter((id) => id !== entityId);
 
     const newConfig: Simon42StrategyConfig = {
@@ -3225,8 +3484,13 @@ class Simon42DashboardStrategyEditor extends LitElement {
     const dropId = dropTarget.dataset.entityId;
     if (!draggedId || !dropId || draggedId === dropId) return;
 
+    // favorite_entities can be a string[] OR a viewport-keyed map
+    // (v3.5.5); the editor's drag-drop reorder operates only on the
+    // legacy string[] shape. Non-array configs short-circuit.
+    const favRaw = this._config.favorite_entities;
+    const favList: string[] = Array.isArray(favRaw) ? favRaw : [];
     const currentList = listType === 'favorites'
-      ? [...(this._config.favorite_entities || [])]
+      ? [...favList]
       : [...(this._config.room_pin_entities || [])];
 
     const draggedIndex = currentList.indexOf(draggedId);
