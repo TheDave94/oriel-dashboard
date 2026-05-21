@@ -41,6 +41,10 @@ import { renderCustomSectionsTab } from './tabs/CustomSectionsTab';
 import { renderCustomBadgesTab } from './tabs/CustomBadgesTab';
 import { renderCustomViewsTab } from './tabs/CustomViewsTab';
 import { renderPerUserTab } from './tabs/PerUserTab';
+import { renderNotificationsTab } from './tabs/NotificationsTab';
+import { renderModeOrderTab } from './tabs/ModeOrderTab';
+import { renderFloorplanTab } from './tabs/FloorplanTab';
+import { renderRoomOverridesTab } from './tabs/RoomOverridesTab';
 import { renderSetupTab, SETUP_TAB_CSS } from './tabs/SetupTab';
 import { unsafeCSS } from 'lit';
 import { FEATURE_REGISTRY, findFeature } from '../onboarding/features';
@@ -1245,8 +1249,76 @@ class OrielEditor extends LitElement {
         ${this._renderCustomBadgesSection()}
         ${this._renderCustomViewsSection()}
         ${this._renderPerUserSection()}
+        ${this._renderNotificationsSection()}
+        ${this._renderModeOrderSection()}
+        ${this._renderRoomOverridesSection()}
+        ${this._renderFloorplanSection()}
       </div>
     `;
+  }
+
+  private _renderNotificationsSection(): TemplateResult {
+    if (!this._hass) return html``;
+    return renderNotificationsTab({
+      hass: this._hass,
+      config: this._config,
+      onChange: (triggers) => {
+        const newConfig: OrielConfig = { ...this._config };
+        if (triggers.length === 0) delete newConfig.notification_triggers;
+        else newConfig.notification_triggers = triggers as OrielConfig['notification_triggers'];
+        this._config = newConfig;
+        this._fireConfigChanged(newConfig);
+      },
+    });
+  }
+
+  private _renderModeOrderSection(): TemplateResult {
+    if (!this._hass) return html``;
+    return renderModeOrderTab({
+      hass: this._hass,
+      config: this._config,
+      onChange: (next) => {
+        const newConfig: OrielConfig = { ...this._config };
+        if (Object.keys(next).length === 0) delete newConfig.sections_order_by_mode;
+        else newConfig.sections_order_by_mode = next;
+        this._config = newConfig;
+        this._fireConfigChanged(newConfig);
+      },
+    });
+  }
+
+  private _renderFloorplanSection(): TemplateResult {
+    if (!this._hass) return html``;
+    return renderFloorplanTab({
+      hass: this._hass,
+      config: this._config,
+      onChange: (next) => {
+        const newConfig: OrielConfig = { ...this._config };
+        if (next === undefined) delete newConfig.floorplan_view;
+        else newConfig.floorplan_view = next;
+        this._config = newConfig;
+        this._fireConfigChanged(newConfig);
+      },
+    });
+  }
+
+  private _renderRoomOverridesSection(): TemplateResult {
+    if (!this._hass) return html``;
+    const areas = Object.values(
+      (this._hass as unknown as { areas?: Record<string, AreaRegistryEntry> }).areas ?? {},
+    ) as AreaRegistryEntry[];
+    return renderRoomOverridesTab({
+      hass: this._hass,
+      config: this._config,
+      areas,
+      onChange: (areasOptions) => {
+        const newConfig: OrielConfig = { ...this._config };
+        if (Object.keys(areasOptions).length === 0) delete newConfig.areas_options;
+        else newConfig.areas_options = areasOptions;
+        this._config = newConfig;
+        this._fireConfigChanged(newConfig);
+      },
+    });
   }
 
   // ====================================================================
@@ -1380,7 +1452,47 @@ class OrielEditor extends LitElement {
         this._fireConfigChanged(newConfig);
       },
       onFeatureToggle: (id, enabled) => this._onFeatureToggle(id, enabled),
+      onApplyPersona: (personaId) => this._applyPersonaFromSetup(personaId),
+      onApplyHint: (hint) => this._applyHint(hint),
+      onDismissHint: (hintId) => this._dismissHint(hintId),
+      onRerunSetup: () => this._rerunSetup(),
     });
+  }
+
+  /** Apply a persona's config patch + record which persona is active. */
+  private async _applyPersonaFromSetup(personaId: string): Promise<void> {
+    const { applyPersona } = await import('../onboarding/personas');
+    const newConfig = applyPersona(personaId, this._config);
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  /** Apply an adaptive hint's config patch. */
+  private async _applyHint(hint: { apply: (c: OrielConfig) => OrielConfig; id: string }): Promise<void> {
+    // The hint itself patches; we also dismiss it so it doesn't reappear.
+    const { dismissHint } = await import('../onboarding/hints');
+    const patched = hint.apply(this._config);
+    const dismissed = dismissHint(patched, hint.id);
+    this._config = dismissed;
+    this._fireConfigChanged(dismissed);
+  }
+
+  /** Dismiss an adaptive hint without applying it. */
+  private async _dismissHint(hintId: string): Promise<void> {
+    const { dismissHint } = await import('../onboarding/hints');
+    const newConfig = dismissHint(this._config, hintId);
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  /** Reset onboarding state so the wizard surfaces again. */
+  private _rerunSetup(): void {
+    const newConfig: OrielConfig = { ...this._config };
+    delete newConfig._onboarding_seen;
+    delete newConfig._dismissed_hints;
+    this._config = newConfig;
+    this._setupCollapsedOverride = false;
+    this._fireConfigChanged(newConfig);
   }
 
   /**

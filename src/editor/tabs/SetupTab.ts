@@ -16,6 +16,8 @@ import {
   type FeatureCategory,
   type FeatureEntry,
 } from '../../onboarding/features';
+import { PERSONAS, suggestPersonas, type Persona, type StepperAnswers } from '../../onboarding/personas';
+import { detectHints, type AdaptiveHint } from '../../onboarding/hints';
 
 interface SetupTabContext {
   hass: HomeAssistant;
@@ -24,6 +26,10 @@ interface SetupTabContext {
   onToggleCollapsed: () => void;
   onDismiss: () => void;
   onFeatureToggle: (id: string, enabled: boolean) => void;
+  onApplyPersona: (personaId: string) => void;
+  onApplyHint: (hint: AdaptiveHint) => void;
+  onDismissHint: (hintId: string) => void;
+  onRerunSetup: () => void;
 }
 
 const CATEGORY_META: Record<FeatureCategory, { label: string; icon: string }> = {
@@ -58,6 +64,9 @@ export function renderSetupTab(ctx: SetupTabContext): TemplateResult {
     }
   }
 
+  const currentPersona = (ctx.config as { _persona_applied?: string })._persona_applied;
+  const hints = detectHints(ctx.hass, ctx.config);
+
   return html`
     <div class="setup-panel">
       <div class="setup-header" @click=${ctx.onToggleCollapsed}>
@@ -77,18 +86,91 @@ export function renderSetupTab(ctx: SetupTabContext): TemplateResult {
         ? nothing
         : html`
             <div class="setup-intro">
-              Choose what your dashboard does. Built-in features are always
-              available. HACS features auto-light-up when their plugin is
-              installed.
-              <button class="setup-dismiss" @click=${ctx.onDismiss}>
-                Hide this section
-              </button>
+              Choose what your dashboard does. Pick a persona below to apply a
+              curated bundle in one click, or toggle individual features further
+              down.
+              <div style="display: flex; gap: 8px;">
+                <button class="setup-dismiss" @click=${ctx.onRerunSetup}>
+                  Re-run setup
+                </button>
+                <button class="setup-dismiss" @click=${ctx.onDismiss}>
+                  Hide this section
+                </button>
+              </div>
+            </div>
+
+            ${renderPersonas(ctx, currentPersona)}
+            ${hints.length > 0 ? renderHints(hints, ctx) : nothing}
+
+            <div class="setup-section-divider">
+              <span>Individual features</span>
             </div>
 
             ${(Object.keys(grouped) as FeatureCategory[]).map((cat) =>
               renderCategory(cat, grouped[cat] ?? [], ctx),
             )}
           `}
+    </div>
+  `;
+}
+
+// -- Persona row + hint cards ----------------------------------------
+
+function renderPersonas(ctx: SetupTabContext, currentPersona?: string): TemplateResult {
+  // No answers context inside the editor — pass an empty answers object;
+  // every persona's baseline score still surfaces them.
+  const ranked = suggestPersonas(ctx.hass, {});
+  if (ranked.length === 0) return html``;
+  return html`
+    <div class="setup-personas">
+      <div class="setup-personas-title">
+        ${currentPersona
+          ? html`Current persona: <strong>${PERSONAS.find((p) => p.id === currentPersona)?.label ?? currentPersona}</strong>. Switch any time.`
+          : 'Pick a starting point — toggles a bundle of features in one click.'}
+      </div>
+      <div class="setup-personas-grid">
+        ${ranked.map(({ persona }) => renderPersonaCard(persona, ctx, currentPersona === persona.id))}
+      </div>
+    </div>
+  `;
+}
+
+function renderPersonaCard(p: Persona, ctx: SetupTabContext, isActive: boolean): TemplateResult {
+  return html`
+    <button
+      class="setup-persona-card ${isActive ? 'setup-persona-card--active' : ''}"
+      @click=${() => ctx.onApplyPersona(p.id)}
+      title=${p.description}
+    >
+      <ha-icon icon=${p.icon}></ha-icon>
+      <div class="setup-persona-label">${p.label}</div>
+      <div class="setup-persona-desc">${p.description}</div>
+    </button>
+  `;
+}
+
+function renderHints(hints: AdaptiveHint[], ctx: SetupTabContext): TemplateResult {
+  return html`
+    <div class="setup-hints">
+      ${hints.map(
+        (h) => html`
+          <div class="setup-hint">
+            <ha-icon class="setup-hint-icon" icon=${h.icon}></ha-icon>
+            <div class="setup-hint-body">
+              <div class="setup-hint-title">${h.title}</div>
+              <div class="setup-hint-desc">${h.description}</div>
+            </div>
+            <div class="setup-hint-actions">
+              <button class="setup-hint-apply" @click=${() => ctx.onApplyHint(h)}>
+                ${h.ctaLabel ?? 'Apply'}
+              </button>
+              <button class="setup-hint-dismiss" @click=${() => ctx.onDismissHint(h.id)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        `,
+      )}
     </div>
   `;
 }
@@ -301,4 +383,101 @@ export const SETUP_TAB_CSS = `
   border-radius: 4px;
   padding: 2px 6px;
 }
+
+/* Personas (v4.4.0) */
+.setup-personas {
+  padding: 0 18px 12px;
+}
+.setup-personas-title {
+  font-size: 0.85rem;
+  color: var(--secondary-text-color);
+  margin-bottom: 10px;
+}
+.setup-personas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+.setup-persona-card {
+  background: var(--card-background-color);
+  border: 1px solid var(--divider-color);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 0.15s, transform 0.1s;
+  font: inherit;
+  color: inherit;
+}
+.setup-persona-card:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+.setup-persona-card ha-icon {
+  --mdc-icon-size: 24px;
+  color: var(--primary-color);
+}
+.setup-persona-card--active {
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+.setup-persona-label { font-weight: 500; }
+.setup-persona-desc {
+  font-size: 0.82rem;
+  color: var(--secondary-text-color);
+  line-height: 1.3;
+}
+
+/* Adaptive hints (v4.4.0) */
+.setup-hints { padding: 4px 18px 8px; }
+.setup-hint {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  background: color-mix(in srgb, var(--accent-color, #ff9800) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color, #ff9800) 40%, transparent);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.setup-hint-icon { --mdc-icon-size: 22px; color: var(--accent-color, #ff9800); }
+.setup-hint-title { font-weight: 500; font-size: 0.92rem; }
+.setup-hint-desc {
+  font-size: 0.82rem;
+  color: var(--secondary-text-color);
+  margin-top: 2px;
+}
+.setup-hint-actions { display: flex; gap: 6px; }
+.setup-hint-apply {
+  background: var(--primary-color);
+  color: var(--text-primary-color, white);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.setup-hint-dismiss {
+  background: transparent;
+  color: var(--secondary-text-color);
+  border: 1px solid var(--divider-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+.setup-section-divider {
+  padding: 8px 18px 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--secondary-text-color);
+  border-top: 1px solid var(--divider-color);
+}
+.setup-section-divider span { display: block; margin-top: 8px; }
 `;

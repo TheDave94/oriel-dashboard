@@ -319,6 +319,21 @@ export interface OrielConfig {
    */
   _onboarding_seen?: boolean;
   /**
+   * Internal: id of the last persona applied via the Setup wizard. Used
+   * by the editor to show "Current persona: X" + offer to switch. Has
+   * no effect on emitted views — purely an editor hint.
+   *
+   * Available since v4.4.
+   */
+  _persona_applied?: string;
+  /**
+   * Internal: hint ids the user has dismissed in the Setup tab.
+   * Filtered out of `detectHints()` to prevent re-showing.
+   *
+   * Available since v4.4.
+   */
+  _dismissed_hints?: string[];
+  /**
    * Opt-in: when Bubble Card (HACS) is installed, emit bubble-card
    * pop-ups for tile expansions instead of HA's more-info dialog.
    * Auto-falls-back to more-info when bubble-card isn't loaded.
