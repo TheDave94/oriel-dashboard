@@ -231,6 +231,13 @@ export interface Simon42StrategyConfig {
    * Common triggers: smoke / gas / water-leak alarms, doorbells,
    * security alarms, motion in monitored zones.
    */
+  /**
+   * Emit a Routines section on the overview (collected scenes +
+   * scripts, ranked by last-used). Default false — opt-in.
+   */
+  show_routines_section?: boolean;
+  /** Max routines displayed in the Routines section. Default 8. */
+  routines_max?: number;
   notification_triggers?: Array<{
     entity: string;
     active_state?: string;

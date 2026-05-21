@@ -36,6 +36,7 @@ const modulesPromise = Promise.all([
   import('./cards/ScreensaverCard'),
   import('./cards/NotificationCard'),
   import('./cards/SparklineCard'),
+  import('./cards/RoutinesCard'),
   import('./features/StickyLockFeature'),
   import('./views/OverviewViewStrategy'),
   import('./views/LightsViewStrategy'),

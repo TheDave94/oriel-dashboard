@@ -26,6 +26,7 @@ import { createMaintenanceSection } from '../sections/MaintenanceSection';
 import { createPresenceZonesSection } from '../sections/PresenceZonesSection';
 import { createOverviewView } from '../utils/view-builder';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
+import { localize } from '../utils/localize';
 
 /** Built-in section keys (collision check for custom_sections). */
 const BUILTIN_SECTION_KEYS = new Set<string>(['overview', 'custom_cards', 'areas', 'weather', 'energy']);
@@ -344,6 +345,28 @@ class Simon42ViewOverviewStrategy extends HTMLElement {
           } as LovelaceCardConfig;
         });
       }
+    }
+
+    // Routines section — when `show_routines_section: true`, append
+    // a `simon42-routines-card` (auto-collects scene + script entities
+    // ranked by last_changed). Skipped silently if no routines exist.
+    if (dashboardConfig.show_routines_section === true) {
+      overviewSections.push({
+        type: 'grid',
+        cards: [
+          {
+            type: 'heading',
+            heading: localize('sections.routines') || 'Routines',
+            heading_style: 'title',
+            icon: 'mdi:script-text-play',
+          },
+          {
+            type: 'custom:simon42-routines-card',
+            max: dashboardConfig.routines_max ?? 8,
+            grid_options: { columns: 'full', rows: 'auto' },
+          } as LovelaceCardConfig,
+        ],
+      });
     }
 
     // Notification banner — prepend a `simon42-notification-card` to
