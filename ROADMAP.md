@@ -10,7 +10,21 @@ The strategy targets HA 2025.5+. The infrastructure-side state (release loop, br
 
 ## 2. Near-term plan
 
-Currently empty. See §4 Reactive next steps for how items get added.
+Concrete items intended to ship, with acceptance criteria recorded so the work doesn't drift. Each entry: **what** changes, **why** it's worth shipping now, **shape** of the work (size only, not a date), and **done when** — what makes the work finished.
+
+### Bubble Card tile `tap_action` rewiring
+
+- **What**: When `use_bubble_drawers: true` and Bubble Card is installed, rewrite every strategy-emitted tile's `tap_action` to open the matching Bubble Card pop-up drawer instead of falling through to HA's default more-info dialog. The `withBubbleTapAction` helper that does this already exists in `src/utils/bubble-integration.ts`; the work is wiring it into the tile-emit sites.
+- **Why**: The `use_bubble_drawers` editor toggle's own description promises "Tap a tile → a drawer slides up [...] Replaces the more-info dialog." That promise is currently unfulfilled — drawers register but tiles still open more-info. The toggle *is* the user's opt-in; the rewiring is the completion of what they were told they were enabling.
+- **Shape**: Single PR. One helper exists, several call sites need it. Identify the actionable domains (`light`, `climate`, `cover`, `fan`, `media_player` — same set Bubble pop-ups are emitted for), apply `withBubbleTapAction` at each tile-emit site, gate the application on `use_bubble_drawers === true && isBubbleCardInstalled()`. Update the deferral comment in `OverviewViewStrategy.ts:409-416` to record the closed state.
+- **Done when**: With `use_bubble_drawers: true` and Bubble Card installed, every emitted tile for the actionable domains has `tap_action` pointing at the correct Bubble hash. With `use_bubble_drawers: false` or Bubble Card not installed, tiles emit unchanged (no `tap_action` field, HA more-info default). Unit test pins the rewrite per domain. Playwright spec on the live install: enable the toggle, click a tile, assert the Bubble drawer opens rather than the more-info dialog.
+
+### `camera_hero` editor surface
+
+- **What**: Add a "Camera hero" toggle to the per-area expansion in `AreasTab`, exposing the existing `areas_options.<area>.camera_hero` config knob in the editor.
+- **Why**: The feature exists in `RoomViewStrategy.ts` and is fully wired in the config types, but is YAML-only — violating [PRINCIPLES.md §1](PRINCIPLES.md) ("every advanced feature has an editor path"). Users who'd benefit from it can't discover or enable it without reading the type definitions.
+- **Shape**: Small fix / single PR. Pattern matches the existing per-area boolean toggles in `AreasTab`; the config field is already typed, the renderer is already wired, the mutator pattern is already established.
+- **Done when**: `AreasTab` shows a camera-hero toggle per area when at least one camera entity is in that area (no point surfacing the toggle when it would do nothing). Localized en + de. Toggle write produces the same YAML the manual path produces; existing YAML users see no behavior change. Unit test covers the mutator. Keyboard accessibility falls out of the existing `<ha-switch>` pattern — no new Playwright spec needed; the existing spec covers `<ha-switch>` activation generically.
 
 ## 3. Deliberately deferred
 
@@ -45,12 +59,6 @@ Items that were considered during a review cycle and explicitly held back, with 
 - **What**: migrate the editor's CSS from legacy HA variable names (`--primary-color` family) to modern design tokens, matching the migration done for cards.
 - **Why deferred** (follow-up #2, partial migration): cards finished the migration in v4.7.0. The editor stays on legacy because the HA components it embeds (`ha-form`, `ha-switch`, `ha-combo-box`) still use the legacy names internally, and migrating only the editor's outer chrome would create token-inconsistency seams with the embedded HA components. The README claim about design-token coverage was qualified accordingly.
 - **Trigger to revisit**: HA's own theme system drops the legacy variable names, forcing all consumers to migrate together.
-
-### Bubble Card full tile rewiring
-
-- **What**: when `use_bubble_drawers: true`, auto-rewrite per-tile `tap_action` to open the matching Bubble Card pop-up drawer instead of HA's default more-info dialog.
-- **Why deferred** (OverviewViewStrategy.ts:415): pop-up *registrations* ship today, but auto-rewiring every emitted tile's `tap_action` could break dashboards where the user has tested Bubble Card integration only partially. The conservative choice was to land the pop-up infrastructure without forcing the behavior change on existing installs.
-- **Trigger to revisit**: a user with `use_bubble_drawers: true` requests an opt-in "rewire all tiles" mode, or a signal that the feature is adopted broadly enough to justify changing the default.
 
 ## 4. Reactive next steps
 
