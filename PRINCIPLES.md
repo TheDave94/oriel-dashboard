@@ -56,7 +56,14 @@ Don't ship "this would be cool" features without a signal that someone needs the
 
 ## 6. Test the fallback path
 
-Every release verifies the HACS-uninstalled scenario for the features that touch HACS. The Playwright suite covers the live-HA case; unit tests cover the registry detection logic. Both must pass before shipping.
+Cover HACS-uninstalled scenarios at the risk level the site warrants. Not every fallback gets a test; the load-bearing ones do.
+
+- **CI-tested** — sites where the failure mode is silent (user can't tell something's off), or where the surface is refactor-prone (multiple call sites, tag-string drift, load-bearing for a shipped feature). Unit tests stub `customElements.get` and assert the emit / non-emit path; Playwright covers live-HA paths where stubbing isn't enough.
+- **Audit-only** — sites where the failure mode is immediately visible (HA renders the "Custom element doesn't exist" placeholder), where the branch is self-contained (one guard, one file), or where the dependency is HA-core rather than HACS. Reviewed by inspection during the §2 audit cycle; reasoning lives in a code comment so the next audit doesn't re-litigate.
+
+When a low-risk site graduates (e.g. a new feature wires more emission through an existing guard), add the CI coverage in the same PR that does the wiring — don't backfill principle text to match work after the fact.
+
+The §2 audit gate still applies: pretend the HACS plugin is uninstalled. Every Oriel feature still works.
 
 ---
 
