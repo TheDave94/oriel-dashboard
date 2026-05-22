@@ -167,11 +167,22 @@ npm run watch       # Dev + auto-rebuild on file changes
 ### Feature Development
 1. `git checkout -b feature/<name>` from `main`
 2. Develop, build, test on live system
-3. **Commit all files — source AND `dist/`!** HACS serves the `dist/` files from the tagged commit
+3. Commit source changes only. **Don't commit `dist/`** — it's rebuilt fresh from source at release time (see Release Flow below)
 4. `git push -u origin feature/<name>`
 5. Create PR from feature branch → `main` (triggers HACS validation workflow)
 6. Wait for CI to pass, then merge
 7. Delete feature branch (local + remote)
+
+### Release Flow
+
+What happens after your PR merges to `main`:
+
+1. **release-please** opens (or updates) a chore PR titled `chore(main): release <next-version>` — bumps `package.json` + appends a CHANGELOG entry. Conventional-commit prefixes drive the bump: `fix:` → patch, `feat:` → minor, `feat!:` → major. `docs:` and `chore:` don't trigger a release; `test:` triggers a patch but doesn't appear in the changelog (release-please default config).
+2. **Merging the release PR** tags the new version and publishes a GitHub Release.
+3. **`release-build.yml`** triggers on the `release: published` event, checks out the tagged commit, runs `npm ci && npm run build`, and uploads every file in `dist/` as an individual release asset (`gh release upload <tag> dist/* --clobber`).
+4. **HACS users fetch the release assets**, not the source tree. The source-tree `dist/` is not load-bearing for users — release-build.yml builds it fresh on every release.
+
+See [docs/RELEASE-INFRASTRUCTURE.md](docs/RELEASE-INFRASTRUCTURE.md) for the GitHub App + release-please auth setup that lets the `release: published` event actually fire `release-build.yml` (the suppression-rule workaround).
 
 ### Beta Releases
 - Beta versions are tagged as **Pre-Release** on GitHub (e.g. `v1.3.0-beta.1`)
