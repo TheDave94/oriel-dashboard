@@ -69,10 +69,12 @@ jobs:
       # release-build.yml the normal way (the GITHUB_TOKEN anti-loop
       # suppression doesn't apply to App-initiated events).
       #
-      # SHA-pinned to the same v4 commit the previous `@v4` tag
-      # resolved to. Bump deliberately when a new version is reviewed.
+      # SHA-pinned to v5.0.0. v5's only breaking change versus v4 is the
+      # runtime bump (Node 20 → Node 24); the action's inputs (`token`,
+      # `release-type`) and outputs (`release_created`, `tag_name`) are
+      # unchanged. Bump deliberately when a new version is reviewed.
       - name: Release Please
-        uses: googleapis/release-please-action@8b8fd2cc23b2e18957157a9d923d75aa0c6f6ad5 # v4
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-type: node
