@@ -354,13 +354,6 @@ export interface OrielConfig {
    */
   use_bubble_drawers?: boolean;
   /**
-   * Opt-in: when apexcharts-card (HACS) is installed, replace built-in
-   * oriel-sparkline-card emissions with apexcharts-card configs.
-   *
-   * Available since v3.2.
-   */
-  use_apexcharts_sparklines?: boolean;
-  /**
    * Dashboard-level decluttering-card templates. Pass through verbatim
    * to HA so `custom:decluttering-card` instances in custom_cards /
    * custom_views can reference them by name. The strategy doesn't

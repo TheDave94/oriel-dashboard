@@ -222,19 +222,6 @@ export const FEATURE_REGISTRY: FeatureEntry[] = [
     toggle: (enabled) => ({ use_bubble_drawers: enabled ? true : undefined }),
   },
   {
-    id: 'apexcharts-sparklines',
-    label: 'Replace sparklines with ApexCharts',
-    description:
-      'Use apexcharts-card for richer inline charts (interactive, zoomable, themable). Falls back to built-in sparkline when uninstalled.',
-    category: 'integration',
-    configKeys: ['use_apexcharts_sparklines'],
-    defaultEnabled: false,
-    detect: () => ({ installed: hasCustomElement('apexcharts-card') }),
-    hacs: { name: 'apexcharts-card', repository: 'RomRider/apexcharts-card' },
-    isEnabled: (c) => c.use_apexcharts_sparklines === true,
-    toggle: (enabled) => ({ use_apexcharts_sparklines: enabled ? true : undefined }),
-  },
-  {
     id: 'decluttering-templates',
     label: 'Reusable view templates (decluttering-card)',
     description:
