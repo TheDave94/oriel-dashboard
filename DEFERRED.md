@@ -15,3 +15,13 @@ Companion to [ROADMAP.md](ROADMAP.md). The Roadmap's §3 covers product-side def
 **Trigger to revisit**: Third identical occurrence on a future merge. If it happens, the response is: (a) add `ACTIONS_RUNNER_DEBUG=true` as a repo secret to capture HTTP request headers and confirm whether the `extraheader` is being dropped at request time, then (b) decide between a retry wrapper (`if: failure()` step that re-runs checkout) or accepting the flake.
 
 **Reasoning**: Diagnostic ran 2026-05-23, verdict (b) — *"config identical to siblings; failure is environmental"*. Bundle-size is the last job in the workflow file and may land on a different runner pool segment than its siblings; that's the most plausible structural hypothesis but unfalsifiable at N=2.
+
+### Branch deletion in this repo silently closes cross-fork PRs upstream — establish a safety check
+
+**Decision**: Before any bulk branch-deletion automation runs in `TheDave94/oriel-dashboard`, check whether any of the target branches are the head of an open PR in a forked-to upstream repo (currently: `TheRealSimon42/simon42-dashboard-strategy`). If yes, refuse to delete and surface for review. Mechanism likely: `gh api "repos/{upstream}/pulls?head=TheDave94:{branch}&state=open"` per branch — fast enough for any reasonable cleanup batch size.
+
+**Why deferred**: No automation today is queued to run; the safety check matters before the next bulk cleanup, not retroactively. The damage from the previous cleanups has been fully recovered (49 PRs reopened across Cluster C + #250).
+
+**Trigger to revisit**: When any branch-deletion automation is added or modified in this repo, or before any manual bulk branch-deletion. Whichever comes first.
+
+**Reasoning**: Bulk branch deletion on 2026-05-19 and 2026-05-22 silently closed 49 cross-fork PRs upstream. Pattern confirmed twice. Mechanism: GitHub auto-closes a PR when its head branch is deleted, recording the deleting account as the close actor — looks like manual closure to the maintainer, isn't.
