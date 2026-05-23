@@ -1583,11 +1583,24 @@ class OrielEditor extends LitElement {
   }
 
   /** Apply an adaptive hint's config patch. */
-  private async _applyHint(hint: { apply: (c: OrielConfig) => OrielConfig; id: string }): Promise<void> {
+  private async _applyHint(
+    hint: {
+      apply: (c: OrielConfig, hass: HomeAssistant) => OrielConfig | null;
+      id: string;
+    },
+  ): Promise<void> {
     // The hint itself patches; we also dismiss it so it doesn't reappear.
+    if (!this._hass) return;
     const { dismissHint } = await import('../onboarding/hints');
-    const patched = hint.apply(this._config);
-    const dismissed = dismissHint(patched, hint.id);
+    const patched = hint.apply(this._config, this._hass);
+    // `null` signals "did not apply" — the prerequisite the hint
+    // promised to act on isn't actually there at apply time (race
+    // between detect and click, or an entity that exists but doesn't
+    // carry the attributes the hint needs). Still dismiss so the
+    // card disappears; the hint itself logs a console.warn for
+    // debuggability.
+    const base = patched ?? this._config;
+    const dismissed = dismissHint(base, hint.id);
     this._config = dismissed;
     this._fireConfigChanged(dismissed);
   }
