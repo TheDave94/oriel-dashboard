@@ -125,7 +125,7 @@ export const FEATURE_REGISTRY: FeatureEntry[] = [
     id: 'sections-order-by-mode',
     label: 'Context-aware section reorder',
     description:
-      'Reshuffle dashboard sections based on input_select.house_mode (morning / evening / night / away). Existing data, new visibility.',
+      'Reshuffle dashboard sections based on input_select.house_mode. One section order per option in your input_select — the strategy normalizes "At Home" / "morning" / whatever to match. Existing data, new visibility.',
     category: 'layout',
     configKeys: ['sections_order_by_mode'],
     defaultEnabled: false,
