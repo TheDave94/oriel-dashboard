@@ -6,6 +6,17 @@ This file is a **point-in-time snapshot** of every branch in `TheDave94/oriel-da
 
 **Companion guard**: `.github/workflows/protect-upstream-pr-branches.yml` watches `delete` events on this repo and fails the run with a recovery command if a branch in the open-upstream-PR set is deleted. That's the smoke alarm; this file is the human-readable register.
 
+## Extending protection to additional upstreams
+
+This file and `.github/workflows/protect-upstream-pr-branches.yml` are **currently scoped to `TheRealSimon42/simon42-dashboard-strategy` only**. If you start submitting PRs from this repo to a new upstream:
+
+1. Add the upstream's `owner/repo` to the snapshot procedure in the *"How to refresh"* block below — either extend the `gh pr list --repo <new-upstream>` query alongside the existing one, or factor the query into a loop over a list of upstreams.
+2. Update the workflow's upstream query (search for the hard-coded `TheRealSimon42/simon42-dashboard-strategy` string in `.github/workflows/protect-upstream-pr-branches.yml`) — either iterate over a list or convert the job to a matrix.
+3. Refresh this snapshot file to include any branches that are heads of open PRs in the new upstream.
+4. Update [`CLAUDE.md`](../CLAUDE.md)'s *"Cross-fork PR safety"* section to name the new upstream alongside simon42.
+
+**The protection does not fail-open.** A branch that's the head of a PR in an upstream this file hasn't been extended to is invisible to the workflow and gets the same silent-cascade hazard the simon42 incident demonstrated — just pointed at a different repo. Don't assume a future upstream is covered until all four steps above have landed.
+
 ## When to refresh this file
 
 - Before any bulk branch deletion in this repo (manual or automated).
