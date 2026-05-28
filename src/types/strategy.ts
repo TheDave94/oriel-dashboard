@@ -625,6 +625,23 @@ export interface OrielConfig {
    *     tablet:  [light.living, lock.front]
    *     wall:    [light.living, climate.bedroom] # large screen
    *
+   * v4.13: entries may be state-conditional (simon42#131) — an entry can
+   * be a bare id (always shown) OR an object:
+   *   favorite_entities:
+   *     - light.living                          # always
+   *     - entity: switch.washing_machine
+   *       show_when: 'on'                        # only while running
+   *     - entity: vacuum.roborock
+   *       show_when: ['cleaning', 'returning']   # any-of states
+   *     - entity: alarm_control_panel.home       # cross-entity rule
+   *       visibility:
+   *         - condition: state
+   *           entity: input_select.house_mode
+   *           state: night
+   * show_when is a shorthand for a self-state HA `visibility` condition;
+   * `visibility` passes raw HA conditions through. Emitted as the tile's
+   * native `visibility`, so HA shows/hides it reactively.
+   *
    * The legacy `string[]` shape still works; existing dashboards
    * aren't affected.
    */

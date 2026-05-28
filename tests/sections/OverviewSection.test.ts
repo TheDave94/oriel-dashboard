@@ -187,6 +187,43 @@ describe('createOverviewSection', () => {
       }
     });
 
+    it('state-gates favorites via native HA visibility (simon42#131)', () => {
+      const hass = buildHass();
+      Registry.initialize(hass, {});
+      const section = createOverviewSection({
+        someSensorId: 'sensor.dummy',
+        showSearchCard: false,
+        config: {
+          favorite_entities: [
+            'light.fav_light',                                    // bare → always shown
+            { entity: 'switch.fav_switch', show_when: 'on' },     // shorthand → self-state
+            { entity: 'fan.fav_fan', show_when: ['on', 'auto'] }, // any-of states
+            {
+              entity: 'climate.fav_climate',
+              visibility: [{ condition: 'state', entity: 'input_select.mode', state: 'night' }],
+            }, // raw cross-entity passthrough
+          ],
+          show_light_summary: false,
+          show_covers_summary: false,
+          show_security_summary: false,
+          show_battery_summary: false,
+          show_clock_card: false,
+        },
+        hass,
+      });
+      const byEntity = favoriteTilesFromSection(section);
+      expect(byEntity['light.fav_light']).not.toHaveProperty('visibility');
+      expect(byEntity['switch.fav_switch'].visibility).toEqual([
+        { condition: 'state', entity: 'switch.fav_switch', state: 'on' },
+      ]);
+      expect(byEntity['fan.fav_fan'].visibility).toEqual([
+        { condition: 'state', entity: 'fan.fav_fan', state: ['on', 'auto'] },
+      ]);
+      expect(byEntity['climate.fav_climate'].visibility).toEqual([
+        { condition: 'state', entity: 'input_select.mode', state: 'night' },
+      ]);
+    });
+
     it('emits without tap_action when use_bubble_drawers is false (even with bubble-card installed)', () => {
       installBubbleCard();
       const hass = buildHass();
