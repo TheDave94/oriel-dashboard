@@ -10,8 +10,9 @@ import type {
   LovelaceBadgeConfig,
 } from '../types/lovelace';
 import type { AreaRegistryEntry } from '../types/registries';
-import type { RoomEntities, SensorEntities } from '../types/strategy';
-import { stripAreaName, sortByLastChanged } from '../utils/name-utils';
+import type { RoomEntities, SensorEntities, RoomSectionKey } from '../types/strategy';
+import { DEFAULT_ROOM_SECTION_ORDER } from '../types/strategy';
+import { stripAreaName, tileName, sortByLastChanged } from '../utils/name-utils';
 import { Registry } from '../Registry';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
 import { localize } from '../utils/localize';
@@ -390,6 +391,13 @@ class OrielViewRoom extends HTMLElement {
 
     // === SECTIONS ===
     const sections: LovelaceSectionConfig[] = [];
+    // Reorderable entity-group sections (#293) are collected here by key
+    // and appended in the configured order after the fixed-top sections
+    // (camera-hero, cameras) and before the specials (pins/room-mode
+    // unshift to the top, zone-presence pushes to the bottom). When
+    // room_section_order is unset the default order reproduces the
+    // canonical emit order, so output is byte-identical to before.
+    const groupSections = new Map<RoomSectionKey, LovelaceSectionConfig>();
 
     // Resolve per-area options early — used by the camera hero block
     // below, and again later for room-mode tile resolution. Reading
@@ -512,15 +520,17 @@ class OrielViewRoom extends HTMLElement {
       entityId: string,
     ): T => (bubbleEnabled ? withBubbleTapAction(tile, entityId) : tile);
 
-    // Helper: create a domain section
+    // Helper: create a domain section, registered by key for ordered
+    // assembly (#293) instead of pushed inline.
     const domainSection = (
+      key: RoomSectionKey,
       entities: string[],
       heading: string,
       icon: string,
       tileConfig: (e: string) => LovelaceCardConfig
     ): void => {
       if (entities.length === 0) return;
-      sections.push({
+      groupSections.set(key, {
         type: 'grid',
         cards: [{ type: 'heading', heading, heading_style: 'title', icon }, ...entities.map(tileConfig)],
       });
@@ -528,7 +538,7 @@ class OrielViewRoom extends HTMLElement {
 
     if (roomEntities.lights.length > 0) {
       const lightsDensity = resolveDensity(dashboardConfig);
-      sections.push({
+      groupSections.set('lights', {
         type: 'grid',
         cards: [
           {
@@ -548,12 +558,12 @@ class OrielViewRoom extends HTMLElement {
       });
     }
 
-    domainSection(roomEntities.locks, localize('room.locks'), 'mdi:lock', (e) =>
+    domainSection('locks', roomEntities.locks, localize('room.locks'), 'mdi:lock', (e) =>
       applyStateIcon(
         {
           type: 'tile',
           entity: e,
-          name: stripAreaName(e, area, hass),
+          name: tileName(e, area, hass, dashboardConfig),
           features: [{ type: 'lock-commands' }],
           features_position: 'inline',
           vertical: false,
@@ -564,12 +574,12 @@ class OrielViewRoom extends HTMLElement {
       ),
     );
 
-    domainSection(roomEntities.climate, localize('room.climate'), 'mdi:thermostat', (e) =>
+    domainSection('climate', roomEntities.climate, localize('room.climate'), 'mdi:thermostat', (e) =>
       maybeBubble(
         {
           type: 'tile',
           entity: e,
-          name: stripAreaName(e, area, hass),
+          name: tileName(e, area, hass, dashboardConfig),
           features: [{ type: 'climate-hvac-modes' }],
           features_position: 'inline',
           vertical: false,
@@ -579,13 +589,13 @@ class OrielViewRoom extends HTMLElement {
       ),
     );
 
-    domainSection(roomEntities.covers, localize('room.covers'), 'mdi:window-shutter', (e) =>
+    domainSection('covers', roomEntities.covers, localize('room.covers'), 'mdi:window-shutter', (e) =>
       maybeBubble(
         applyStateIcon(
           {
             type: 'tile',
             entity: e,
-            name: stripAreaName(e, area, hass),
+            name: tileName(e, area, hass, dashboardConfig),
             features: [{ type: 'cover-open-close' }],
             vertical: false,
             features_position: 'inline',
@@ -598,13 +608,13 @@ class OrielViewRoom extends HTMLElement {
       ),
     );
 
-    domainSection(roomEntities.covers_curtain, localize('room.curtains'), 'mdi:curtains', (e) =>
+    domainSection('curtains', roomEntities.covers_curtain, localize('room.curtains'), 'mdi:curtains', (e) =>
       maybeBubble(
         applyStateIcon(
           {
             type: 'tile',
             entity: e,
-            name: stripAreaName(e, area, hass),
+            name: tileName(e, area, hass, dashboardConfig),
             features: [{ type: 'cover-open-close' }],
             vertical: false,
             features_position: 'inline',
@@ -617,13 +627,13 @@ class OrielViewRoom extends HTMLElement {
       ),
     );
 
-    domainSection(roomEntities.covers_window, localize('room.windows'), 'mdi:window-open-variant', (e) =>
+    domainSection('windows', roomEntities.covers_window, localize('room.windows'), 'mdi:window-open-variant', (e) =>
       maybeBubble(
         applyStateIcon(
           {
             type: 'tile',
             entity: e,
-            name: stripAreaName(e, area, hass),
+            name: tileName(e, area, hass, dashboardConfig),
             features: [{ type: 'cover-open-close' }],
             vertical: false,
             features_position: 'inline',
@@ -636,14 +646,14 @@ class OrielViewRoom extends HTMLElement {
       ),
     );
 
-    domainSection(roomEntities.media_player, localize('room.media'), 'mdi:speaker', (e) => {
+    domainSection('media', roomEntities.media_player, localize('room.media'), 'mdi:speaker', (e) => {
       const state = hass.states[e];
       const hasPlayback = state && mediaPlayerSupportsPlayback(state);
       return maybeBubble(
         {
           type: 'tile',
           entity: e,
-          name: stripAreaName(e, area, hass),
+          name: tileName(e, area, hass, dashboardConfig),
           vertical: false,
           ...(hasPlayback ? { features: [{ type: 'media-player-playback' }], features_position: 'inline' } : {}),
           state_content: ['media_title', 'media_artist'],
@@ -652,10 +662,10 @@ class OrielViewRoom extends HTMLElement {
       );
     });
 
-    domainSection(roomEntities.scenes, localize('room.scenes'), 'mdi:palette', (e) => ({
+    domainSection('scenes', roomEntities.scenes, localize('room.scenes'), 'mdi:palette', (e) => ({
       type: 'tile',
       entity: e,
-      name: stripAreaName(e, area, hass),
+      name: tileName(e, area, hass, dashboardConfig),
       vertical: false,
       state_content: 'last_changed',
     }));
@@ -666,7 +676,7 @@ class OrielViewRoom extends HTMLElement {
       miscCards.push({
         type: 'tile',
         entity: e,
-        name: stripAreaName(e, area, hass),
+        name: tileName(e, area, hass, dashboardConfig),
         features: [{ type: 'vacuum-commands' }],
         features_position: 'inline',
         vertical: false,
@@ -680,7 +690,7 @@ class OrielViewRoom extends HTMLElement {
           {
             type: 'tile',
             entity: e,
-            name: stripAreaName(e, area, hass),
+            name: tileName(e, area, hass, dashboardConfig),
             ...(hasSpeed ? { features: [{ type: 'fan-speed' }], features_position: 'inline' } : {}),
             vertical: false,
             state_content: 'last_changed',
@@ -693,7 +703,7 @@ class OrielViewRoom extends HTMLElement {
       miscCards.push({
         type: 'tile',
         entity: e,
-        name: stripAreaName(e, area, hass),
+        name: tileName(e, area, hass, dashboardConfig),
         vertical: false,
         state_content: 'last_changed',
       });
@@ -701,7 +711,7 @@ class OrielViewRoom extends HTMLElement {
       miscCards.push({
         type: 'tile',
         entity: e,
-        name: stripAreaName(e, area, hass),
+        name: tileName(e, area, hass, dashboardConfig),
         features: [{ type: 'humidifier-toggle' }],
         features_position: 'inline',
         vertical: false,
@@ -711,7 +721,7 @@ class OrielViewRoom extends HTMLElement {
       miscCards.push({
         type: 'tile',
         entity: e,
-        name: stripAreaName(e, area, hass),
+        name: tileName(e, area, hass, dashboardConfig),
         features: [{ type: 'valve-open-close' }],
         features_position: 'inline',
         vertical: false,
@@ -721,7 +731,7 @@ class OrielViewRoom extends HTMLElement {
       miscCards.push({
         type: 'tile',
         entity: e,
-        name: stripAreaName(e, area, hass),
+        name: tileName(e, area, hass, dashboardConfig),
         features: [{ type: 'water-heater-operation-modes' }],
         features_position: 'inline',
         vertical: false,
@@ -736,7 +746,7 @@ class OrielViewRoom extends HTMLElement {
     });
 
     if (miscCards.length > 0) {
-      sections.push({
+      groupSections.set('misc', {
         type: 'grid',
         cards: [
           { type: 'heading', heading: localize('room.misc'), heading_style: 'title', icon: 'mdi:dots-horizontal' },
@@ -745,20 +755,40 @@ class OrielViewRoom extends HTMLElement {
       });
     }
 
-    domainSection(roomEntities.automations, localize('room.automations'), 'mdi:robot', (e) => ({
+    domainSection('automations', roomEntities.automations, localize('room.automations'), 'mdi:robot', (e) => ({
       type: 'tile',
       entity: e,
-      name: stripAreaName(e, area, hass),
+      name: tileName(e, area, hass, dashboardConfig),
       vertical: false,
       state_content: 'last_changed',
     }));
 
-    domainSection(roomEntities.scripts, localize('room.scripts'), 'mdi:script-text', (e) => ({
+    domainSection('scripts', roomEntities.scripts, localize('room.scripts'), 'mdi:script-text', (e) => ({
       type: 'tile',
       entity: e,
-      name: stripAreaName(e, area, hass),
+      name: tileName(e, area, hass, dashboardConfig),
       vertical: false,
     }));
+
+    // Append the reorderable entity-group sections in the configured
+    // order (#293). Effective order = user keys (valid + deduped) then
+    // any default keys they omitted — so a partial/unknown config never
+    // drops a section. Unset → DEFAULT_ROOM_SECTION_ORDER → canonical order.
+    const configuredOrder = Array.isArray(dashboardConfig.room_section_order)
+      ? dashboardConfig.room_section_order
+      : [];
+    const seen = new Set<RoomSectionKey>();
+    const effectiveOrder: RoomSectionKey[] = [];
+    for (const key of [...configuredOrder, ...DEFAULT_ROOM_SECTION_ORDER]) {
+      if (DEFAULT_ROOM_SECTION_ORDER.includes(key as RoomSectionKey) && !seen.has(key as RoomSectionKey)) {
+        seen.add(key as RoomSectionKey);
+        effectiveOrder.push(key as RoomSectionKey);
+      }
+    }
+    for (const key of effectiveOrder) {
+      const section = groupSections.get(key);
+      if (section) sections.push(section);
+    }
 
     // Room Pins
     const roomPinEntities: string[] = dashboardConfig.room_pin_entities || [];
@@ -785,7 +815,7 @@ class OrielViewRoom extends HTMLElement {
             const tile: LovelaceCardConfig = {
               type: 'tile',
               entity: e,
-              name: stripAreaName(e, area, hass),
+              name: tileName(e, area, hass, dashboardConfig),
               vertical: false,
               ...(pinStateContent.length > 0 ? { state_content: pinStateContent } : {}),
             };

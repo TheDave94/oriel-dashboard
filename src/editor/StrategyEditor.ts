@@ -19,11 +19,12 @@ import type {
   CustomSection,
   RoomEntities,
   SectionKey,
+  RoomSectionKey,
   WeatherPresentation,
   EnergyPresentation,
   WeatherSensorConfig,
 } from '../types/strategy';
-import { DEFAULT_SECTIONS_ORDER } from '../types/strategy';
+import { DEFAULT_SECTIONS_ORDER, DEFAULT_ROOM_SECTION_ORDER } from '../types/strategy';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
 import { localize } from '../utils/localize';
 import { isBadgeCandidate, isDefaultShowName, resolveShowName } from '../utils/badge-utils';
@@ -32,7 +33,7 @@ import { renderViewsTab } from './tabs/ViewsTab';
 import { renderOverviewTab } from './tabs/OverviewTab';
 import { renderSummariesTab } from './tabs/SummariesTab';
 import { renderSectionOrderTab } from './tabs/SectionOrderTab';
-import { renderAreasTab } from './tabs/AreasTab';
+import { renderAreasTab, effectiveRoomSectionOrder } from './tabs/AreasTab';
 import { renderRoomPinsTab } from './tabs/RoomPinsTab';
 import { renderLightFavoritesTab } from './tabs/LightFavoritesTab';
 import {
@@ -2411,7 +2412,23 @@ class OrielEditor extends LitElement {
       onRoomVisibilityChange: (areaId, field, value) =>
         this._roomVisibilityChanged(areaId, field, value),
       onCameraCompanionsChange: (kinds) => this._cameraCompanionsChanged(kinds),
+      onMoveRoomSection: (idx, dir) => this._moveRoomSection(idx, dir),
     });
+  }
+
+  private _moveRoomSection(idx: number, dir: 'up' | 'down'): void {
+    const order = effectiveRoomSectionOrder(this._config);
+    const next = (dir === 'up' ? swapAdjacentUp : swapAdjacentDown)(order, idx);
+    if (next === order) return; // out-of-range — no-op
+    const arr = next as RoomSectionKey[];
+    // Strip the key when the order matches the default — keeps YAML sparse.
+    const isDefault = arr.length === DEFAULT_ROOM_SECTION_ORDER.length &&
+      arr.every((k, i) => k === DEFAULT_ROOM_SECTION_ORDER[i]);
+    const newConfig: OrielConfig = { ...this._config };
+    if (isDefault) delete newConfig.room_section_order;
+    else newConfig.room_section_order = arr;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
   }
 
   /**
@@ -2557,8 +2574,10 @@ class OrielEditor extends LitElement {
       config: this._config,
       onAdd: () => this._addCustomView(),
       onRemove: (index) => this._removeCustomView(index),
+      onMove: (index, direction) => this._moveCustomView(index, direction),
       onUpdateField: (index, field, value) => this._updateCustomViewField(index, field, value),
       onUpdateYaml: (index, yamlString) => this._updateCustomViewYaml(index, yamlString),
+      onUpdateRefField: (index, field, value) => this._updateCustomViewRefField(index, field, value),
     });
   }
 
@@ -3243,11 +3262,41 @@ class OrielEditor extends LitElement {
     this._fireConfigChanged(newConfig);
   }
 
+  private _moveCustomView(index: number, direction: 'up' | 'down'): void {
+    const customViews: CustomView[] = this._config.custom_views || [];
+    const next = (direction === 'up' ? swapAdjacentUp : swapAdjacentDown)(customViews, index);
+    if (next === customViews) return; // out-of-range — no-op, no re-render
+
+    const newConfig: OrielConfig = { ...this._config, custom_views: next as CustomView[] };
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
   private _updateCustomViewField(index: number, field: string, value: string): void {
     const customViews: CustomView[] = [...(this._config.custom_views || [])];
     if (!customViews[index]) return;
 
     customViews[index] = { ...customViews[index], [field]: value };
+
+    const newConfig: OrielConfig = { ...this._config, custom_views: customViews };
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _updateCustomViewRefField(
+    index: number,
+    field: 'ref_dashboard' | 'ref_view',
+    value: string,
+  ): void {
+    const customViews: CustomView[] = [...(this._config.custom_views || [])];
+    if (!customViews[index]) return;
+
+    const updated: CustomView = { ...customViews[index] };
+    const trimmed = value.trim();
+    // Keep YAML sparse — strip the key entirely when cleared.
+    if (trimmed) updated[field] = trimmed;
+    else delete updated[field];
+    customViews[index] = updated;
 
     const newConfig: OrielConfig = { ...this._config, custom_views: customViews };
     this._config = newConfig;

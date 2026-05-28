@@ -11,9 +11,31 @@
 
 import { html, type TemplateResult } from 'lit';
 import type { HomeAssistant } from '../../types/homeassistant';
-import type { OrielConfig } from '../../types/strategy';
+import type { OrielConfig, RoomSectionKey } from '../../types/strategy';
+import { DEFAULT_ROOM_SECTION_ORDER } from '../../types/strategy';
 import type { AreaRegistryEntry } from '../../types/registries';
 import { localize } from '../../utils/localize';
+
+const ROOM_SECTION_LABEL: Record<RoomSectionKey, string> = {
+  lights: 'room.lighting', locks: 'room.locks', climate: 'room.climate',
+  covers: 'room.covers', curtains: 'room.curtains', windows: 'room.windows',
+  media: 'room.media', scenes: 'room.scenes', misc: 'room.misc',
+  automations: 'room.automations', scripts: 'room.scripts',
+};
+
+/** Effective full room-section order: configured (valid, deduped) + remaining defaults. */
+export function effectiveRoomSectionOrder(config: OrielConfig): RoomSectionKey[] {
+  const cfg = Array.isArray(config.room_section_order) ? config.room_section_order : [];
+  const seen = new Set<RoomSectionKey>();
+  const out: RoomSectionKey[] = [];
+  for (const k of [...cfg, ...DEFAULT_ROOM_SECTION_ORDER]) {
+    if (DEFAULT_ROOM_SECTION_ORDER.includes(k as RoomSectionKey) && !seen.has(k as RoomSectionKey)) {
+      seen.add(k as RoomSectionKey);
+      out.push(k as RoomSectionKey);
+    }
+  }
+  return out;
+}
 
 export interface AreasTabContext {
   hass: HomeAssistant;
@@ -45,6 +67,32 @@ export interface AreasTabContext {
   onCameraCompanionsChange: (
     kinds: Array<'light' | 'motion' | 'siren' | 'battery' | 'doorbell'>,
   ) => void;
+  /** Move a room-section-order row up/down (#293). */
+  onMoveRoomSection: (index: number, direction: 'up' | 'down') => void;
+}
+
+function renderRoomSectionOrder(ctx: AreasTabContext): TemplateResult {
+  const order = effectiveRoomSectionOrder(ctx.config);
+  return html`
+    <div class="section-title" style="margin-top: 16px;">${localize('editor.room_section_order')}</div>
+    <div class="description">${localize('editor.room_section_order_desc')}</div>
+    <div class="area-list">
+      ${order.map((key, idx) => {
+        const label = localize(ROOM_SECTION_LABEL[key]);
+        return html`
+          <div class="custom-item-header" data-key=${key}>
+            <strong>${label}</strong>
+            <button class="section-move-btn" type="button"
+              aria-label="${localize('editor.move_section_up')}: ${label}" title="${localize('editor.move_section_up')}"
+              ?disabled=${idx === 0} @click=${() => ctx.onMoveRoomSection(idx, 'up')}>&#x2191;</button>
+            <button class="section-move-btn" type="button"
+              aria-label="${localize('editor.move_section_down')}: ${label}" title="${localize('editor.move_section_down')}"
+              ?disabled=${idx === order.length - 1} @click=${() => ctx.onMoveRoomSection(idx, 'down')}>&#x2193;</button>
+          </div>
+        `;
+      })}
+    </div>
+  `;
 }
 
 const CAMERA_COMPANION_KINDS = ['light', 'motion', 'siren', 'battery', 'doorbell'] as const;
@@ -62,6 +110,7 @@ export function renderAreasTab(ctx: AreasTabContext): TemplateResult {
   const showWindowContactsInRooms = c.show_window_contacts_in_rooms !== false;
   const showDoorContactsInRooms = c.show_door_contacts_in_rooms !== false;
   const areaHoldShowsScenes = c.area_hold_shows_scenes === true;
+  const useEntityName = c.use_entity_name === true;
   const useDefaultAreaSort = c.use_default_area_sort === true;
 
   const allAreas = Object.values(ctx.hass.areas).sort((a, b) => a.name.localeCompare(b.name));
@@ -153,6 +202,16 @@ export function renderAreasTab(ctx: AreasTabContext): TemplateResult {
         (checked) => ctx.onToggleChange('show_door_contacts_in_rooms', checked, true),
       )}
       <div class="description">${localize('editor.show_door_contacts_in_rooms_desc')}</div>
+
+      ${renderRoomSectionOrder(ctx)}
+
+      ${ctx.renderCheckbox(
+        'use-entity-name',
+        localize('editor.use_entity_name'),
+        useEntityName,
+        (checked) => ctx.onToggleChange('use_entity_name', checked, false),
+      )}
+      <div class="description">${localize('editor.use_entity_name_desc')}</div>
 
       ${ctx.renderCheckbox(
         'area-hold-shows-scenes',
