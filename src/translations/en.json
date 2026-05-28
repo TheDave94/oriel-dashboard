@@ -323,6 +323,8 @@
     "show_window_contacts_in_rooms_desc": "Shows window contacts as badges in the respective room views.",
     "show_door_contacts_in_rooms": "Show door contacts in room views",
     "show_door_contacts_in_rooms_desc": "Shows door contacts as badges in the respective room views.",
+    "area_hold_shows_scenes": "Long-press area for scenes",
+    "area_hold_shows_scenes_desc": "Long-press (hold) an area card on the overview to open a menu of that area's scenes; tap one to activate it. Only areas with assigned scenes get the menu; tap and the area controls keep working as normal.",
     "room_section_order": "Room section order",
     "room_section_order_desc": "Reorder the entity-group sections within every room view (e.g. put Scenes above Lighting). Camera, room-mode, pins, and presence keep their fixed positions. Empty groups auto-hide.",
     "use_entity_name": "Entity name only",

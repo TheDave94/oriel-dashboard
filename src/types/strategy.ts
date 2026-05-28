@@ -242,6 +242,8 @@ export interface OrielConfig {
   room_camera_companions?: Array<'light' | 'motion' | 'siren' | 'battery' | 'doorbell'>;
   show_window_contacts_in_rooms?: boolean; // default: true (opt-out — set false to hide window contact badges)
   show_door_contacts_in_rooms?: boolean; // default: true (opt-out — set false to hide door contact badges)
+  area_hold_shows_scenes?: boolean; // default: false — long-press an area card to
+  // open a scene menu (wraps the native area card in oriel-area-card) (#150)
   room_section_order?: RoomSectionKey[]; // default: DEFAULT_ROOM_SECTION_ORDER — order of
   // reorderable entity-group sections within room views (#293)
   use_entity_name?: boolean; // default: false — emit name:{type:entity} on

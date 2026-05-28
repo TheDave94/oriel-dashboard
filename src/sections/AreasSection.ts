@@ -135,7 +135,7 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     ? getAreaAlertClasses(area.area_id, hass, showAlerts, showWindowAlerts)
     : undefined;
 
-  return {
+  const native: LovelaceCardConfig = {
     type: 'area',
     area: area.area_id,
     display_type: 'compact',
@@ -147,6 +147,31 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     vertical: false,
     grid_options: { columns: 'full' },
   };
+
+  // #150: long-press → scene menu. HA's area card has no hold_action, so
+  // when enabled AND the area has scenes, wrap the native card in
+  // oriel-area-card (which owns the hold gesture). Otherwise emit the
+  // native card unchanged — zero overhead when the feature is off.
+  if (Registry.config.area_hold_shows_scenes === true) {
+    const scenes = Registry.getVisibleEntitiesForArea(area.area_id)
+      .map((e) => e.entity_id)
+      .filter((id) => id.startsWith('scene.'));
+    if (scenes.length > 0) {
+      // Disable the inner card's own tap so the gesture bubbles to the
+      // wrapper (which owns tap → navigate and hold → scene menu). The
+      // wrapper carries navigation_path to replicate the tap navigation.
+      const inner: LovelaceCardConfig = { ...native, tap_action: { action: 'none' } };
+      delete (inner as { navigation_path?: string }).navigation_path;
+      return {
+        type: 'custom:oriel-area-card',
+        area_card_config: inner,
+        scenes,
+        navigation_path: area.area_id,
+      };
+    }
+  }
+
+  return native;
 }
 
 /**

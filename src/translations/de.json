@@ -323,6 +323,8 @@
     "show_window_contacts_in_rooms_desc": "Zeigt Fensterkontakte als Badges in den jeweiligen Raum-Ansichten an.",
     "show_door_contacts_in_rooms": "Türkontakte in Raum-Ansichten anzeigen",
     "show_door_contacts_in_rooms_desc": "Zeigt Türkontakte als Badges in den jeweiligen Raum-Ansichten an.",
+    "area_hold_shows_scenes": "Langes Drücken zeigt Szenen",
+    "area_hold_shows_scenes_desc": "Langes Drücken (Halten) auf eine Bereichskarte in der Übersicht öffnet ein Menü mit den Szenen des Bereichs; zum Aktivieren eine antippen. Nur Bereiche mit zugewiesenen Szenen erhalten das Menü; Tippen und die Bereichs-Steuerelemente funktionieren weiterhin normal.",
     "room_section_order": "Reihenfolge der Raum-Abschnitte",
     "room_section_order_desc": "Ordne die Entitäts-Gruppen-Abschnitte in jeder Raum-Ansicht neu an (z. B. Szenen über Beleuchtung). Kamera, Raum-Modus, Pins und Anwesenheit behalten ihre feste Position. Leere Gruppen werden ausgeblendet.",
     "use_entity_name": "Nur Entitätsname",

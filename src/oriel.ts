@@ -54,6 +54,7 @@ let generateCallCount = 0;
 // Start loading all chunks IMMEDIATELY
 const modulesPromise = Promise.all([
   import('./cards/SummaryCard'),
+  import('./cards/AreaCard'),
   import('./cards/LightsGroupCard'),
   import('./cards/CoversGroupCard'),
   import('./cards/ZonePresenceCard'),
