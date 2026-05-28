@@ -33,6 +33,38 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'plants',
 ];
 
+// Reorderable entity-group sections WITHIN a room view (#293). Specials
+// (camera-hero, cameras, room-mode, pins, zone-presence) keep fixed
+// positions and are NOT part of this list. Default order mirrors the
+// canonical RoomViewStrategy emit order — when room_section_order is
+// unset the room view renders exactly as before.
+export type RoomSectionKey =
+  | 'lights'
+  | 'locks'
+  | 'climate'
+  | 'covers'
+  | 'curtains'
+  | 'windows'
+  | 'media'
+  | 'scenes'
+  | 'misc'
+  | 'automations'
+  | 'scripts';
+
+export const DEFAULT_ROOM_SECTION_ORDER: RoomSectionKey[] = [
+  'lights',
+  'locks',
+  'climate',
+  'covers',
+  'curtains',
+  'windows',
+  'media',
+  'scenes',
+  'misc',
+  'automations',
+  'scripts',
+];
+
 /** Keys for section headings that can be hidden via hidden_section_headings */
 export type HeadingKey =
   | 'overview'
@@ -180,6 +212,8 @@ export interface OrielConfig {
   room_camera_companions?: Array<'light' | 'motion' | 'siren' | 'battery' | 'doorbell'>;
   show_window_contacts_in_rooms?: boolean; // default: true (opt-out — set false to hide window contact badges)
   show_door_contacts_in_rooms?: boolean; // default: true (opt-out — set false to hide door contact badges)
+  room_section_order?: RoomSectionKey[]; // default: DEFAULT_ROOM_SECTION_ORDER — order of
+  // reorderable entity-group sections within room views (#293)
   show_switches_on_areas?: boolean; // default: false
   show_alerts_on_areas?: boolean; // default: false
   show_person_badges?: boolean; // default: true — set false to suppress the

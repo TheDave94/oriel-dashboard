@@ -298,6 +298,8 @@
     "show_window_contacts_in_rooms_desc": "Zeigt Fensterkontakte als Badges in den jeweiligen Raum-Ansichten an.",
     "show_door_contacts_in_rooms": "Türkontakte in Raum-Ansichten anzeigen",
     "show_door_contacts_in_rooms_desc": "Zeigt Türkontakte als Badges in den jeweiligen Raum-Ansichten an.",
+    "room_section_order": "Reihenfolge der Raum-Abschnitte",
+    "room_section_order_desc": "Ordne die Entitäts-Gruppen-Abschnitte in jeder Raum-Ansicht neu an (z. B. Szenen über Beleuchtung). Kamera, Raum-Modus, Pins und Anwesenheit behalten ihre feste Position. Leere Gruppen werden ausgeblendet.",
     "use_default_area_sort": "Home Assistant Sortierung verwenden",
     "use_default_area_sort_desc": "Verwendet die Sortierung der Bereiche aus Home Assistant anstelle der hier konfigurierten Reihenfolge.",
     "areas_manage_desc": "Wähle aus, welche Bereiche im Dashboard angezeigt werden sollen und in welcher Reihenfolge. Klappe Bereiche auf, um einzelne Entitäten zu verwalten.",
