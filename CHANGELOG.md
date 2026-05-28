@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.12.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.12.0...v4.12.1) (2026-05-28)
+
+
+### Bug Fixes
+
+* group-card overlap at the root (full-width group cards) ([#81](https://github.com/TheDave94/oriel-dashboard/issues/81)) ([cf4cec0](https://github.com/TheDave94/oriel-dashboard/commit/cf4cec03d995c4b76e2fd0ca1777d5bcda53d253))
+
 ## [4.12.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.11.0...v4.12.0) (2026-05-28)
 
 
