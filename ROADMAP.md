@@ -6,7 +6,7 @@ A current-state snapshot — not a list of aspirations. The project's working pa
 
 ## 1. Current state
 
-Oriel Dashboard is a Home Assistant Lovelace strategy at **v4.10.0**. It auto-generates dashboards from areas, devices, and entities, and exposes every advanced feature through a visual editor instead of YAML. For "what changed" by version, read [CHANGELOG.md](CHANGELOG.md) or the [GitHub releases](https://github.com/TheDave94/oriel-dashboard/releases) page; this file does not duplicate that.
+Oriel Dashboard is a Home Assistant Lovelace strategy at **v4.13.0**. It auto-generates dashboards from areas, devices, and entities, and exposes every advanced feature through a visual editor instead of YAML. For "what changed" by version, read [CHANGELOG.md](CHANGELOG.md) or the [GitHub releases](https://github.com/TheDave94/oriel-dashboard/releases) page; this file does not duplicate that.
 
 The strategy targets HA 2025.5+. The infrastructure-side state (release loop, branch hygiene, dependency posture) is documented in [docs/RELEASE-INFRASTRUCTURE.md](docs/RELEASE-INFRASTRUCTURE.md). The design principles every feature has to clear are in [PRINCIPLES.md](PRINCIPLES.md).
 
@@ -56,6 +56,24 @@ Items that were considered during a review cycle and explicitly held back, with 
 - **Why deferred** (`src/editor/LivePreview.ts:12-15`, v4.6.0): HA doesn't expose `<hui-view>` as an embeddable component. The structure-level preview (view/section/card counts + emitted YAML) was shipped as the pragmatic middle ground; a true visual preview would need either a public HA API change or a substantial reimplementation of HA's view rendering.
 - **Trigger to revisit**: HA exposes `<hui-view>` (or an equivalent embeddable component) as a public API, or a user reports that the text-only preview is insufficient for the decisions they're making in the editor.
 
+### Source-staleness degraded states (external-seed review, 2026-05)
+
+- **What**: a "data stale since X" / visibly-degraded indicator when a source stops updating, instead of the value silently hiding or showing a frozen number.
+- **Why deferred**: a real but *partial* gap, not built reflexively. Oriel already handles the **unavailable** case — `hide_unavailable_in_rooms` skips them, `show_unavailable_alert_badge` counts them on the overview, the unavailable-batteries bucket sorts them — and tiles already render `last_changed` ("4 hours ago") as a passive freshness hint. The uncovered case is **stale-but-available**: a sensor still reporting an old value (last_updated past a threshold) that no `unavailable` check catches. Held pending a freshness-threshold design that doesn't add per-card cost to the reactive `willUpdate` path.
+- **Trigger to revisit**: a recurrence of a silent-sensor failure on a *user* install (motivated by a local env-sensor going silent), or a request for proactive staleness alerting. If built: a `stale_after` threshold feeding the reactive cards (summary inputs + room sensor badges), optionally a staleness alert badge mirroring `show_unavailable_alert_badge` — degrade visibly, never blank.
+
+### Priority / precedence "status headline" element (external-seed review, 2026-05)
+
+- **What**: a single glanceable element resolving the home's top-priority state via a configured precedence (e.g. security > window-open-in-rain > air-quality > climate > all-clear), showing only the winner instead of the flat equal-weight summary row.
+- **Why deferred**: speculative (PRINCIPLES §5) — seeded from an external mascot-card review, not an Oriel user signal. The summaries are *deliberately* flat (`oriel-summary-card`, five fixed types) and `show_unavailable_alert_badge` already surfaces the main "something's wrong" signal; the marginal value is single-glance precedence ordering, which is unvalidated. A real version needs a user-defined precedence + a condition engine + an editor surface (§3) — non-trivial config for an unproven benefit. Note: users can already drop an ad-hoc status template into the summaries row via `custom_cards` → `target_section: summaries`.
+- **Trigger to revisit**: a real request for a "what matters now" headline, or enough users hand-rolling summary-row status templates that a first-class precedence element clearly pays off. If built: an overview-header element (sibling to the clock/alarm/house-mode badge) or `oriel-status-card`, fed by an ordered condition list reusing the existing summary aggregations.
+
+### Mode-keyed section visibility (external-seed review, 2026-05) — *largely already covered*
+
+- **What**: change *which* sections/content appear per house_mode / time-of-day, not just their order.
+- **Why deferred / mostly covered**: context-driven presentation is already a first-class axis — `sections_order_by_mode` (order per `house_mode_entity`), `section_visibility` (conditional show/hide, e.g. "agenda only on workdays"), viewport detection (phone / tablet / wall = wall-panel mode), density presets, per-area `room_mode_entity`, plus HA-native card `visibility` conditions (used by v4.13 state-gated favorites) for per-card mode/time gating. The external framing ("room to make modes first-class") underestimates what's already shipped. Residual gap is narrow: a `sections_visible_by_mode` mirror of `sections_order_by_mode` for users who want whole sections gated by mode without writing per-section conditions.
+- **Trigger to revisit**: a request that `section_visibility`'s condition form genuinely can't satisfy.
+
 ## 4. Reactive next steps
 
 Future work is driven by what surfaces — bug reports, feature requests on this repo or upstream simon42, deferred items above whose trigger condition fires, gaps revealed when the HA frontend evolves. There is no static roadmap, and items that look interesting in the abstract don't reach §2 unless something real has validated them. See [PRINCIPLES.md §5](PRINCIPLES.md) for the rationale; the previous shape of this file (long aspirational tiers) is exactly what that principle exists to discourage.
@@ -67,3 +85,4 @@ Explicit boundary statements — useful for setting expectations even when no on
 - **Backend HA service integration** — Oriel is frontend-only. Surfaces like `strategy.flash_view` would require a Python integration component; that's a different project.
 - **Backwards-compat layer for upstream simon42 identifiers** — the clean break is intentional. Migration is a one-shot YAML edit; see [MIGRATION.md](MIGRATION.md).
 - **Hard dependency on any HACS plugin** — every feature must work in a clean fallback path. See [PRINCIPLES.md §2](PRINCIPLES.md).
+- **Standalone web-app surfaces** — Oriel is a Lovelace *strategy* (it generates `views[]` from HA metadata). A bespoke standalone HTML/JS app talking to HA over WS/REST (the Reddit "rich media-center surface" pattern) is a different product: not strategy-generatable, bypasses HA's dashboard / auth / theming, and is a separate deploy + maintenance model. Rich surfaces are served the Oriel way — `custom_cards` (HACS cards), `custom_views` (reference a bespoke dashboard), and the plugin shims (ApexCharts, Bubble, floorplan). Considered + rejected in the 2026-05 external-seed review.
