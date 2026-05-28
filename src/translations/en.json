@@ -158,6 +158,8 @@
     "section_hidden": "hidden",
     "move_section_up": "Move section up",
     "move_section_down": "Move section down",
+    "move_view_up": "Move view up",
+    "move_view_down": "Move view down",
     "energy_link_dashboard": "Link to energy dashboard",
     "show_weather_forecast_card": "Show built-in forecast card",
     "show_energy_distribution_card": "Show built-in energy distribution card",

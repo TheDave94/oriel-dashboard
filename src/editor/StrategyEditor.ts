@@ -2557,6 +2557,7 @@ class OrielEditor extends LitElement {
       config: this._config,
       onAdd: () => this._addCustomView(),
       onRemove: (index) => this._removeCustomView(index),
+      onMove: (index, direction) => this._moveCustomView(index, direction),
       onUpdateField: (index, field, value) => this._updateCustomViewField(index, field, value),
       onUpdateYaml: (index, yamlString) => this._updateCustomViewYaml(index, yamlString),
     });
@@ -3239,6 +3240,16 @@ class OrielEditor extends LitElement {
       newConfig.custom_views = customViews;
     }
 
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  private _moveCustomView(index: number, direction: 'up' | 'down'): void {
+    const customViews: CustomView[] = this._config.custom_views || [];
+    const next = (direction === 'up' ? swapAdjacentUp : swapAdjacentDown)(customViews, index);
+    if (next === customViews) return; // out-of-range — no-op, no re-render
+
+    const newConfig: OrielConfig = { ...this._config, custom_views: next as CustomView[] };
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
   }

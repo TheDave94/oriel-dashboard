@@ -10,6 +10,7 @@ export interface CustomViewsTabContext {
   config: OrielConfig;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  onMove: (index: number, direction: 'up' | 'down') => void;
   onUpdateField: (index: number, field: 'title' | 'path' | 'icon', value: string) => void;
   onUpdateYaml: (index: number, yamlString: string) => void;
 }
@@ -18,7 +19,13 @@ function renderViewItem(
   ctx: CustomViewsTabContext,
   view: CustomView,
   index: number,
+  total: number,
 ): TemplateResult {
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+  const label = view.title || localize('editor.new_view');
+  const moveUpLabel = `${localize('editor.move_view_up')}: ${label}`;
+  const moveDownLabel = `${localize('editor.move_view_down')}: ${label}`;
   const validationMsg = view._yaml_error
     ? html`<span style="color: var(--error-color);">&#x274C; ${view._yaml_error}</span>`
     : view.yaml
@@ -28,7 +35,23 @@ function renderViewItem(
   return html`
     <div class="custom-item" data-index=${index}>
       <div class="custom-item-header">
-        <strong>${view.title || localize('editor.new_view')}</strong>
+        <strong>${label}</strong>
+        <button
+          class="section-move-btn"
+          type="button"
+          aria-label=${moveUpLabel}
+          title=${moveUpLabel}
+          ?disabled=${isFirst}
+          @click=${() => ctx.onMove(index, 'up')}
+        >&#x2191;</button>
+        <button
+          class="section-move-btn"
+          type="button"
+          aria-label=${moveDownLabel}
+          title=${moveDownLabel}
+          ?disabled=${isLast}
+          @click=${() => ctx.onMove(index, 'down')}
+        >&#x2193;</button>
         <button class="btn-remove" @click=${() => ctx.onRemove(index)}>&#x2715;</button>
       </div>
       <div class="custom-item-fields">
@@ -83,7 +106,7 @@ export function renderCustomViewsTab(ctx: CustomViewsTabContext): TemplateResult
       <div id="custom-views-list">
         ${customViews.length === 0
           ? html`<div class="empty-state">${localize('editor.no_custom_views')}</div>`
-          : customViews.map((view, index) => renderViewItem(ctx, view, index))}
+          : customViews.map((view, index) => renderViewItem(ctx, view, index, customViews.length))}
       </div>
 
       <button class="btn-primary" style="margin-top: 8px;" @click=${() => ctx.onAdd()}>
