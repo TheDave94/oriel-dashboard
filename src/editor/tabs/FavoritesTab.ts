@@ -19,13 +19,19 @@
 //   - "Merge to single list" — keyed → flat (uses `default` as the
 //     base, then dedupes any entities present in other viewports)
 //
+// Each row also carries an optional self-state condition (show_when,
+// simon42#131): a small inline field that gates the favorite tile on the
+// entity's own state. Entries are `string | { entity, show_when }`; raw
+// cross-entity `visibility` arrays are advanced and stay YAML-only, shown
+// as a non-editable chip so the editor preserves rather than clobbers them.
+//
 // Per PRINCIPLES #1: every YAML-only feature gets an editor path. The
 // detection is also wired into the health-check tab — orphaned entries
 // per-viewport surface as separate health issues.
 // ====================================================================
 
 import { html, nothing, type TemplateResult } from 'lit';
-import type { OrielConfig } from '../../types/strategy';
+import type { OrielConfig, FavoriteEntityEntry } from '../../types/strategy';
 import { localize } from '../../utils/localize';
 
 export type FavoritesViewport = 'default' | 'phone' | 'tablet' | 'wall';
@@ -53,6 +59,8 @@ export interface FavoritesTabContext {
   onSearchChange: (value: string) => void;
   onAddEntity: (entityId: string) => void;
   onRemoveEntity: (entityId: string) => void;
+  /** Set/clear a favorite's self-state condition (show_when). Empty clears it. */
+  onSetShowWhen: (entityId: string, raw: string) => void;
   onToggleChange: (key: string, value: boolean, defaultValue: boolean) => void;
   onDragStart: (ev: DragEvent) => void;
   onDragEnd: (ev: DragEvent) => void;
@@ -73,7 +81,7 @@ export interface FavoritesTabContext {
  */
 export function isViewportKeyedFavorites(
   fav: unknown,
-): fav is Partial<Record<FavoritesViewport, string[]>> {
+): fav is Partial<Record<FavoritesViewport, FavoriteEntityEntry[]>> {
   if (!fav || typeof fav !== 'object' || Array.isArray(fav)) return false;
   const v = fav as Record<string, unknown>;
   return (
@@ -84,19 +92,66 @@ export function isViewportKeyedFavorites(
   );
 }
 
+/** Entity id of a favorites entry, whether bare string or config object. */
+export function favoriteEntryId(entry: FavoriteEntityEntry): string {
+  return typeof entry === 'string' ? entry : entry.entity;
+}
+
+/** Display text for a favorite's self-state condition (show_when); '' if none. */
+export function favoriteShowWhenText(entry: FavoriteEntityEntry): string {
+  if (typeof entry === 'string' || entry.show_when === undefined) return '';
+  return Array.isArray(entry.show_when) ? entry.show_when.join(', ') : entry.show_when;
+}
+
+/**
+ * True when an entry carries a raw `visibility` array — an advanced
+ * cross-entity condition. The editor surfaces show_when (the documented
+ * shorthand) but leaves raw visibility to YAML, so it must detect and
+ * preserve it rather than clobber it.
+ */
+export function favoriteHasAdvancedVisibility(entry: FavoriteEntityEntry): boolean {
+  return typeof entry !== 'string' && Array.isArray(entry.visibility) && entry.visibility.length > 0;
+}
+
+/**
+ * Set (or clear) the self-state `show_when` condition on the matching
+ * favorite entry, returning a new array. Empty input → bare string
+ * (keeps YAML sparse). Comma-separated input → any-of array. Entries
+ * carrying a raw `visibility` are left untouched — advanced conditions
+ * are edited in YAML and must not be clobbered.
+ */
+export function setFavoriteShowWhen(
+  entries: FavoriteEntityEntry[],
+  entityId: string,
+  raw: string,
+): FavoriteEntityEntry[] {
+  return entries.map((entry) => {
+    if (favoriteEntryId(entry) !== entityId) return entry;
+    if (favoriteHasAdvancedVisibility(entry)) return entry;
+    const parts = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (parts.length === 0) return entityId; // strip condition → bare string
+    return { entity: entityId, show_when: parts.length === 1 ? parts[0] : parts };
+  });
+}
+
 export function renderFavoritesTab(ctx: FavoritesTabContext): TemplateResult {
   const favRaw = ctx.config.favorite_entities as unknown;
   const isKeyed = isViewportKeyedFavorites(favRaw);
 
   // Pick the currently-visible list based on mode + active viewport.
-  let visibleList: string[];
+  let visibleEntries: FavoriteEntityEntry[];
   if (isKeyed) {
-    const map = favRaw as Partial<Record<FavoritesViewport, string[]>>;
-    visibleList = Array.isArray(map[ctx.activeViewport]) ? (map[ctx.activeViewport] as string[]) : [];
+    const map = favRaw as Partial<Record<FavoritesViewport, FavoriteEntityEntry[]>>;
+    visibleEntries = Array.isArray(map[ctx.activeViewport])
+      ? (map[ctx.activeViewport] as FavoriteEntityEntry[])
+      : [];
   } else if (Array.isArray(favRaw)) {
-    visibleList = favRaw as string[];
+    visibleEntries = favRaw as FavoriteEntityEntry[];
   } else {
-    visibleList = [];
+    visibleEntries = [];
   }
 
   const favoritesShowState = ctx.config.favorites_show_state === true;
@@ -157,12 +212,15 @@ export function renderFavoritesTab(ctx: FavoritesTabContext): TemplateResult {
       </div>
 
       <div id="favorites-list" style="margin-bottom: 12px;">
-        ${visibleList.length === 0
+        ${visibleEntries.length === 0
           ? html`<div class="empty-state">${localize('editor.no_favorites')}</div>`
           : html`
               <div class="entity-list-container">
-                ${visibleList.map((entityId) => {
+                ${visibleEntries.map((entry) => {
+                  const entityId = favoriteEntryId(entry);
                   const name = ctx.entityNameMap.get(entityId) || entityId;
+                  const advanced = favoriteHasAdvancedVisibility(entry);
+                  const showWhen = favoriteShowWhenText(entry);
                   return html`
                     <div
                       class="entity-list-item"
@@ -179,6 +237,26 @@ export function renderFavoritesTab(ctx: FavoritesTabContext): TemplateResult {
                         <span class="item-name">${name}</span>
                         <span class="item-entity-id">${entityId}</span>
                       </span>
+                      ${advanced
+                        ? html`<span
+                            class="fav-advanced-chip"
+                            style="font-size: 0.72rem; padding: 2px 6px; border-radius: 10px; border: 1px solid var(--divider-color); color: var(--secondary-text-color); white-space: nowrap;"
+                            title=${localize('editor.favorites_advanced_condition_desc') ||
+                            'This favorite uses an advanced visibility condition. Edit it in YAML.'}
+                            >${localize('editor.favorites_advanced_condition') || 'advanced (YAML)'}</span
+                          >`
+                        : html`<input
+                            class="fav-show-when"
+                            type="text"
+                            style="width: 120px; flex: 0 0 auto;"
+                            .value=${showWhen}
+                            placeholder=${localize('editor.favorites_show_when_placeholder') || 'always'}
+                            title=${localize('editor.favorites_show_when_desc') ||
+                            'Show this favorite only while the entity state matches (comma-separate for any-of). Leave empty to always show.'}
+                            @mousedown=${(e: Event) => e.stopPropagation()}
+                            @change=${(e: Event) =>
+                              ctx.onSetShowWhen(entityId, (e.target as HTMLInputElement).value)}
+                          />`}
                       <button class="btn-remove" @click=${() => ctx.onRemoveEntity(entityId)}>
                         &#x2715;
                       </button>
@@ -188,6 +266,12 @@ export function renderFavoritesTab(ctx: FavoritesTabContext): TemplateResult {
               </div>
             `}
       </div>
+      ${visibleEntries.length > 0
+        ? html`<div class="description" style="margin-top: -4px; margin-bottom: 12px;">
+            ${localize('editor.favorites_show_when_hint') ||
+            'Tip: the small field on each favorite is "show only when" — type a state (e.g. on, running) to hide the tile unless the entity is in that state. Comma-separate for any-of; leave empty to always show.'}
+          </div>`
+        : nothing}
 
       <div class="entity-search-picker">
         <input

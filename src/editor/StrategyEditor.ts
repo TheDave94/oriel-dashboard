@@ -23,6 +23,7 @@ import type {
   WeatherPresentation,
   EnergyPresentation,
   WeatherSensorConfig,
+  FavoriteEntityEntry,
 } from '../types/strategy';
 import { DEFAULT_SECTIONS_ORDER, DEFAULT_ROOM_SECTION_ORDER } from '../types/strategy';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
@@ -39,6 +40,8 @@ import { renderLightFavoritesTab } from './tabs/LightFavoritesTab';
 import {
   renderFavoritesTab,
   isViewportKeyedFavorites,
+  favoriteEntryId,
+  setFavoriteShowWhen,
   type FavoritesViewport,
 } from './tabs/FavoritesTab';
 import { renderWeatherSensorsTab } from './tabs/WeatherSensorsTab';
@@ -2201,6 +2204,7 @@ class OrielEditor extends LitElement {
       },
       onAddEntity: (entityId) => this._addFavoriteEntity(entityId),
       onRemoveEntity: (entityId) => this._removeFavoriteEntity(entityId),
+      onSetShowWhen: (entityId, raw) => this._setFavoriteShowWhen(entityId, raw),
       onToggleChange: (k, v, d) => this._toggleChanged(k, v, d),
       onDragStart: (ev) => this._handleEntityDragStart(ev, 'favorites'),
       onDragEnd: this._handleEntityDragEnd,
@@ -3094,78 +3098,73 @@ class OrielEditor extends LitElement {
     select.value = '';
   }
 
-  private _addFavoriteEntity(entityId: string): void {
-    if (!this._hass) return;
+  /**
+   * Read the favorites list the editor is currently acting on — the flat
+   * array, or the active viewport's slice when keyed. Entries can be bare
+   * strings or `{ entity, show_when, visibility }` objects; all callers go
+   * through `favoriteEntryId` so both forms are handled uniformly.
+   */
+  private _readFavoritesList(): FavoriteEntityEntry[] {
     const existing = this._config.favorite_entities as unknown;
     if (isViewportKeyedFavorites(existing)) {
-      // Viewport-keyed: write to the currently-active viewport's list.
-      const map = existing as Partial<Record<FavoritesViewport, string[]>>;
-      const list = Array.isArray(map[this._favoritesActiveViewport])
-        ? (map[this._favoritesActiveViewport] as string[])
-        : [];
-      if (list.includes(entityId)) return;
-      const newConfig: OrielConfig = {
-        ...this._config,
-        favorite_entities: {
-          ...map,
-          [this._favoritesActiveViewport]: [...list, entityId],
-        } as OrielConfig['favorite_entities'],
-      };
-      this._config = newConfig;
-      this._fireConfigChanged(newConfig);
-      return;
+      const list = existing[this._favoritesActiveViewport];
+      return Array.isArray(list) ? list : [];
     }
-    // Flat shape (default behaviour).
-    const currentFavorites: string[] = Array.isArray(existing) ? (existing as string[]) : [];
-    if (currentFavorites.includes(entityId)) return;
-    const newConfig: OrielConfig = {
-      ...this._config,
-      favorite_entities: [...currentFavorites, entityId],
-    };
-    this._config = newConfig;
-    this._fireConfigChanged(newConfig);
+    return Array.isArray(existing) ? (existing as FavoriteEntityEntry[]) : [];
   }
 
-  private _removeFavoriteEntity(entityId: string): void {
+  /**
+   * Write `list` back into the active scope (flat or active viewport),
+   * stripping empties to keep the YAML sparse: an empty active viewport is
+   * removed, and `favorite_entities` is dropped entirely once nothing is
+   * left in any scope.
+   */
+  private _writeFavoritesList(list: FavoriteEntityEntry[]): void {
     if (!this._hass) return;
     const existing = this._config.favorite_entities as unknown;
+    const newConfig: OrielConfig = { ...this._config };
     if (isViewportKeyedFavorites(existing)) {
-      const map = existing as Partial<Record<FavoritesViewport, string[]>>;
-      const list = Array.isArray(map[this._favoritesActiveViewport])
-        ? (map[this._favoritesActiveViewport] as string[])
-        : [];
-      const next = list.filter((id) => id !== entityId);
-      const nextMap = { ...map, [this._favoritesActiveViewport]: next };
-      if (next.length === 0) delete nextMap[this._favoritesActiveViewport];
-      const newConfig: OrielConfig = { ...this._config };
+      const nextMap = { ...existing, [this._favoritesActiveViewport]: list };
+      if (list.length === 0) delete nextMap[this._favoritesActiveViewport];
       const remaining = Object.values(nextMap).filter(
         (v) => Array.isArray(v) && v.length > 0,
       ).length;
       if (remaining === 0) delete newConfig.favorite_entities;
       else newConfig.favorite_entities = nextMap as OrielConfig['favorite_entities'];
-      this._config = newConfig;
-      this._fireConfigChanged(newConfig);
-      return;
+    } else if (list.length === 0) {
+      delete newConfig.favorite_entities;
+    } else {
+      newConfig.favorite_entities = list as OrielConfig['favorite_entities'];
     }
-    const currentFavorites: string[] = Array.isArray(existing) ? (existing as string[]) : [];
-    const newFavorites = currentFavorites.filter((id) => id !== entityId);
-    const newConfig: OrielConfig = { ...this._config };
-    if (newFavorites.length === 0) delete newConfig.favorite_entities;
-    else newConfig.favorite_entities = newFavorites;
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
+  }
+
+  private _addFavoriteEntity(entityId: string): void {
+    const list = this._readFavoritesList();
+    if (list.some((e) => favoriteEntryId(e) === entityId)) return;
+    this._writeFavoritesList([...list, entityId]);
+  }
+
+  private _removeFavoriteEntity(entityId: string): void {
+    this._writeFavoritesList(this._readFavoritesList().filter((e) => favoriteEntryId(e) !== entityId));
+  }
+
+  /** Set/clear a favorite's self-state condition (show_when) via the pure mutator. */
+  private _setFavoriteShowWhen(entityId: string, raw: string): void {
+    this._writeFavoritesList(setFavoriteShowWhen(this._readFavoritesList(), entityId, raw));
   }
 
   /**
    * Convert flat favorites to viewport-keyed shape (F-8). The current
    * flat list moves to `default`; the other viewports start empty so
    * the user can populate per-device favorites independently. No-ops
-   * when already keyed.
+   * when already keyed. Conditional entries are carried over intact.
    */
   private _splitFavoritesByViewport(): void {
     const existing = this._config.favorite_entities as unknown;
     if (isViewportKeyedFavorites(existing)) return;
-    const flat: string[] = Array.isArray(existing) ? (existing as string[]) : [];
+    const flat: FavoriteEntityEntry[] = Array.isArray(existing) ? (existing as FavoriteEntityEntry[]) : [];
     const newConfig: OrielConfig = {
       ...this._config,
       favorite_entities: { default: flat } as OrielConfig['favorite_entities'],
@@ -3180,20 +3179,21 @@ class OrielEditor extends LitElement {
    * `default` as the base, then appends any entities present in other
    * viewports that aren't already there (preserves the union so the
    * user doesn't silently lose phone-only or wall-only favorites on
-   * downgrade). No-ops when already flat.
+   * downgrade). Dedup is by entity id; the first occurrence's full entry
+   * (including any show_when / visibility) is kept. No-ops when flat.
    */
   private _mergeFavoriteViewports(): void {
     const existing = this._config.favorite_entities as unknown;
     if (!isViewportKeyedFavorites(existing)) return;
-    const map = existing as Partial<Record<FavoritesViewport, string[]>>;
-    const merged: string[] = [];
+    const merged: FavoriteEntityEntry[] = [];
     const seen = new Set<string>();
     for (const vp of ['default', 'phone', 'tablet', 'wall'] as const) {
-      const list = map[vp];
+      const list = existing[vp];
       if (!Array.isArray(list)) continue;
-      for (const id of list) {
-        if (typeof id !== 'string' || seen.has(id)) continue;
-        merged.push(id);
+      for (const entry of list) {
+        const id = favoriteEntryId(entry);
+        if (seen.has(id)) continue;
+        merged.push(entry);
         seen.add(id);
       }
     }
@@ -4024,47 +4024,30 @@ class OrielEditor extends LitElement {
     const dropId = dropTarget.dataset.entityId;
     if (!draggedId || !dropId || draggedId === dropId) return;
 
-    // Reorder the right list depending on the source pane + (for
-    // favorites) the current shape. Viewport-keyed favorites reorder
-    // the active-viewport slice; flat favorites reorder the array
-    // directly. Room pins is always flat.
-    const favRaw = this._config.favorite_entities as unknown;
-    if (listType === 'favorites' && isViewportKeyedFavorites(favRaw)) {
-      const map = favRaw as Partial<Record<FavoritesViewport, string[]>>;
-      const list = Array.isArray(map[this._favoritesActiveViewport])
-        ? [...(map[this._favoritesActiveViewport] as string[])]
-        : [];
-      const di = list.indexOf(draggedId);
-      const dpi = list.indexOf(dropId);
+    // Favorites reorder runs through the entry-aware read/write helpers so
+    // it works in both flat + viewport-keyed shapes and moves the WHOLE
+    // entry (preserving any show_when / visibility), matching by entity id.
+    if (listType === 'favorites') {
+      const list = this._readFavoritesList();
+      const di = list.findIndex((e) => favoriteEntryId(e) === draggedId);
+      const dpi = list.findIndex((e) => favoriteEntryId(e) === dropId);
       if (di === -1 || dpi === -1) return;
-      list.splice(di, 1);
-      list.splice(dpi, 0, draggedId);
-      const newConfig: OrielConfig = {
-        ...this._config,
-        favorite_entities: {
-          ...map,
-          [this._favoritesActiveViewport]: list,
-        } as OrielConfig['favorite_entities'],
-      };
-      this._config = newConfig;
-      this._fireConfigChanged(newConfig);
+      const next = [...list];
+      const [moved] = next.splice(di, 1);
+      if (moved === undefined) return;
+      next.splice(dpi, 0, moved);
+      this._writeFavoritesList(next);
       return;
     }
 
-    const favList: string[] = Array.isArray(favRaw) ? (favRaw as string[]) : [];
-    const currentList = listType === 'favorites'
-      ? [...favList]
-      : [...(this._config.room_pin_entities || [])];
-
+    // Room pins is always a flat string list.
+    const currentList = [...(this._config.room_pin_entities || [])];
     const draggedIndex = currentList.indexOf(draggedId);
     const dropIndex = currentList.indexOf(dropId);
     if (draggedIndex === -1 || dropIndex === -1) return;
-
     currentList.splice(draggedIndex, 1);
     currentList.splice(dropIndex, 0, draggedId);
-
-    const key = listType === 'favorites' ? 'favorite_entities' : 'room_pin_entities';
-    const newConfig: OrielConfig = { ...this._config, [key]: currentList };
+    const newConfig: OrielConfig = { ...this._config, room_pin_entities: currentList };
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
   };
