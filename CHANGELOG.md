@@ -6,6 +6,14 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.14.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.13.0...v4.14.0) (2026-05-29)
+
+
+### Features
+
+* expose favorite state-gating (show_when) in the visual editor ([#93](https://github.com/TheDave94/oriel-dashboard/issues/93)) ([6a331fe](https://github.com/TheDave94/oriel-dashboard/commit/6a331fe60899da8efe8541498a4f4dac2ab44cac))
+* source-staleness detection (stale-sensor alert badge + room marking) ([#91](https://github.com/TheDave94/oriel-dashboard/issues/91)) ([edf571c](https://github.com/TheDave94/oriel-dashboard/commit/edf571c29d18542b4b0d8477aab0b35175ffb834))
+
 ## [4.13.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.12.3...v4.13.0) (2026-05-28)
 
 
