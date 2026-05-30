@@ -1,5 +1,5 @@
 // ====================================================================
-// Bubble Card integration helpers (v3.2.0)
+// Bubble Card integration helpers
 // ====================================================================
 // Bubble Card is a popular HACS plugin (Clooos/Bubble-Card). It uses
 // hash-routed pop-ups: a `custom:bubble-card` with `card_type: pop-up`
@@ -16,6 +16,14 @@
 //
 // Strategy code opts in via `dashboardConfig.use_bubble_drawers` AND
 // runtime presence of `bubble-card`. When either is false we no-op.
+//
+// Bubble Card v3.2.0 (May 2026) made pop-ups **standalone cards** that
+// require a `cards: []` array of children — the pre-3.2 shape that
+// auto-rendered controls from a single top-level `entity`/`button_type`
+// pair no longer renders any content. `buildBubblePopupCards` now emits
+// the v3.2+ shape with a domain-appropriate Bubble button inside the
+// pop-up. The hash-routed navigation (`withBubbleTapAction`) is
+// unchanged across the v3.2 break.
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
@@ -71,12 +79,52 @@ export function withBubbleTapAction<T extends Record<string, unknown>>(
 }
 
 /**
+ * Domain-appropriate content rendered inside the pop-up `cards: []`.
+ * Lights and covers default to a slider button (the natural primary
+ * control); climate / fan / media_player default to a state button
+ * (Bubble auto-picks the right secondary controls per domain). Any
+ * other domain falls through to a plain HA tile so the pop-up still
+ * has something useful even for unsupported domains.
+ *
+ * Required as of Bubble Card v3.2.0 — a pop-up with no `cards:` renders
+ * empty content (or surfaces the migration nag dialog on each load).
+ */
+function buildPopupContent(entityId: string): LovelaceCardConfig[] {
+  const domain = entityId.split('.')[0] ?? '';
+  switch (domain) {
+    case 'light':
+    case 'cover':
+      return [{
+        type: 'custom:bubble-card',
+        card_type: 'button',
+        button_type: 'slider',
+        entity: entityId,
+      }];
+    case 'climate':
+    case 'fan':
+    case 'media_player':
+      return [{
+        type: 'custom:bubble-card',
+        card_type: 'button',
+        button_type: 'state',
+        entity: entityId,
+      }];
+    default:
+      return [{ type: 'tile', entity: entityId }];
+  }
+}
+
+/**
  * Build the bubble-card pop-up definitions for the supplied entity IDs.
  * One card per entity, each routable via its canonical hash. Skip any
  * entity not present in `hass.states`.
  *
  * Bubble-card pop-ups are invisible until their hash is active, so
  * embedding them in a grid section adds zero visual footprint.
+ *
+ * Emits the v3.2+ standalone-pop-up shape: `cards:` holds a
+ * domain-appropriate Bubble button, and the top-level no longer carries
+ * `entity`/`button_type` (those fields are non-functional in v3.2+).
  */
 export function buildBubblePopupCards(
   entityIds: string[],
@@ -91,11 +139,8 @@ export function buildBubblePopupCards(
       type: 'custom:bubble-card',
       card_type: 'pop-up',
       hash: bubbleHashFor(id),
-      entity: id,
       name: friendly,
-      // Bubble Card auto-picks domain-appropriate controls for light /
-      // climate / cover. No need to enumerate them here.
-      button_type: 'state',
+      cards: buildPopupContent(id),
     });
   }
   return cards;
