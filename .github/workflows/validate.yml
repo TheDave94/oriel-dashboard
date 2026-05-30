@@ -128,9 +128,12 @@ jobs:
           #   - ~50 new translation keys (health.* + favorites_* +
           #     live_preview_* + viewport_*) which bundle into core via
           #     localize.ts's static JSON imports
+          # v4.15 — raised 60 → 65 KB to absorb:
+          #   - oriel-pollen-card (Lit element + per-source severity
+          #     mapping + i18n keys for the PollenWatch integration)
           # Growth is ~2KB gzipped; budget set with headroom for future
           # locale expansion without churning this file on every PR.
-          check "oriel-core.*.js.gz" 60
+          check "oriel-core.*.js.gz" 65
           check "oriel-views.*.js.gz" 20
           check "oriel-editor.*.js.gz" 80
           check "oriel-lit.*.js.gz" 25
