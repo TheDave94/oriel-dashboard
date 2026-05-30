@@ -125,17 +125,85 @@ describe('buildBubblePopupCards()', () => {
       type: 'custom:bubble-card',
       card_type: 'pop-up',
       hash: '#bubble-light-kitchen',
-      entity: 'light.kitchen',
       name: 'Kitchen',
-      button_type: 'state',
     });
     expect(cards[1]).toMatchObject({
       type: 'custom:bubble-card',
       card_type: 'pop-up',
       hash: '#bubble-climate-bedroom',
-      entity: 'climate.bedroom',
       name: 'Bedroom',
     });
+  });
+
+  it('emits the v3.2+ standalone-pop-up shape (cards: array required)', () => {
+    // Regression guard: pre-3.2.0 the emit used a top-level `entity` +
+    // `button_type: 'state'` to auto-render controls. v3.2.0 made pop-ups
+    // standalone — those fields are non-functional and the pop-up renders
+    // empty without a `cards:` array.
+    const hass = makeHass({
+      entities: [{ entity_id: 'light.kitchen', attributes: { friendly_name: 'Kitchen' } }],
+    });
+    const [popup] = buildBubblePopupCards(['light.kitchen'], hass);
+    expect(popup).not.toHaveProperty('entity');
+    expect(popup).not.toHaveProperty('button_type');
+    expect(popup).toHaveProperty('cards');
+    expect(Array.isArray((popup as { cards: unknown[] }).cards)).toBe(true);
+    expect((popup as { cards: unknown[] }).cards.length).toBeGreaterThan(0);
+  });
+
+  it('renders a slider button for light + cover domains', () => {
+    const hass = makeHass({
+      entities: [
+        { entity_id: 'light.kitchen' },
+        { entity_id: 'cover.shutter' },
+      ],
+    });
+    const cards = buildBubblePopupCards(['light.kitchen', 'cover.shutter'], hass) as Array<{
+      cards: Array<Record<string, unknown>>;
+    }>;
+    expect(cards[0].cards[0]).toEqual({
+      type: 'custom:bubble-card',
+      card_type: 'button',
+      button_type: 'slider',
+      entity: 'light.kitchen',
+    });
+    expect(cards[1].cards[0]).toEqual({
+      type: 'custom:bubble-card',
+      card_type: 'button',
+      button_type: 'slider',
+      entity: 'cover.shutter',
+    });
+  });
+
+  it('renders a state button for climate / fan / media_player', () => {
+    const hass = makeHass({
+      entities: [
+        { entity_id: 'climate.bedroom' },
+        { entity_id: 'fan.lounge' },
+        { entity_id: 'media_player.sonos' },
+      ],
+    });
+    const cards = buildBubblePopupCards(
+      ['climate.bedroom', 'fan.lounge', 'media_player.sonos'],
+      hass,
+    ) as Array<{ cards: Array<Record<string, unknown>> }>;
+    for (const c of cards) {
+      expect(c.cards[0]).toMatchObject({
+        type: 'custom:bubble-card',
+        card_type: 'button',
+        button_type: 'state',
+      });
+    }
+  });
+
+  it('falls back to a plain HA tile for unexpected domains (safety net)', () => {
+    const hass = makeHass({
+      entities: [{ entity_id: 'switch.relay' }],
+    });
+    const [popup] = buildBubblePopupCards(['switch.relay'], hass) as Array<{
+      cards: Array<Record<string, unknown>>;
+    }>;
+    expect(popup.cards[0]).toEqual({ type: 'tile', entity: 'switch.relay' });
   });
 
   it('skips entities not present in hass.states', () => {
@@ -144,7 +212,7 @@ describe('buildBubblePopupCards()', () => {
     });
     const cards = buildBubblePopupCards(['light.real', 'light.ghost'], hass);
     expect(cards).toHaveLength(1);
-    expect(cards[0]).toMatchObject({ entity: 'light.real' });
+    expect(cards[0]).toMatchObject({ hash: '#bubble-light-real' });
   });
 
   it('falls back to entity_id when friendly_name is missing', () => {
