@@ -373,6 +373,7 @@ function renderPollenSub(ctx: SectionOrderTabContext): TemplateResult | typeof n
 
   const showPollen = ctx.config.show_pollen === true;
   const showPollenBadges = ctx.config.show_pollen_badges === true;
+  const showInactivePollen = ctx.config.pollen_show_inactive === true;
   const source: PollenSource = ctx.config.pollen_source ?? 'analytics';
   const presentation: PollenPresentation =
     ctx.config.pollen_presentation ?? 'consensus_tiles';
@@ -465,6 +466,23 @@ function renderPollenSub(ctx: SectionOrderTabContext): TemplateResult | typeof n
       </div>
       <div class="description">${localize('editor.pollen_types_desc') || ''}</div>
     </div>
+    <div class="section-order-sub">
+      <input
+        type="checkbox"
+        id="pollen-show-inactive"
+        ?checked=${showInactivePollen}
+        @change=${(e: Event) =>
+          ctx.onToggleChange(
+            'pollen_show_inactive',
+            (e.target as HTMLInputElement).checked,
+            false,
+          )}
+      />
+      <label for="pollen-show-inactive">
+        ${localize('editor.pollen_show_inactive') || 'Show species with no pollen'}
+      </label>
+    </div>
+    <div class="description">${localize('editor.pollen_show_inactive_desc') || ''}</div>
     <div class="section-order-sub">
       <input
         type="checkbox"

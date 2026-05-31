@@ -601,10 +601,15 @@ export interface OrielConfig {
   show_pollen?: boolean;
   /**
    * Which PollenWatch sub-source feeds the card. `analytics` (default) is
-   * the cross-source consensus (none/low/medium/high enum) — the cleanest
-   * for tile colouring. The raw-data sources surface integration-specific
-   * scales (grains/m³ for `open_meteo`, 0–4 for `polleninformation`, 0–5
-   * for `google`).
+   * the cross-source consensus (none/low/high/mixed enum) — the cleanest
+   * for tile colouring and the only source that covers every species the
+   * user has selected. The six raw-data sources surface
+   * integration-specific scales (grains/m³ for `open_meteo`/`dwd`/
+   * `meteoswiss`/`epin`, 0–4 for `polleninformation`, 0–5 for `google`).
+   *
+   * v2 added `dwd`, `meteoswiss` and `epin` to the set; v1-era configs
+   * with `analytics`/`open_meteo`/`polleninformation`/`google` keep
+   * working unchanged.
    */
   pollen_source?: PollenSource;
   /**
@@ -615,6 +620,15 @@ export interface OrielConfig {
   pollen_types?: PollenType[];
   /** Visual layout of the pollen sub-card. */
   pollen_presentation?: PollenPresentation;
+  /**
+   * When false (default), the pollen card hides species whose current
+   * level is `none` (PollenWatch reports no detected pollen today). When
+   * true, every configured species renders regardless — useful for
+   * users who prefer a fixed-shape card across days.
+   *
+   * Available since v4.16 (PollenWatch v2 integration).
+   */
+  pollen_show_inactive?: boolean;
   /**
    * Render compact pollen badges in the weather section heading for
    * pollens whose current consensus is medium or high. Auto-hides when no
@@ -906,17 +920,40 @@ export type EnergyPresentation = 'distribution' | 'none' | (string & {});
 // -- Pollen (PollenWatch integration) ---------------------------------
 
 /**
- * The six pollen types PollenWatch tracks across its three data sources.
- * Matches the suffix of the integration's sensor object_ids
- * (e.g. `sensor.pollenwatch_open_meteo_grass`).
+ * The 24 canonical species PollenWatch v2 tracks across its six data
+ * sources. Matches the suffix of the integration's sensor object_ids
+ * (e.g. `sensor.pollenwatch_open_meteo_grass`). The v1.x set of six
+ * (alder/birch/grass/mugwort/olive/ragweed) is preserved in this list —
+ * existing user configs keep working unchanged.
  */
 export type PollenType =
+  // v1.x set (still supported)
   | 'alder'
   | 'birch'
   | 'grass'
   | 'mugwort'
   | 'olive'
-  | 'ragweed';
+  | 'ragweed'
+  // v2 high-potency additions
+  | 'hazel'
+  | 'rye'
+  | 'plantago'
+  | 'urtica'
+  | 'nettle_family'
+  | 'alternaria'
+  // v2 moderate-potency additions
+  | 'ash'
+  | 'oak'
+  | 'cypress_family'
+  | 'plane_tree'
+  | 'beech'
+  | 'elm'
+  | 'carpinus'
+  | 'holm_oak'
+  | 'chenopodium'
+  | 'rumex'
+  | 'juglans'
+  | 'asteraceae';
 
 export const ALL_POLLEN_TYPES: PollenType[] = [
   'alder',
@@ -925,24 +962,50 @@ export const ALL_POLLEN_TYPES: PollenType[] = [
   'mugwort',
   'olive',
   'ragweed',
+  'hazel',
+  'rye',
+  'plantago',
+  'urtica',
+  'nettle_family',
+  'alternaria',
+  'ash',
+  'oak',
+  'cypress_family',
+  'plane_tree',
+  'beech',
+  'elm',
+  'carpinus',
+  'holm_oak',
+  'chenopodium',
+  'rumex',
+  'juglans',
+  'asteraceae',
 ];
 
 /**
  * PollenWatch sub-source. `analytics` is the cross-source consensus enum
- * (`none`/`low`/`medium`/`high`) and is the default — it produces a clean
- * severity colouring without per-source scale gymnastics. The other three
- * surface raw measurements from the underlying providers.
+ * (`none`/`low`/`high`/`mixed`) and is the default — it produces a clean
+ * severity colouring without per-source scale gymnastics. The six raw
+ * sources surface measurements from the underlying providers. `dwd`,
+ * `meteoswiss` and `epin` were added in v2 (alongside the existing
+ * Open-Meteo, polleninformation.at and Google sources).
  */
 export type PollenSource =
   | 'analytics'
   | 'open_meteo'
   | 'polleninformation'
+  | 'dwd'
+  | 'meteoswiss'
+  | 'epin'
   | 'google';
 
 export const ALL_POLLEN_SOURCES: PollenSource[] = [
   'analytics',
   'open_meteo',
   'polleninformation',
+  'dwd',
+  'meteoswiss',
+  'epin',
   'google',
 ];
 

@@ -131,9 +131,14 @@ jobs:
           # v4.15 — raised 60 → 65 KB to absorb:
           #   - oriel-pollen-card (Lit element + per-source severity
           #     mapping + i18n keys for the PollenWatch integration)
-          # Growth is ~2KB gzipped; budget set with headroom for future
+          # v4.16 — raised 65 → 67 KB to absorb the PollenWatch v2
+          # expansion: 18 new canonical species labels (en/de), 3 new
+          # raw sources (DWD / MeteoSwiss / ePIN) with their own
+          # bucketing branches, the `mixed` consensus state, and the
+          # `pollen_show_inactive` editor toggle + descriptions.
+          # Growth is ~1KB gzipped; budget set with headroom for future
           # locale expansion without churning this file on every PR.
-          check "oriel-core.*.js.gz" 65
+          check "oriel-core.*.js.gz" 67
           check "oriel-views.*.js.gz" 20
           check "oriel-editor.*.js.gz" 80
           check "oriel-lit.*.js.gz" 25

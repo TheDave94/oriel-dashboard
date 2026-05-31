@@ -6,16 +6,22 @@
 // and pure functions, never builds dependencies on Registry from here
 // (Registry isn't initialised inside the card itself).
 //
-// PollenWatch exposes four sub-sources, each emitting one sensor per
-// pollen type:
+// PollenWatch v2 exposes one analytics layer plus six raw sources, each
+// emitting one sensor per pollen species:
 //
-//   sensor.pollenwatch_open_meteo_<type>          (grains/m³, float)
-//   sensor.pollenwatch_polleninformation_<type>   (0–4, Austrian scale)
-//   sensor.pollenwatch_google_<type>              (0–5, Google scale)
-//   sensor.pollenwatch_analytics_<type>_consensus (enum: none/low/medium/high)
+//   sensor.pollenwatch_analytics_<species>_consensus    (enum: none/low/high/mixed)
+//   sensor.pollenwatch_open_meteo_<species>             (grains/m³, float)
+//   sensor.pollenwatch_polleninformation_<species>      (0–4, Austrian scale)
+//   sensor.pollenwatch_dwd_<species>                    (DWD ordinal 0–3)
+//   sensor.pollenwatch_meteoswiss_<species>             (grains/m³, float)
+//   sensor.pollenwatch_epin_<species>                   (grains/m³, float)
+//   sensor.pollenwatch_google_<species>                 (0–5, Google scale)
 //
-// `analytics` is the only enum source and the cleanest for tile colour;
-// the other three are raw measurements with provider-specific scales.
+// `analytics` is the only enum source and the cleanest for tile colour.
+// v2 changed the consensus vocabulary: `medium` is gone; `mixed` is new
+// and means "sources disagree by >1 level" — the upstream's honesty
+// signal for genuinely-conflicting readings. The raw sources are
+// bucketed into none/low/high — `mixed` is a cross-source-only state.
 // ====================================================================
 
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
@@ -28,16 +34,21 @@ import {
 
 /**
  * Severity bucket every source maps into. Drives badge gating, tile
- * colour, and the chip strip. Non-numeric / unavailable states resolve
- * to null so callers can choose how to display "unknown".
+ * colour, and the chip strip. `mixed` is analytics-only (sources
+ * disagree); raw sources resolve to none/low/high. Non-numeric /
+ * unavailable states resolve to null so callers can choose how to
+ * display "unknown".
  */
-export type PollenLevel = 'none' | 'low' | 'medium' | 'high';
+export type PollenLevel = 'none' | 'low' | 'high' | 'mixed';
 
 const SOURCE_PREFIX: Record<PollenSource, string> = {
+  analytics: 'sensor.pollenwatch_analytics_',
   open_meteo: 'sensor.pollenwatch_open_meteo_',
   polleninformation: 'sensor.pollenwatch_polleninformation_',
+  dwd: 'sensor.pollenwatch_dwd_',
+  meteoswiss: 'sensor.pollenwatch_meteoswiss_',
+  epin: 'sensor.pollenwatch_epin_',
   google: 'sensor.pollenwatch_google_',
-  analytics: 'sensor.pollenwatch_analytics_',
 };
 
 /**
@@ -68,11 +79,11 @@ export function detectAvailableSources(hass: HomeAssistant): PollenSource[] {
 }
 
 /**
- * Entity id of the canonical sensor for a (source, type) pair.
+ * Entity id of the canonical sensor for a (source, species) pair.
  *
- * Analytics is keyed `<prefix><type>_consensus` rather than `<prefix><type>`
+ * Analytics is keyed `<prefix><species>_consensus` rather than `<prefix><species>`
  * because the integration also emits divergence binary_sensors with the
- * same root. Other sources emit `<prefix><type>` directly.
+ * same root. Other sources emit `<prefix><species>` directly.
  */
 export function pollenSensorId(source: PollenSource, type: PollenType): string {
   if (source === 'analytics') {
@@ -82,7 +93,7 @@ export function pollenSensorId(source: PollenSource, type: PollenType): string {
 }
 
 /**
- * Pollen types for which a sensor exists at the given source. Preserves
+ * Pollen species for which a sensor exists at the given source. Preserves
  * the canonical `ALL_POLLEN_TYPES` order so editor chip ordering stays
  * stable across hass instances.
  */
@@ -96,8 +107,8 @@ export function detectAvailableTypes(
 }
 
 /**
- * Resolve the configured types against what the source actually exposes.
- * Empty / missing config falls back to all detected types so a fresh
+ * Resolve the configured species against what the source actually exposes.
+ * Empty / missing config falls back to all detected species so a fresh
  * install shows every available pollen by default.
  */
 export function resolvePollenTypes(
@@ -115,10 +126,11 @@ export function resolvePollenTypes(
  * Map a raw entity state into a normalised severity level. The mapping
  * is source-specific because the underlying scales differ:
  *
- *   - analytics       — enum string, direct passthrough
- *   - polleninformation — 0–4 Austrian scale (≥3 = high)
- *   - google          — 0–5 Google scale (≥4 = high, 3 = medium, 1–2 = low)
- *   - open_meteo      — grains/m³ heuristic (≥50 = high, ≥10 = medium)
+ *   - analytics         — enum string, direct passthrough (none/low/high/mixed)
+ *   - polleninformation — 0–4 Austrian scale (≥2 = high)
+ *   - google            — 0–5 Google scale (≥3 = high, 1–2 = low)
+ *   - dwd               — 0–3 ordinal (≥2 = high)
+ *   - open_meteo / meteoswiss / epin — grains/m³ (≥50 = high)
  *
  * Returns null when the state is missing / unavailable / unparseable.
  */
@@ -128,45 +140,52 @@ export function pollenLevel(
 ): PollenLevel | null {
   if (!state) return null;
   const raw = state.state;
-  if (raw === 'unavailable' || raw === 'unknown' || raw === 'none' || raw === '') {
-    return raw === 'none' ? 'none' : null;
-  }
+  if (raw === 'unavailable' || raw === 'unknown' || raw === '') return null;
 
   if (source === 'analytics') {
     const v = raw.toLowerCase();
-    if (v === 'none' || v === 'low' || v === 'medium' || v === 'high') return v;
+    if (v === 'none' || v === 'low' || v === 'high' || v === 'mixed') return v;
+    // PollenWatch v2 may surface a `nodata` state on the consensus sensor
+    // when no source contributed for this species today — treat as unknown.
     return null;
   }
 
+  // Non-analytics state must be numeric; categorical raw values (e.g.
+  // DWD's "0-1" strings) are exposed via `attributes.native_value`, but
+  // the sensor's primary `state` is always the midpoint float.
+  if (raw === 'none') return 'none';
   const n = Number(raw);
   if (!Number.isFinite(n)) return null;
 
   if (source === 'polleninformation') {
     if (n <= 0) return 'none';
-    if (n >= 3) return 'high';
-    if (n >= 2) return 'medium';
+    if (n >= 2) return 'high';
     return 'low';
   }
   if (source === 'google') {
     if (n <= 0) return 'none';
-    if (n >= 4) return 'high';
-    if (n >= 3) return 'medium';
+    if (n >= 3) return 'high';
     return 'low';
   }
-  // open_meteo
+  if (source === 'dwd') {
+    if (n <= 0) return 'none';
+    if (n >= 2) return 'high';
+    return 'low';
+  }
+  // grains/m³ sources: open_meteo, meteoswiss, epin
   if (n <= 0) return 'none';
   if (n >= 50) return 'high';
-  if (n >= 10) return 'medium';
   return 'low';
 }
 
 /**
- * "Active" — worth raising on the weather-section badge row. medium and
- * high count; low and none stay quiet so the row only appears when
- * something actually warrants attention.
+ * "Active" — worth raising on the weather-section badge row. high and
+ * mixed count; low and none stay quiet so the row only appears when
+ * something actually warrants attention. (`mixed` is a v2-era state —
+ * sources disagree, which is itself worth surfacing.)
  */
 export function isActivePollen(level: PollenLevel | null): boolean {
-  return level === 'medium' || level === 'high';
+  return level === 'high' || level === 'mixed';
 }
 
 /** Severity → HA palette token used by tiles, chips, badges. */
@@ -174,7 +193,10 @@ export function pollenSeverityColor(level: PollenLevel | null): string {
   switch (level) {
     case 'high':
       return 'red';
-    case 'medium':
+    case 'mixed':
+      // v2-era "sources disagree" — orange signals "worth attention but
+      // not definitively high". Same hue as the v1 `medium` to keep the
+      // visual story consistent for users upgrading.
       return 'orange';
     case 'low':
       return 'yellow';
@@ -185,19 +207,37 @@ export function pollenSeverityColor(level: PollenLevel | null): string {
   }
 }
 
-/** MDI icon per pollen type — purely cosmetic; falls back to flower. */
+/** MDI icon per pollen species — purely cosmetic; falls back to flower. */
 export function pollenIcon(type: PollenType): string {
   switch (type) {
     case 'grass':
+    case 'rye':
       return 'mdi:grass';
     case 'birch':
     case 'alder':
+    case 'hazel':
+    case 'ash':
+    case 'oak':
+    case 'holm_oak':
+    case 'beech':
+    case 'elm':
+    case 'carpinus':
+    case 'plane_tree':
+    case 'juglans':
       return 'mdi:tree';
     case 'olive':
+    case 'cypress_family':
       return 'mdi:tree-outline';
+    case 'alternaria':
+      return 'mdi:mushroom-outline';
     case 'mugwort':
     case 'ragweed':
-      return 'mdi:flower-pollen';
+    case 'plantago':
+    case 'urtica':
+    case 'nettle_family':
+    case 'chenopodium':
+    case 'rumex':
+    case 'asteraceae':
     default:
       return 'mdi:flower-pollen';
   }
