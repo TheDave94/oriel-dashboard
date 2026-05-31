@@ -247,6 +247,7 @@ class OrielViewOverview extends HTMLElement {
             types: dashboardConfig.pollen_types,
             presentation: dashboardConfig.pollen_presentation ?? 'consensus_tiles',
             showBadges: dashboardConfig.show_pollen_badges === true,
+            showInactive: dashboardConfig.pollen_show_inactive === true,
           },
         ),
       ],

@@ -93,16 +93,41 @@ describe('pollen editor controls — Section-order tab', () => {
     expect(toggle!.checked).toBe(false);
   });
 
-  it('reveals source, layout, types, badges only after show_pollen is on', () => {
+  it('reveals source, layout, types, badges, show_inactive only after show_pollen is on', () => {
     const off = renderTab({});
     expect(off.querySelector('#pollen-source')).toBeNull();
     expect(off.querySelector('#pollen-presentation')).toBeNull();
     expect(off.querySelector('#show-pollen-badges')).toBeNull();
+    expect(off.querySelector('#pollen-show-inactive')).toBeNull();
 
     const on = renderTab({ show_pollen: true });
     expect(on.querySelector('#pollen-source')).not.toBeNull();
     expect(on.querySelector('#pollen-presentation')).not.toBeNull();
     expect(on.querySelector('#show-pollen-badges')).not.toBeNull();
+    expect(on.querySelector('#pollen-show-inactive')).not.toBeNull();
+  });
+
+  it('show_inactive toggle reflects the config flag and fires onToggleChange', () => {
+    // Default: pollen_show_inactive unset → toggle unchecked (hide none-level
+    // species, the v4.16 default).
+    const off = renderTab({ show_pollen: true });
+    const toggle = off.querySelector<HTMLInputElement>('#pollen-show-inactive')!;
+    expect(toggle.checked).toBe(false);
+
+    const on = renderTab({ show_pollen: true, pollen_show_inactive: true });
+    const toggleOn = on.querySelector<HTMLInputElement>('#pollen-show-inactive')!;
+    expect(toggleOn.checked).toBe(true);
+
+    let captured: { k?: string; v?: boolean } = {};
+    const host = renderTab(
+      { show_pollen: true },
+      POLLEN_HASS,
+      { onToggleChange: (k, v) => (captured = { k, v: v as boolean }) },
+    );
+    const t = host.querySelector<HTMLInputElement>('#pollen-show-inactive')!;
+    t.checked = true;
+    t.dispatchEvent(new Event('change'));
+    expect(captured).toEqual({ k: 'pollen_show_inactive', v: true });
   });
 
   it('source dropdown lists only sources with detected sensors', () => {

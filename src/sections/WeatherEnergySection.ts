@@ -177,6 +177,11 @@ export interface PollenSectionOptions {
   types?: PollenType[];
   presentation: PollenPresentation;
   showBadges: boolean;
+  /**
+   * When false (default), the card hides species currently at level
+   * `none`. When true, every configured species renders regardless.
+   */
+  showInactive: boolean;
 }
 
 /**
@@ -200,6 +205,7 @@ function buildPollenCard(
     source: opts.source,
     types,
     presentation: opts.presentation,
+    show_inactive: opts.showInactive,
   };
 }
 

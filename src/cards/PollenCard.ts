@@ -34,6 +34,11 @@ interface PollenCardConfig {
   source: PollenSource;
   types: PollenType[];
   presentation: PollenPresentation;
+  /**
+   * When false (default), species currently at level `none` are hidden
+   * from render. When true, all configured species render unconditionally.
+   */
+  show_inactive: boolean;
 }
 
 const SEVERITY_TO_VAR: Record<string, string> = {
@@ -51,6 +56,7 @@ class OrielPollenCard extends LitElement {
     source: 'analytics',
     types: ALL_POLLEN_TYPES,
     presentation: 'consensus_tiles',
+    show_inactive: false,
   };
   private _relevantIds: Set<string> | null = null;
 
@@ -121,9 +127,15 @@ class OrielPollenCard extends LitElement {
       throw new Error('oriel-pollen-card: config object required');
     }
     const source: PollenSource =
-      ['analytics', 'open_meteo', 'polleninformation', 'google'].includes(
-        config.source,
-      )
+      [
+        'analytics',
+        'open_meteo',
+        'polleninformation',
+        'dwd',
+        'meteoswiss',
+        'epin',
+        'google',
+      ].includes(config.source)
         ? config.source
         : 'analytics';
     const presentation: PollenPresentation =
@@ -137,7 +149,8 @@ class OrielPollenCard extends LitElement {
           ALL_POLLEN_TYPES.includes(t as PollenType),
         )
       : ALL_POLLEN_TYPES;
-    this._config = { source, types, presentation };
+    const show_inactive = config.show_inactive === true;
+    this._config = { source, types, presentation, show_inactive };
     this._relevantIds = null;
   }
 
@@ -168,17 +181,27 @@ class OrielPollenCard extends LitElement {
 
   render(): TemplateResult {
     if (!this.hass) return html``;
-    const { source, types, presentation } = this._config;
+    const { source, types, presentation, show_inactive } = this._config;
     if (types.length === 0) {
       return html`<ha-card><div class="empty">${localize('editor.pollen_no_data') || 'No pollen data'}</div></ha-card>`;
     }
 
-    const rows = types.map((type) => {
+    const allRows = types.map((type) => {
       const id = pollenSensorId(source, type);
       const state = this.hass!.states[id];
       const level = pollenLevel(source, state);
       return { type, id, level };
     });
+    // When show_inactive is off (default), drop species currently at
+    // `none`. Unknown/null levels still render — the user might want to
+    // know that a species has no data, vs. confidently zero.
+    const rows = show_inactive
+      ? allRows
+      : allRows.filter((r) => r.level !== 'none');
+
+    if (rows.length === 0) {
+      return html`<ha-card><div class="empty">${localize('editor.pollen_no_active') || localize('editor.pollen_no_data') || 'No active pollen'}</div></ha-card>`;
+    }
 
     switch (presentation) {
       case 'severity_chips':
