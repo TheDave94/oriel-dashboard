@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.16.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.16.1...v4.16.2) (2026-05-31)
+
+
+### Bug Fixes
+
+* **pollen:** thin reader of PollenWatch v2.1 level_label ([#103](https://github.com/TheDave94/oriel-dashboard/issues/103)) ([81aa9f9](https://github.com/TheDave94/oriel-dashboard/commit/81aa9f9e861f86be324a16ee2a399b74a913a69e))
+
 ## [4.16.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.16.0...v4.16.1) (2026-05-31)
 
 
