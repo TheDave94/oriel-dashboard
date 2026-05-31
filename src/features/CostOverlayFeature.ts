@@ -11,7 +11,7 @@
 // every hass update — cheap (one multiplication + format).
 // ====================================================================
 
-import { LitElement, html, css, nothing, type PropertyValues, type TemplateResult } from 'lit';
+import { LitElement, html, css, nothing, type TemplateResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 

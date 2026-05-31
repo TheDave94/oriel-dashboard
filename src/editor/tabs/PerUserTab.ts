@@ -103,7 +103,6 @@ export function renderPerUserTab(ctx: PerUserTabContext): TemplateResult {
         const label = known
           ? `${known.name}${known.is_admin ? ' (admin)' : ''}`
           : userId;
-        const hasOverride = Object.keys(override).length > 0;
         return renderUserOrRoleRow({
           rowId: userId,
           label,

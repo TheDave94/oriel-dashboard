@@ -16,7 +16,7 @@ import {
   type FeatureCategory,
   type FeatureEntry,
 } from '../../onboarding/features';
-import { PERSONAS, suggestPersonas, type Persona, type StepperAnswers } from '../../onboarding/personas';
+import { PERSONAS, suggestPersonas, type Persona } from '../../onboarding/personas';
 import { detectHints, type AdaptiveHint } from '../../onboarding/hints';
 import { onActivateKey } from '../../utils/keyboard-activation';
 

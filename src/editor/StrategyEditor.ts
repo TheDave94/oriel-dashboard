@@ -67,7 +67,7 @@ import {
 } from './LivePreview';
 import { renderSetupTab, SETUP_TAB_CSS } from './tabs/SetupTab';
 import { unsafeCSS } from 'lit';
-import { FEATURE_REGISTRY, findFeature } from '../onboarding/features';
+import { findFeature } from '../onboarding/features';
 import { detectMigrations, applyAllMigrations, type Migration } from '../utils/migrations';
 import {
   hasEnoughData as usageHasEnough,

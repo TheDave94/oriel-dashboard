@@ -23,14 +23,6 @@ export interface FloorplanTabContext {
   onChange: (next: OrielConfig['floorplan_view']) => void;
 }
 
-interface FloorplanState {
-  yaml: string;
-  parseError?: string;
-}
-
-// Per-render-instance scratch — keyed on the tab's container.
-const scratch = new WeakMap<HTMLElement, FloorplanState>();
-
 export function renderFloorplanTab(ctx: FloorplanTabContext): TemplateResult {
   const installed =
     typeof customElements !== 'undefined' &&

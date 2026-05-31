@@ -15,7 +15,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-20
+      # HACS Validation calls into the live HACS pipeline, which is not
+      # hermetic — the load step occasionally fails fast with
+      #   "Repository structure for refs/heads/main is not compliant"
+      #   "Repository TheDave94/oriel-dashboard not loaded properly in HACS"
+      # within ~1-2 seconds of starting, when GitHub API or the HACS
+      # registry serves stale state (most often right after a release-
+      # please tag-and-publish on the post-merge push run). See the
+      # May 2026 CI health investigation: 14/100 runs hit this flake.
+      #
+      # Pattern: up to 3 attempts (initial + 2 retries) with 30 s
+      # backoff. The first two run with continue-on-error so their
+      # failures don't fail the job; the final attempt has no shield,
+      # so its exit code drives job conclusion. A genuine structural
+      # break is deterministic and will fail all three attempts → job
+      # goes red as it should. The transient flake (the >95 % case)
+      # clears on retry. No demotion to non-blocking, no
+      # continue-on-error on the final attempt.
+      #
+      # nick-fields/retry was the originally-requested tool but it
+      # wraps shell `command:`, not `uses:` actions, and replicating
+      # hacs/action's docker invocation in shell would couple us to
+      # upstream's internals. Wandalen/wretry.action wraps `uses:`
+      # natively if we ever want that instead.
+      - name: HACS Validation (attempt 1)
+        id: hacs_attempt_1
+        uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-20
+        continue-on-error: true
+        with:
+          category: plugin
+      - name: Backoff before retry 1
+        if: steps.hacs_attempt_1.outcome == 'failure'
+        run: sleep 30
+      - name: HACS Validation (attempt 2)
+        id: hacs_attempt_2
+        if: steps.hacs_attempt_1.outcome == 'failure'
+        uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-20
+        continue-on-error: true
+        with:
+          category: plugin
+      - name: Backoff before retry 2
+        if: steps.hacs_attempt_1.outcome == 'failure' && steps.hacs_attempt_2.outcome == 'failure'
+        run: sleep 30
+      - name: HACS Validation (attempt 3, final)
+        if: steps.hacs_attempt_1.outcome == 'failure' && steps.hacs_attempt_2.outcome == 'failure'
+        uses: hacs/action@dcb30e72781db3f207d5236b861172774ab0b485 # main @ 2026-05-20
         with:
           category: plugin
 

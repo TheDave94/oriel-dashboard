@@ -148,7 +148,6 @@ const HINTS: AdaptiveHint[] = [
         // missing or empty at apply time. Refuse rather than writing
         // a guess — the Mode Order tab can seed the map once options
         // exist.
-        // eslint-disable-next-line no-console
         console.warn(
           '[oriel] enable-mode-reorder hint: input_select.house_mode has no options to read; not applying.',
         );
