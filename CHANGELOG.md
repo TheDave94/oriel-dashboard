@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.16.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.16.0...v4.16.1) (2026-05-31)
+
+
+### Bug Fixes
+
+* **pollen:** mirror PollenWatch analytics.py thresholds exactly (stopgap) ([#101](https://github.com/TheDave94/oriel-dashboard/issues/101)) ([b4d635d](https://github.com/TheDave94/oriel-dashboard/commit/b4d635dbaabfd7fa470154d4df826890bb86b515))
+
 ## [4.16.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.15.1...v4.16.0) (2026-05-31)
 
 
