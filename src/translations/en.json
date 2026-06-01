@@ -261,6 +261,8 @@
     "pollen_no_active": "No active pollen today",
     "pollen_show_inactive": "Show species with no pollen",
     "pollen_show_inactive_desc": "When off (default), species currently at level \"none\" are hidden from the card so only the species actually present show up. Turn on for a fixed-shape card that always lists every selected species.",
+    "pollen_provenance_family": "Threshold inherited from EAACI's defined family group, not species-specific.",
+    "pollen_provenance_estimated": "Estimated bracket; no per-species threshold published.",
     "show_pollen_badges": "Pollen badges on weather card",
     "show_pollen_badges_desc": "Adds a badge to the weather card heading for every pollen currently at \"high\" or \"mixed\" analytics consensus. Quiet by default — the row only appears when something is active. Always uses the analytics consensus regardless of the source selected above.",
     "show_now_playing_badge": "Show \"now playing\" badge",

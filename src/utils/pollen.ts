@@ -189,6 +189,36 @@ export function isActivePollen(level: PollenLevel | null): boolean {
   return level === 'high' || level === 'mixed';
 }
 
+/**
+ * Coarse provenance grouping for a species' severity threshold, as
+ * surfaced by PollenWatch v2.3+ on the same raw + consensus entities
+ * oriel already consumes (`ATTR_THRESHOLD_BASIS` on both surfaces;
+ * function-keyed from species_registry.THRESHOLD_BASIS_FROM_STATUS,
+ * single source of truth). Mirrors the `pollenLevel` thin-reader
+ * pattern: oriel does not re-derive the basis, only reads it.
+ *
+ * - `species`   — threshold from peer-reviewed studies on this species
+ * - `family`    — threshold inherited from EAACI's defined family group
+ * - `estimated` — working bracket; no per-species threshold published
+ * - `null`      — attribute missing (pre-v2.3 PollenWatch) or unknown
+ *
+ * Card render rule: `species` and `null` → no marker; `family` and
+ * `estimated` → render the provenance marker. Single place this 4→2
+ * decision is made; see `PollenCard._renderProvenanceMarker`.
+ */
+export type ThresholdBasis = 'species' | 'family' | 'estimated';
+
+export function pollenThresholdBasis(
+  state: HassEntity | undefined,
+): ThresholdBasis | null {
+  if (!state) return null;
+  const basis = state.attributes?.threshold_basis;
+  if (basis === 'species' || basis === 'family' || basis === 'estimated') {
+    return basis;
+  }
+  return null;
+}
+
 /** Severity → HA palette token used by tiles, chips, badges. */
 export function pollenSeverityColor(level: PollenLevel | null): string {
   switch (level) {
