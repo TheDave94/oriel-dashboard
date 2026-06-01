@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.17.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.16.2...v4.17.0) (2026-06-01)
+
+
+### Features
+
+* mirror PollenWatch threshold provenance marker ([#106](https://github.com/TheDave94/oriel-dashboard/issues/106)) ([8e632d4](https://github.com/TheDave94/oriel-dashboard/commit/8e632d4e555276af39958b69128a53af0f664296))
+
 ## [4.16.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.16.1...v4.16.2) (2026-05-31)
 
 
