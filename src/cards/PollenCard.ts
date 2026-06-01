@@ -12,7 +12,7 @@
 // registry reference changes (matches SummaryCard's pattern).
 // ====================================================================
 
-import { LitElement, html, css, type PropertyValues, type TemplateResult } from 'lit';
+import { LitElement, html, css, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from '../types/homeassistant';
 import {
@@ -26,7 +26,9 @@ import {
   pollenLevel,
   pollenSensorId,
   pollenSeverityColor,
+  pollenThresholdBasis,
   type PollenLevel,
+  type ThresholdBasis,
 } from '../utils/pollen';
 import { localize } from '../utils/localize';
 
@@ -84,6 +86,42 @@ class OrielPollenCard extends LitElement {
       border-radius: var(--ha-border-radius-md, 8px);
       background: var(--secondary-background-color);
       gap: 4px;
+      position: relative;
+    }
+    /* Threshold provenance marker — dense-tile variant.
+       7px neutral dot, top-right corner of the tile. Absolute-
+       positioned so it adds no layout-height cost. NEVER uses a
+       severity colour (those drive ha-icon tinting on the tile);
+       --secondary-text-color matches the same muted-text token the
+       tile-state caption uses, and matches PollenWatch's bundled-
+       card precedent. */
+    .provenance-marker {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--secondary-text-color);
+      cursor: help;
+    }
+    .provenance-marker:focus-visible {
+      outline: 2px solid var(--primary-text-color);
+      outline-offset: 2px;
+    }
+    /* Threshold provenance marker — chip variant.
+       Small outline info glyph inline at the end of the chip; same
+       muted colour, same a11y contract as the dot. */
+    .provenance-marker-chip {
+      --mdc-icon-size: 14px;
+      color: var(--secondary-text-color);
+      cursor: help;
+      opacity: 0.85;
+    }
+    .provenance-marker-chip:focus-visible {
+      outline: 2px solid var(--primary-text-color);
+      outline-offset: 2px;
+      border-radius: 2px;
     }
     .tile-icon {
       --mdc-icon-size: 28px;
@@ -220,8 +258,9 @@ class OrielPollenCard extends LitElement {
     return html`
       <ha-card>
         <div class="tiles">
-          ${rows.map(
-            ({ type, id, level }) => html`
+          ${rows.map(({ type, id, level }) => {
+            const basis = pollenThresholdBasis(this.hass!.states[id]);
+            return html`
               <div
                 class="tile"
                 role="button"
@@ -241,9 +280,10 @@ class OrielPollenCard extends LitElement {
                 ></ha-icon>
                 <span class="tile-name">${this._typeLabel(type)}</span>
                 <span class="tile-state">${this._levelLabel(level)}</span>
+                ${this._renderProvenanceMarker(basis, 'dot')}
               </div>
-            `,
-          )}
+            `;
+          })}
         </div>
       </ha-card>
     `;
@@ -255,8 +295,9 @@ class OrielPollenCard extends LitElement {
     return html`
       <ha-card>
         <div class="chips">
-          ${rows.map(
-            ({ type, id, level }) => html`
+          ${rows.map(({ type, id, level }) => {
+            const basis = pollenThresholdBasis(this.hass!.states[id]);
+            return html`
               <button
                 class="chip"
                 @click=${() => this._openMoreInfo(id)}
@@ -267,9 +308,10 @@ class OrielPollenCard extends LitElement {
                 ></ha-icon>
                 <span>${this._typeLabel(type)}</span>
                 <span style="opacity: 0.7;">${this._levelLabel(level)}</span>
+                ${this._renderProvenanceMarker(basis, 'icon')}
               </button>
-            `,
-          )}
+            `;
+          })}
         </div>
       </ha-card>
     `;
@@ -289,6 +331,7 @@ class OrielPollenCard extends LitElement {
             const state = this.hass!.states[id];
             const rawValue = state?.state ?? '—';
             const unit = state?.attributes?.unit_of_measurement ?? '';
+            const basis = pollenThresholdBasis(state);
             return html`
               <div
                 class="tile"
@@ -309,11 +352,47 @@ class OrielPollenCard extends LitElement {
                 ></ha-icon>
                 <span class="tile-name">${this._typeLabel(type)}</span>
                 <span class="tile-state">${rawValue}${unit ? ` ${unit}` : ''}</span>
+                ${this._renderProvenanceMarker(basis, 'dot')}
               </div>
             `;
           })}
         </div>
       </ha-card>
+    `;
+  }
+
+  // Single source of truth for the threshold_basis -> (marker, tooltip)
+  // decision. Tooltip text is i18n'd under editor.pollen_provenance_*
+  // — keep semantically in sync with PROVENANCE_MESSAGES in
+  // pollenwatch repo's frontend/pollenwatch-card.js. Mirrors the
+  // bundled card's hybrid rendering: a small neutral dot in dense
+  // tile layouts; an outline info-glyph in the chip layout.
+  private _renderProvenanceMarker(
+    basis: ThresholdBasis | null,
+    variant: 'dot' | 'icon',
+  ): TemplateResult | typeof nothing {
+    if (basis !== 'family' && basis !== 'estimated') return nothing;
+    const text = localize(`editor.pollen_provenance_${basis}`);
+    if (variant === 'icon') {
+      return html`
+        <ha-icon
+          class="provenance-marker-chip"
+          icon="mdi:information-outline"
+          role="img"
+          tabindex="0"
+          title=${text}
+          aria-label=${text}
+        ></ha-icon>
+      `;
+    }
+    return html`
+      <span
+        class="provenance-marker"
+        role="img"
+        tabindex="0"
+        title=${text}
+        aria-label=${text}
+      ></span>
     `;
   }
 

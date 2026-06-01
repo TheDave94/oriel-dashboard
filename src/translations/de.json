@@ -259,6 +259,8 @@
     "pollen_no_active": "Aktuell keine Pollen aktiv",
     "pollen_show_inactive": "Arten ohne Pollen anzeigen",
     "pollen_show_inactive_desc": "Wenn deaktiviert (Standard), werden Arten mit Stufe \"keine\" ausgeblendet — die Karte zeigt nur Arten, die aktuell tatsächlich vorkommen. Aktivieren für eine Karte mit fester Form, die immer alle ausgewählten Arten auflistet.",
+    "pollen_provenance_family": "Schwellenwert aus EAACI-Familiengruppe übernommen, nicht artspezifisch.",
+    "pollen_provenance_estimated": "Geschätzter Bereich; keine artspezifischen Schwellenwerte veröffentlicht.",
     "show_pollen_badges": "Pollen-Badges auf Wetterkarte",
     "show_pollen_badges_desc": "Ergänzt die Überschrift der Wetterkarte um ein Badge für jeden Pollen, dessen Analyse-Konsens aktuell \"hoch\" oder \"uneinig\" ist. Standardmäßig leise — die Zeile erscheint nur, wenn etwas aktiv ist. Nutzt unabhängig von der oben gewählten Quelle immer den Analyse-Konsens.",
     "stale_after": "Veraltet nach (Minuten)",
