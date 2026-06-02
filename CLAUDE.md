@@ -263,6 +263,8 @@ All custom cards (SummaryCard, LightsGroupCard, CoversGroupCard) use LitElement 
 
 **Scope.** Only the test layer needs credentials. `npm run build`, `npm run build-dev`, `npm run watch`, `npm run lint`, type-checks — none of these touch the HA API. Playwright (`tests/e2e/*.ts`, `tests/e2e-browser/*.spec.ts`) and the strategy-API test use HA_URL + HA_TOKEN to hit the live HA instance.
 
+**Live-HA e2e is local-manual, not CI.** `HA_URL`/`HA_TOKEN` are deliberately not in GitHub Actions repo secrets — public repo + full-admin token = unacceptable exposure surface. The `.github/workflows/e2e.yml` workflow is `workflow_dispatch`-only by design. Full rationale + revisit trigger in [DEFERRED.md](DEFERRED.md) → *Live-HA e2e stays local-manual / `workflow_dispatch`-only*.
+
 **Where credentials live.** `.env.local` in this repo (gitignored). Values: `HA_URL`, `HA_TOKEN`, optionally `HA_DASHBOARD_URL_PATH` (path string, not a credential). Schema documented in `.env.example` (committed).
 
 **Loading.** `source .env.local` before running tests. `playwright.config.ts` reads `process.env.HA_URL` (defaults to `http://localhost:8123` if unset, so unloaded tests fail informatively rather than hanging).

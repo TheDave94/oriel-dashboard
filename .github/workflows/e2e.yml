@@ -1,19 +1,23 @@
 name: E2E
 
+# Intentionally workflow_dispatch-only — see DEFERRED.md
+# (§"Live-HA e2e stays local-manual…") for the full rationale.
+#
+# Short version: oriel-dashboard is a public repo and HA 2026.5.x
+# has no fine-grained access tokens, so HA_TOKEN is full admin scope.
+# We deliberately do NOT register HA_URL / HA_TOKEN as repo secrets.
+# Day-to-day verification happens locally via `.env.local` —
+# `npm run e2e:api` and `npm run e2e:browser` — and the unit-test
+# gate (vitest 4, 391 tests) carries CI. The dispatch trigger below
+# is a manual escape hatch; the operator supplies a token at
+# dispatch time and it's not persisted in repo state.
 on:
-  # E2E needs a live HA target — only run when explicitly dispatched
-  # so we don't waste CI minutes on every commit.
   workflow_dispatch:
     inputs:
       ha_url:
-        description: 'HA URL (defaults to repository secret HA_URL)'
+        description: 'HA URL (defaults to repository secret HA_URL — currently unset by design)'
         required: false
         type: string
-
-# The E2E job runs against a real HA. Configure two GitHub secrets:
-#   - HA_URL    — your HA URL (e.g. https://ha.example.com)
-#   - HA_TOKEN  — a long-lived access token
-# Skipped silently when either secret is missing.
 
 jobs:
   api-smoke:
