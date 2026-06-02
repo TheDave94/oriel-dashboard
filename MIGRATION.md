@@ -24,6 +24,7 @@ Switching is a one-shot YAML edit + a HACS swap.
 - **Migration assistants** in the editor — a banner offers one-tap apply when deprecated fields are detected.
 - **Adaptive state-iconography** — locks, covers, garage doors emit state-distinct glyphs.
 - **History sparklines** — `oriel-sparkline-card` for inline 24h trends, optionally backed by ApexCharts.
+- **Pollen card** — `oriel-pollen-card` reads the [PollenWatch](https://github.com/TheDave94/pollenwatch) integration; three layouts (consensus tiles, severity chips, raw grid).
 - **Routines section** — auto-collects scenes + scripts ranked by last-used.
 - **Notification banners** — sticky surface for smoke / leak / doorbell triggers.
 - **Today-vs-yesterday tile overlays** — delta indicators on summary tiles.

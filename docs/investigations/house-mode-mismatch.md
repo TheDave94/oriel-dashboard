@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-23
 **Branch:** `investigation/house-mode-mismatch`
-**Status:** Read-only. No code changes.
+**Status:** **Fixed.** Option 4a (rewrite the adaptive hint to read `hass.states['input_select.house_mode']?.attributes?.options` and seed normalized real keys) shipped — see `src/onboarding/hints.ts` and the description fix in `src/onboarding/features.ts`. Investigation retained as a worked example of a read-only audit producing a tiny, targeted fix.
 
 ## TL;DR
 

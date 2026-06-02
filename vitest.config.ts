@@ -34,8 +34,8 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     // happy-dom gives us document / window / customElements / Shadow DOM
-    // so we can mount and assert against the four custom cards. ~5x
-    // faster than jsdom for this workload and has the APIs LitElement
+    // so we can mount and assert against the LitElement custom cards.
+    // ~5x faster than jsdom for this workload and has the APIs Lit
     // needs (CSSStyleSheet, MutationObserver, MediaQueryList).
     environment: 'happy-dom',
     globals: false,

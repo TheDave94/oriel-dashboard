@@ -6,7 +6,7 @@
 
 - **Setup wizard** in the editor — auto-detects installed HACS plugins (Bubble Card, ApexCharts, decluttering-card, floorplan-card, weather/energy card swaps) and surfaces each as an additional option when present.
 - **Visual editor for every advanced feature** — per-user dashboards, mode-driven section reorder, composable visibility rules, wall-panel mode, all reachable without writing YAML.
-- **Ten custom cards / features** — summary, zone-presence, lights group, covers group, sparkline, notification banners, routines, screensaver, voice FAB, sticky-lock + cost-overlay features.
+- **Custom cards and features** — summary, zone-presence, lights group, covers group, sparkline, notification banners, routines, screensaver, voice FAB, pollen, plus sticky-lock and cost-overlay tile features.
 - **HACS plugins always optional.** Built-in fallback path works without any of them. Less shiny without HACS, but never broken.
 - **Plugin extension API** — third-party plugins can `window.oriel.registerSection(...)` to add sections.
 - **HA 2025.5+** minimum (hard floor for the strategy API); modern design tokens, container queries, and code-split bundles where available.
@@ -22,7 +22,7 @@ strategy:
   type: custom:oriel
 ```
 
-See [README](README.MD) for the full configuration surface.
+See [README](README.md) for the full configuration surface.
 
 ## Origin
 
