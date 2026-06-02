@@ -1,17 +1,33 @@
 name: E2E
 
-# Intentionally workflow_dispatch-only — see DEFERRED.md
-# (§"Live-HA e2e stays local-manual…") for the full rationale.
+# Two layers of live-HA e2e, on two different targets:
 #
-# Short version: oriel-dashboard is a public repo and HA 2026.5.x
-# has no fine-grained access tokens, so HA_TOKEN is full admin scope.
-# We deliberately do NOT register HA_URL / HA_TOKEN as repo secrets.
-# Day-to-day verification happens locally via `.env.local` —
-# `npm run e2e:api` and `npm run e2e:browser` — and the unit-test
-# gate (vitest 4, 391 tests) carries CI. The dispatch trigger below
-# is a manual escape hatch; the operator supplies a token at
-# dispatch time and it's not persisted in repo state.
+# 1. MANUAL escape hatch (jobs `api-smoke` / `browser`) — run only via
+#    workflow_dispatch, against a real HA whose token the operator supplies at
+#    dispatch time. HA_URL/HA_TOKEN are deliberately NOT repo secrets (public
+#    repo + full-admin token). See DEFERRED.md → "Live-HA e2e stays
+#    local-manual…". Behaviour unchanged from before; just gated to dispatch.
+#
+# 2. AUTOMATIC demo e2e (jobs `demo-api-smoke` / `demo-browser`) — on push to
+#    main + PRs, against a DISPOSABLE fake demo HA (the ha-demo-harness image).
+#    This fires the DEFERRED.md revisit condition: e2e in CI, but against a
+#    throwaway container, never the production HA, with a PUBLIC baked token
+#    (no secret). The PR's freshly-built dist/ is injected into the demo so the
+#    browser layer tests THIS PR's code.
+#
+# GATING: the two demo-* jobs are INFORMATIONAL — they are NOT in the repo's
+# required-checks list (that's a GitHub branch-protection setting, not in-repo),
+# so release-please's auto-merge (which waits only on the existing 6 required
+# checks) can NOT be blocked by a flaky demo run. api-smoke and browser are
+# separate jobs so demo-api-smoke (fast, WS-only, stable) can later be promoted
+# to required independently; demo-browser stays informational through a
+# stabilization window per DESIGN §4.1.
+
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ha_url:
@@ -19,9 +35,21 @@ on:
         required: false
         type: string
 
+env:
+  # Pinned, public demo image (v0.1.1 = the release whose /hacsfiles route fix
+  # lets oriel's chunks load so cards actually mount).
+  DEMO_IMAGE: ghcr.io/thedave94/ha-demo-harness:v0.1.1
+  # Baked LONG-LIVED token of the disposable fake demo container. It controls
+  # nothing real and is documented public in the ha-demo-harness README — it is
+  # an intentional plain literal, NOT a GitHub secret. Do not "fix" this into a
+  # secret; the whole point is that a public repo needs no secret to run e2e.
+  DEMO_HA_TOKEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiI1MTkzOTBlMWQwODA3Mzc5NTBhMDFkNWM5NWExMGFkZCIsImlhdCI6MTcxNzIwMDAwMCwiZXhwIjo0MDcwOTA4ODAwfQ.TNaKl44ES4522YFug934BowsEY1bbIi3x7T0D7KoPfU
+
 jobs:
+  # ───────────────────────── Manual escape hatch (dispatch only) ─────────────
   api-smoke:
     name: API smoke (real HA)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -38,6 +66,7 @@ jobs:
 
   browser:
     name: Browser E2E (Playwright, real HA)
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
@@ -63,3 +92,105 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
+
+  # ───────────────────── Automatic demo e2e (push/PR) ────────────────────────
+  # API smoke against the disposable demo. WS-only, fast, stable. Validates the
+  # demo's strategy dashboard contract (custom:oriel) + WS auth with the public
+  # token. Does NOT need oriel's build injected — it reads the stored lovelace
+  # config, not rendered code — so it skips build/inject and stays quick.
+  demo-api-smoke:
+    name: API smoke (demo HA)
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Start demo HA (anonymous pull of the public image)
+        run: docker run -d --name demo -p 8123:8123 "$DEMO_IMAGE"
+      - name: Wait for demo HA + harness_seed
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer $DEMO_HA_TOKEN" http://localhost:8123/api/ || true)
+            if [ "$code" = "200" ]; then
+              pollen=$(curl -s -H "Authorization: Bearer $DEMO_HA_TOKEN" \
+                http://localhost:8123/api/states/sensor.pollenwatch_analytics_grass_consensus \
+                | python3 -c "import sys,json;print(json.load(sys.stdin).get('state',''))" 2>/dev/null || true)
+              if [ "$pollen" = "high" ]; then echo "demo ready (api 200 + fixture staged)"; exit 0; fi
+            fi
+            sleep 3
+          done
+          echo "::error::demo HA did not become ready in ~180s"; docker logs demo; exit 1
+      - name: Run API smoke against demo
+        env:
+          HA_URL: http://localhost:8123
+          HA_TOKEN: ${{ env.DEMO_HA_TOKEN }}
+          HA_DASHBOARD_URL_PATH: oriel-demo
+        run: npx vitest run tests/e2e/strategy-api.test.ts
+      - name: Demo logs on failure
+        if: failure()
+        run: docker logs demo 2>&1 | tail -150
+
+  # Browser e2e against the disposable demo, running THIS PR's freshly-built
+  # dist/. Informational (flake-prone first); kept out of required checks.
+  demo-browser:
+    name: Browser E2E (demo HA)
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build this PR's dist
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Start demo HA (anonymous pull of the public image)
+        run: docker run -d --name demo -p 8123:8123 "$DEMO_IMAGE"
+      - name: Wait for demo HA + harness_seed
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer $DEMO_HA_TOKEN" http://localhost:8123/api/ || true)
+            if [ "$code" = "200" ]; then
+              pollen=$(curl -s -H "Authorization: Bearer $DEMO_HA_TOKEN" \
+                http://localhost:8123/api/states/sensor.pollenwatch_analytics_grass_consensus \
+                | python3 -c "import sys,json;print(json.load(sys.stdin).get('state',''))" 2>/dev/null || true)
+              if [ "$pollen" = "high" ]; then echo "demo ready (api 200 + fixture staged)"; exit 0; fi
+            fi
+            sleep 3
+          done
+          echo "::error::demo HA did not become ready in ~180s"; docker logs demo; exit 1
+      - name: Inject this PR's build into the demo
+        # gotcha: HA serves a stale .gz/.br over .js if present. rm -rf the target
+        # first so the dir holds ONLY this build's files (fresh oriel.js + .gz +
+        # .br). The harness serves this dir at both /local/community/ and
+        # /hacsfiles/oriel-dashboard/ (cache_headers=False), so the next browser
+        # load gets fresh bytes — no HA restart needed.
+        run: |
+          docker exec demo rm -rf /config/www/community/oriel-dashboard
+          docker cp dist/. demo:/config/www/community/oriel-dashboard/
+      - name: Run browser E2E against demo
+        env:
+          HA_URL: http://localhost:8123
+          HA_TOKEN: ${{ env.DEMO_HA_TOKEN }}
+          HA_DASHBOARD_URL_PATH: oriel-demo
+        run: npx playwright test
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-demo
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+      - name: Demo logs on failure
+        if: failure()
+        run: docker logs demo 2>&1 | tail -150
