@@ -169,9 +169,27 @@ test.describe('axe-core a11y', () => {
 
   test('rendered editor has zero violations (excluding theme/landmark rules)', async ({ page }) => {
     await page.goto(`/${DASHBOARD_PATH}/0`, { waitUntil: 'load' });
+
+    // HA's frontend reloads the page once during bootstrap on CI — it
+    // re-navigates the main frame to the same URL (~9s in) and fires a fresh
+    // `load` event (confirmed via framenavigated diagnostics). axe's
+    // multi-second analyze() was torn down whenever that reload landed
+    // mid-scan ("Execution context was destroyed, most likely because of a
+    // navigation"). Register the wait for that reload up-front, finish the
+    // first bootstrap, then block until the reload has landed and re-settle —
+    // so the editor is mounted and scanned on the STABLE post-reload page.
+    // If no reload comes (e.g. locally), the wait times out and we proceed;
+    // the page is stable either way.
+    const bootstrapReload = page
+      .waitForEvent('load', { timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
     await page.waitForLoadState('networkidle', { timeout: 30_000 });
-    await page.waitForTimeout(2_500);
     await waitForHaReady(page);
+    if (await bootstrapReload) {
+      await page.waitForLoadState('networkidle', { timeout: 30_000 });
+      await waitForHaReady(page);
+    }
     await waitForEditorReady(page);
 
     // Mount editor in a test harness — same shape as health-tab.spec.ts
@@ -195,7 +213,8 @@ test.describe('axe-core a11y', () => {
     await page.waitForTimeout(500);
 
     // Run axe scoped to the editor host so dashboard-wide noise doesn't
-    // count against editor-specific findings.
+    // count against editor-specific findings. The bootstrap reload (if any)
+    // has already landed above, so analyze() runs on a stable page.
     const results = await buildAxe(page).include('#oriel-a11y-host').analyze();
 
     // eslint-disable-next-line no-console

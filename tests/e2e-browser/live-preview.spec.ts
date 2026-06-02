@@ -154,6 +154,29 @@ async function readPreviewState(page: Page): Promise<{ yaml: string; stats: stri
   });
 }
 
+/**
+ * Bounded poll for the live-preview panel to finish (re-)rendering.
+ * generate() runs behind a 500ms debounce + async render, so reading at a
+ * fixed delay races the render on a loaded CI runner — the read can land
+ * while the "Live preview" section is transiently absent (→ null) or before
+ * its YAML pane has content. Poll readPreviewState() until the section is
+ * present with rendered YAML, bounded; return the last-seen state (possibly
+ * null) on timeout so the caller's existing assertion reports it.
+ */
+async function waitForPreviewState(
+  page: Page,
+  { timeout = 10_000, interval = 250 }: { timeout?: number; interval?: number } = {},
+): Promise<{ yaml: string; stats: string[] } | null> {
+  const deadline = Date.now() + timeout;
+  let state = await readPreviewState(page);
+  while (Date.now() < deadline) {
+    if (state && state.yaml.includes('views:')) return state;
+    await page.waitForTimeout(interval);
+    state = await readPreviewState(page);
+  }
+  return state;
+}
+
 test.describe('Live preview', () => {
   test.setTimeout(120_000);
   test('toggle shows the panel and YAML updates on config change past the debounce', async ({ page }) => {
@@ -169,10 +192,11 @@ test.describe('Live preview', () => {
 
     // Click "Show preview"
     await clickPreviewToggle(page);
-    // Initial generate() kicks off; wait past debounce + render time
-    await page.waitForTimeout(1_500);
-
-    state = await readPreviewState(page);
+    // Initial generate() is async (debounce + render). Poll until the preview
+    // panel has rendered its YAML instead of reading at a fixed delay — on a
+    // loaded CI runner the fixed read raced the render (section transiently
+    // absent → null). Same assertions, just after the editor settles.
+    state = await waitForPreviewState(page);
     expect(state, 'panel must be visible after toggle').not.toBeNull();
     expect(state!.yaml, 'YAML pane should have rendered something').toContain('views:');
     expect(state!.stats.length, 'should have 4 summary stat boxes').toBe(4);
@@ -194,9 +218,10 @@ test.describe('Live preview', () => {
       };
       editor.setConfig({ type: 'custom:oriel', density: 'compact' });
     });
-    await page.waitForTimeout(1_500);
-
-    const after = await readPreviewState(page);
+    // Re-generate is async; poll until the preview re-renders rather than
+    // reading at a fixed delay (the CI race that flaked this spec — the read
+    // landed mid-re-render and saw the section absent → null).
+    const after = await waitForPreviewState(page);
     expect(after, 'panel still visible after config change').not.toBeNull();
     expect(after!.yaml, 'YAML should still render after re-generate').toContain('views:');
   });
