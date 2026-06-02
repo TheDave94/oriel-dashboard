@@ -71,10 +71,67 @@ jobs:
       #
       # SHA-pinned to v5.0.0. v5's only breaking change versus v4 is the
       # runtime bump (Node 20 → Node 24); the action's inputs (`token`,
-      # `release-type`) and outputs (`release_created`, `tag_name`) are
-      # unchanged. Bump deliberately when a new version is reviewed.
+      # `release-type`) and outputs (`release_created`, `tag_name`,
+      # `prs_created`, `pr`) are unchanged. Bump deliberately when a
+      # new version is reviewed.
       - name: Release Please
+        id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
           release-type: node
+
+      # ## Autonomous release flow
+      #
+      # Arms GitHub's native auto-merge on the release PR as soon as
+      # release-please opens or updates it. GitHub merges the PR
+      # automatically once the 6 required branch-protection checks
+      # pass (Unit tests, ESLint, Translation Lint, HA version-marker
+      # check, Bundle size budget, npm audit (moderate+)). The merge
+      # runs under the App actor — same identity as release-please
+      # itself — so the resulting `release: published` event still
+      # triggers release-build.yml without the GITHUB_TOKEN anti-loop
+      # suppression kicking in. End-to-end: conventional commit lands
+      # on main → release-please opens/updates a release PR → this
+      # step arms auto-merge → required checks pass → GitHub merges →
+      # release-please tags + publishes the release → release-build
+      # uploads assets. No human in the loop.
+      #
+      # Gating: `prs_created == 'true'` means release-please created
+      # OR updated a PR this run. On runs where there's nothing
+      # release-worthy since the last release, prs_created is `'false'`
+      # and this step no-ops cleanly. Re-arming auto-merge on a PR
+      # that already has it enabled is idempotent.
+      #
+      # `--auto`: GitHub's native auto-merge — pending until required
+      # checks pass, then merges in the background. If checks were
+      # already green when this step runs (rare; only on a re-run),
+      # the merge is immediate. `--squash` matches the repo's merge
+      # style. Branch deletion is governed by the repo-level
+      # `delete_branch_on_merge` setting (currently false — release-
+      # please owns its own branch lifecycle); we deliberately do
+      # NOT pass `--delete-branch` here.
+      #
+      # Live-HA e2e (tests/e2e/* + tests/e2e-browser/*) is
+      # DELIBERATELY NOT in the required-checks set — see DEFERRED.md
+      # → "Live-HA e2e stays local-manual" for the reasoning. Releases
+      # ship on unit-test green, not on live-HA verification.
+      #
+      # ## How to pause autonomous releasing
+      #
+      # 1. UI: Settings → General → Pull Requests → untick "Allow
+      #    auto-merge". This step then fails-soft on subsequent runs
+      #    (the API call errors and the release PR sits open for
+      #    manual merge). Already-armed PRs continue to merge when
+      #    checks pass — to stop those, cancel auto-merge on each via
+      #    the PR UI.
+      # 2. Workflow: comment out this step. New release PRs stay open
+      #    for manual merge; already-armed PRs are unaffected.
+      - name: Arm native auto-merge on release PR
+        if: steps.release.outputs.prs_created == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh pr merge ${{ fromJSON(steps.release.outputs.pr).number }} \
+            --auto --squash \
+            -R ${{ github.repository }}
