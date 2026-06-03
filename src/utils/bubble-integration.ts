@@ -149,13 +149,23 @@ export function buildBubblePopupCards(
 /**
  * Returns the actionable entity IDs from `hass.states` that we'd ship
  * as bubble-card pop-ups. Currently: lights, climates, covers, fans
- * and media players. Skips entities hidden via entity registry (their
- * `hidden_by` flag).
+ * and media players.
+ *
+ * Skips entities the user has excluded from the dashboard (F6/Rung-0):
+ * pass `isExcluded` — normally `Registry.isEntityExcluded` — so that the
+ * `no_dboard` label, `hidden_by`, per-area `groups_options.hidden`, and
+ * the config/diagnostic categories are honored here exactly as they are
+ * on every other oriel surface. The predicate defaults to a no-op so the
+ * function stays pure and testable; the strategy call site supplies the
+ * real one.
  */
-export function collectBubbleCandidates(hass: HomeAssistant): string[] {
+export function collectBubbleCandidates(
+  hass: HomeAssistant,
+  isExcluded: (entityId: string) => boolean = () => false,
+): string[] {
   const out: string[] = [];
   for (const entityId of Object.keys(hass.states)) {
-    if (isBubbleActionable(entityId)) {
+    if (isBubbleActionable(entityId) && !isExcluded(entityId)) {
       out.push(entityId);
     }
   }

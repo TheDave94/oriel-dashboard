@@ -65,9 +65,7 @@ describe('bubbleHashFor()', () => {
   it('replaces dots with dashes and prefixes with #bubble-', () => {
     expect(bubbleHashFor('light.living_room')).toBe('#bubble-light-living_room');
     expect(bubbleHashFor('climate.kitchen')).toBe('#bubble-climate-kitchen');
-    expect(bubbleHashFor('media_player.lounge_sonos')).toBe(
-      '#bubble-media_player-lounge_sonos',
-    );
+    expect(bubbleHashFor('media_player.lounge_sonos')).toBe('#bubble-media_player-lounge_sonos');
   });
 
   it('produces stable output for the same entity_id', () => {
@@ -153,10 +151,7 @@ describe('buildBubblePopupCards()', () => {
 
   it('renders a slider button for light + cover domains', () => {
     const hass = makeHass({
-      entities: [
-        { entity_id: 'light.kitchen' },
-        { entity_id: 'cover.shutter' },
-      ],
+      entities: [{ entity_id: 'light.kitchen' }, { entity_id: 'cover.shutter' }],
     });
     const cards = buildBubblePopupCards(['light.kitchen', 'cover.shutter'], hass) as Array<{
       cards: Array<Record<string, unknown>>;
@@ -177,16 +172,11 @@ describe('buildBubblePopupCards()', () => {
 
   it('renders a state button for climate / fan / media_player', () => {
     const hass = makeHass({
-      entities: [
-        { entity_id: 'climate.bedroom' },
-        { entity_id: 'fan.lounge' },
-        { entity_id: 'media_player.sonos' },
-      ],
+      entities: [{ entity_id: 'climate.bedroom' }, { entity_id: 'fan.lounge' }, { entity_id: 'media_player.sonos' }],
     });
-    const cards = buildBubblePopupCards(
-      ['climate.bedroom', 'fan.lounge', 'media_player.sonos'],
-      hass,
-    ) as Array<{ cards: Array<Record<string, unknown>> }>;
+    const cards = buildBubblePopupCards(['climate.bedroom', 'fan.lounge', 'media_player.sonos'], hass) as Array<{
+      cards: Array<Record<string, unknown>>;
+    }>;
     for (const c of cards) {
       expect(c.cards[0]).toMatchObject({
         type: 'custom:bubble-card',
@@ -234,13 +224,7 @@ describe('BUBBLE_ACTIONABLE_DOMAINS', () => {
   // silently drop tile-rewriting for that domain across RoomView,
   // ClimateView, LightsGroupCard, CoversGroupCard, and favorites.
   it('contains exactly the documented actionable domains', () => {
-    expect([...BUBBLE_ACTIONABLE_DOMAINS].sort()).toEqual([
-      'climate',
-      'cover',
-      'fan',
-      'light',
-      'media_player',
-    ]);
+    expect([...BUBBLE_ACTIONABLE_DOMAINS].sort()).toEqual(['climate', 'cover', 'fan', 'light', 'media_player']);
   });
 });
 
@@ -249,7 +233,7 @@ describe('isBubbleActionable()', () => {
     'returns true for actionable entity %s',
     (id) => {
       expect(isBubbleActionable(id)).toBe(true);
-    },
+    }
   );
 
   it.each([
@@ -287,28 +271,14 @@ describe('collectBubbleCandidates()', () => {
       ],
     });
     const candidates = collectBubbleCandidates(hass);
-    expect(candidates).toEqual([
-      'climate.b',
-      'cover.c',
-      'fan.d',
-      'light.a',
-      'media_player.e',
-    ]);
+    expect(candidates).toEqual(['climate.b', 'cover.c', 'fan.d', 'light.a', 'media_player.e']);
   });
 
   it('returns sorted entity_ids', () => {
     const hass = makeHass({
-      entities: [
-        { entity_id: 'light.zulu' },
-        { entity_id: 'light.alpha' },
-        { entity_id: 'light.mike' },
-      ],
+      entities: [{ entity_id: 'light.zulu' }, { entity_id: 'light.alpha' }, { entity_id: 'light.mike' }],
     });
-    expect(collectBubbleCandidates(hass)).toEqual([
-      'light.alpha',
-      'light.mike',
-      'light.zulu',
-    ]);
+    expect(collectBubbleCandidates(hass)).toEqual(['light.alpha', 'light.mike', 'light.zulu']);
   });
 
   it('returns empty array when no supported entities exist', () => {
@@ -316,5 +286,53 @@ describe('collectBubbleCandidates()', () => {
       entities: [{ entity_id: 'sensor.temp' }, { entity_id: 'switch.relay' }],
     });
     expect(collectBubbleCandidates(hass)).toEqual([]);
+  });
+
+  // F6/Rung-0: bubble drawers must honor oriel's exclusion pipeline, so an
+  // entity that is actionable-by-domain but excluded (no_dboard / hidden_by /
+  // per-area hidden / config|diagnostic — all surfaced via the isExcluded
+  // predicate, normally Registry.isEntityExcluded) does NOT get a drawer.
+  describe('F6/Rung-0 — honors the isExcluded predicate', () => {
+    it('drops an actionable entity that the predicate excludes (e.g. no_dboard)', () => {
+      const hass = makeHass({
+        entities: [
+          { entity_id: 'light.kitchen_lights' }, // excluded (no_dboard)
+          { entity_id: 'light.living_room' }, // kept
+          { entity_id: 'cover.garage' }, // kept
+        ],
+      });
+      const excluded = new Set(['light.kitchen_lights']);
+      const candidates = collectBubbleCandidates(hass, (id) => excluded.has(id));
+      expect(candidates).toEqual(['cover.garage', 'light.living_room']);
+      expect(candidates).not.toContain('light.kitchen_lights');
+    });
+
+    it('keeps actionable entities the predicate does not exclude', () => {
+      const hass = makeHass({
+        entities: [{ entity_id: 'light.a' }, { entity_id: 'fan.b' }],
+      });
+      // predicate excludes a non-present / non-actionable id only
+      const candidates = collectBubbleCandidates(hass, (id) => id === 'sensor.x');
+      expect(candidates).toEqual(['fan.b', 'light.a']);
+    });
+
+    it('default (no predicate) excludes nothing — back-compat preserved', () => {
+      const hass = makeHass({
+        entities: [{ entity_id: 'light.a' }, { entity_id: 'climate.b' }],
+      });
+      expect(collectBubbleCandidates(hass)).toEqual(['climate.b', 'light.a']);
+    });
+
+    it('exclusion composes with the domain filter (excluded non-actionable is moot)', () => {
+      const hass = makeHass({
+        entities: [
+          { entity_id: 'light.keep' },
+          { entity_id: 'switch.relay' }, // dropped by domain filter anyway
+        ],
+      });
+      // even if the predicate "excludes" the switch, result is the same: only the light
+      const candidates = collectBubbleCandidates(hass, (id) => id === 'switch.relay');
+      expect(candidates).toEqual(['light.keep']);
+    });
   });
 });
