@@ -1046,6 +1046,14 @@ export interface CustomView {
   yaml?: string;
   /** Parsed Lovelace view config (generated from yaml) */
   parsed_config?: Record<string, any> | null;
+  /** Render-time alias for `parsed_config` (F3): a hand-authored Lovelace
+   *  config object. Normalized to `parsed_config` at strategy entry, where
+   *  `parsed_config` wins if both are set (`card` and `config` are
+   *  equivalent). A pure-YAML-author convenience — the GUI editor
+   *  canonicalizes to `parsed_config` on save. A `yaml:` STRING is
+   *  editor-only and is NOT parsed at render. */
+  card?: Record<string, any> | null;
+  config?: Record<string, any> | null;
   /** YAML parse error message, if any */
   _yaml_error?: string;
   /**
@@ -1067,6 +1075,10 @@ export interface CustomBadge {
   yaml?: string;
   /** Parsed Lovelace badge config (generated from yaml) */
   parsed_config?: Record<string, any> | null;
+  /** Render-time alias for `parsed_config` (F3) — see CustomCard.card.
+   *  `parsed_config` wins if both are set. */
+  card?: Record<string, any> | null;
+  config?: Record<string, any> | null;
   /** YAML parse error message, if any */
   _yaml_error?: string;
 }
@@ -1086,6 +1098,14 @@ export interface CustomCard {
   yaml?: string;
   /** Parsed Lovelace card config (generated from yaml) */
   parsed_config?: Record<string, any> | null;
+  /** Render-time alias for `parsed_config` (F3): a hand-authored Lovelace
+   *  card config object. Normalized to `parsed_config` at strategy entry,
+   *  where `parsed_config` wins if both are set (`card` and `config` are
+   *  equivalent). A pure-YAML-author convenience — the GUI editor
+   *  canonicalizes to `parsed_config` on save. A `yaml:` STRING is
+   *  editor-only and is NOT parsed at render. */
+  card?: Record<string, any> | null;
+  config?: Record<string, any> | null;
   /** YAML parse error message, if any */
   _yaml_error?: string;
 }
@@ -1111,6 +1131,11 @@ export interface CustomSection {
   yaml?: string;
   /** Parsed array of Lovelace card configs (derived from yaml) */
   parsed_config?: Record<string, any>[] | null;
+  /** Render-time alias for `parsed_config` (F3) — a card config or an array
+   *  of them; a single object is wrapped into an array. See CustomCard.card.
+   *  `parsed_config` wins if both are set. */
+  card?: Record<string, any> | Record<string, any>[] | null;
+  config?: Record<string, any> | Record<string, any>[] | null;
   /** YAML parse error message, if any */
   _yaml_error?: string;
 }

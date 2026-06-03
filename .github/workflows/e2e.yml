@@ -36,9 +36,12 @@ on:
         type: string
 
 env:
-  # Pinned, public demo image (v0.1.1 = the release whose /hacsfiles route fix
-  # lets oriel's chunks load so cards actually mount).
-  DEMO_IMAGE: ghcr.io/thedave94/ha-demo-harness:v0.1.2
+  # Pinned, public demo image. v0.1.1 added the /hacsfiles route fix (chunks
+  # load so cards mount); v0.1.2 added the pinned zone-presence card; v0.1.3
+  # added a `card:`-alias custom card (marker "F3 custom-card alias OK") that
+  # only renders once oriel's F3 alias fix ships — exercised by
+  # tests/e2e-browser/custom-card-alias.spec.ts.
+  DEMO_IMAGE: ghcr.io/thedave94/ha-demo-harness:v0.1.3
   # Baked LONG-LIVED token of the disposable fake demo container. It controls
   # nothing real and is documented public in the ha-demo-harness README — it is
   # an intentional plain literal, NOT a GitHub secret. Do not "fix" this into a

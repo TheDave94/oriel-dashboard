@@ -86,6 +86,18 @@ The editor exposes everything. The notes below describe the main axes you will t
 
 **Theming.** The cards expose `--oriel-*` CSS custom properties — the full token list is in [MIGRATION.md](MIGRATION.md#surface-that-changed--power-user-reference).
 
+**Hand-authoring custom cards (YAML-direct).** When you add a `custom_cards` (or `custom_views` / `custom_badges` / `custom_sections`) entry by hand, give it the card config under a `card:` (or equivalent `config:`) key:
+
+```yaml
+custom_cards:
+  - target_section: custom_cards
+    card:
+      type: markdown
+      content: Hello
+```
+
+Oriel normalizes `card:`/`config:` to its internal `parsed_config` at render. A `yaml:` *string* is an editor-only input (it is parsed by the GUI, not at render). The GUI editor canonicalizes everything to `parsed_config` on save, so `card:`/`config:` are purely a convenience for authoring raw YAML.
+
 For the full editor walkthrough, open the editor — every field has an inline description.
 
 ---

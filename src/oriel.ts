@@ -165,10 +165,18 @@ class Oriel extends HTMLElement {
     // config. When `users` / `users_by_role` are unset, this is a
     // no-op and `config` is identical to `rawConfig`. See
     // src/utils/user-overrides.ts for the merge rules.
-    const config = resolveUserConfig(rawConfig, hass);
-    if (config !== rawConfig) {
+    const resolved = resolveUserConfig(rawConfig, hass);
+    if (resolved !== rawConfig) {
       t('user-overrides applied');
     }
+
+    // F3: accept `card`/`config` as render-time aliases for `parsed_config`
+    // on every custom-* entry (cards/views/badges/sections), and warn on
+    // entries that resolve to nothing. parsed_config still wins — additive,
+    // back-compat safe. Object-only (no js-yaml in core). Runs after
+    // user-override resolution so aliases inside overrides are normalized too.
+    const { normalizeCustomEntries } = await import('./utils/normalize-custom');
+    const config = normalizeCustomEntries(resolved);
 
     // Swipe-nav (v3.5.4) — install once when the config opts in. The
     // listener is module-level + idempotent, so re-running generate
