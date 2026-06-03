@@ -40,8 +40,11 @@ env:
   # load so cards mount); v0.1.2 added the pinned zone-presence card; v0.1.3
   # added a `card:`-alias custom card (marker "F3 custom-card alias OK") that
   # only renders once oriel's F3 alias fix ships — exercised by
-  # tests/e2e-browser/custom-card-alias.spec.ts.
-  DEMO_IMAGE: ghcr.io/thedave94/ha-demo-harness:v0.1.3
+  # tests/e2e-browser/custom-card-alias.spec.ts; v0.1.4 labelled
+  # light.kitchen_lights `no_dboard` so the F6/Rung-0 fix (bubble drawers
+  # respect excluded entities) can be e2e-tested — see
+  # tests/e2e-browser/bubble-drawer-exclusion.spec.ts.
+  DEMO_IMAGE: ghcr.io/thedave94/ha-demo-harness:v0.1.4
   # Baked LONG-LIVED token of the disposable fake demo container. It controls
   # nothing real and is documented public in the ha-demo-harness README — it is
   # an intentional plain literal, NOT a GitHub secret. Do not "fix" this into a

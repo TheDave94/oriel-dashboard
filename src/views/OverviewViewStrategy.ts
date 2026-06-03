@@ -436,7 +436,11 @@ class OrielViewOverview extends HTMLElement {
       const { isBubbleCardInstalled, buildBubblePopupCards, collectBubbleCandidates } =
         await import('../utils/bubble-integration');
       if (isBubbleCardInstalled()) {
-        const candidates = collectBubbleCandidates(hass);
+        // F6/Rung-0: honor the exclusion pipeline so hidden / no_dboard
+        // entities don't get a drawer — consistent with every other surface.
+        const candidates = collectBubbleCandidates(hass, (id) =>
+          Registry.isEntityExcluded(id),
+        );
         const popupCards = buildBubblePopupCards(candidates, hass);
         if (popupCards.length > 0) {
           overviewSections.push({
