@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.17.4](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.3...v4.17.4) (2026-06-03)
+
+
+### Bug Fixes
+
+* localize() returns '' on a miss so fallbacks fire + no raw key leaks (F2-root) ([#123](https://github.com/TheDave94/oriel-dashboard/issues/123)) ([be10549](https://github.com/TheDave94/oriel-dashboard/commit/be105490956c397b77b01f159a3538e07aa70ea7))
+
 ## [4.17.3](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.2...v4.17.3) (2026-06-03)
 
 
