@@ -6,6 +6,10 @@ A Lovelace strategy for Home Assistant. It generates your dashboard from your ar
 
 Built on the foundation [simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) established (auto-generated room views, summary tiles, area grid). Simon42 remains the focused, opinionated option; Oriel is for users who want more handles to pull. Switching is a one-shot YAML edit — see [MIGRATION.md](MIGRATION.md).
 
+![Oriel Dashboard](docs/images/oriel-overview.png)
+
+*Oriel's auto-generated Overview, rendered against demo data.*
+
 ---
 
 ## Install
