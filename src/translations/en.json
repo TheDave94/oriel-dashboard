@@ -53,7 +53,8 @@
     "persons": "People",
     "vacuums": "Vacuums & Mowers",
     "maintenance": "Pending Updates",
-    "light_favorites": "Quick lights"
+    "light_favorites": "Quick lights",
+    "routines": "Routines"
   },
   "summary": {
     "lights_on_one": "light on",

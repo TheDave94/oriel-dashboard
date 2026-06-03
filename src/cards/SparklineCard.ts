@@ -48,6 +48,11 @@ class OrielSparklineCard extends LitElement {
   private _config!: SparklineCardConfig;
   private _refreshTimer?: number;
   private _lastFetchHass?: HomeAssistant;
+  // Cached apexcharts-card delegate. Created once, reused across renders
+  // (it manages its own DOM/animation). Configured via setConfig() — NOT
+  // a `.config` property: apexcharts-card has no `set config()` accessor,
+  // so binding `.config=` would be a silent no-op and leave it unrendered.
+  private _apexEl?: HTMLElement & { setConfig: (c: unknown) => void; hass?: unknown };
 
   static styles = css`
     :host {
@@ -108,6 +113,14 @@ class OrielSparklineCard extends LitElement {
       throw new Error('oriel-sparkline-card: `entity` (string) required');
     }
     this._config = config;
+    // If the apex delegate already exists, re-apply the new config so a
+    // live config change (the card-editor preview re-calls setConfig on
+    // the same element rather than recreating it) doesn't leave a stale
+    // chart. In a normal dashboard HA recreates the card on config change,
+    // so this is the defensive path for the editor/preview case.
+    if (this._apexEl) {
+      this._apexEl.setConfig(this._buildApexConfig());
+    }
   }
 
   public getCardSize(): number {
@@ -276,16 +289,20 @@ class OrielSparklineCard extends LitElement {
     if (!this.hass || !this._config) return html``;
 
     if (this._shouldUseApex()) {
-      // apexcharts-card is a third-party custom element; the type
-      // assertion is purely to satisfy lit-html attribute binding.
-      // The card reads `.hass` and `.config` via property setters.
-      const apexConfig = this._buildApexConfig();
-      return html`
-        <apexcharts-card
-          .hass=${this.hass}
-          .config=${apexConfig}
-        ></apexcharts-card>
-      `;
+      // Delegate to the third-party apexcharts-card. It must be configured
+      // imperatively via setConfig() (it has no `set config()` accessor), so
+      // we create the element once, configure it, and reuse it — updating
+      // only `.hass` on each render. apexcharts-card renders its own ha-card,
+      // so we return it bare (no wrapper).
+      if (!this._apexEl) {
+        this._apexEl = document.createElement('apexcharts-card') as HTMLElement & {
+          setConfig: (c: unknown) => void;
+          hass?: unknown;
+        };
+        this._apexEl.setConfig(this._buildApexConfig());
+      }
+      this._apexEl.hass = this.hass;
+      return html`${this._apexEl}`;
     }
 
     const stateObj = this.hass.states[this._config.entity];

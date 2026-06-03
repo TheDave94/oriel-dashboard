@@ -53,7 +53,8 @@
     "persons": "Personen",
     "vacuums": "Saug- & Mähroboter",
     "maintenance": "Anstehende Updates",
-    "light_favorites": "Schnellzugriff Lampen"
+    "light_favorites": "Schnellzugriff Lampen",
+    "routines": "Routinen"
   },
   "summary": {
     "lights_on_one": "Licht an",
