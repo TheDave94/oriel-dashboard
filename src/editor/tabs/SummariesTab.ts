@@ -236,11 +236,10 @@ export function renderSummariesTab(ctx: SummariesTabRenderContext): TemplateResu
         .data=${data}
         .schema=${SCHEMA}
         .computeLabel=${(s: { name: string }) => localize(`editor.${s.name}`)}
-        .computeHelper=${(s: { name: string }) => {
-          const key = `editor.${s.name}_desc`;
-          const text = localize(key);
-          return text === key ? '' : text;
-        }}
+        .computeHelper=${(s: { name: string }) =>
+          // F2-root: localize() returns '' on a miss — the desired
+          // "no helper text" result, so no key-compare needed.
+          localize(`editor.${s.name}_desc`)}
         @value-changed=${(ev: CustomEvent<{ value: Partial<SummariesData> }>) => {
           onChange(buildPatch(ev.detail.value));
         }}

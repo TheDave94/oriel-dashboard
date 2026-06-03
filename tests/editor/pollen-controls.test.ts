@@ -144,8 +144,10 @@ describe('pollen editor controls — Section-order tab', () => {
     const chipLabels = Array.from(host.querySelectorAll('.pollen-chip span')).map(
       (s) => s.textContent?.trim(),
     );
-    // localize falls back to the key id in the test environment.
-    expect(chipLabels).toEqual(['editor.pollen_type_birch', 'editor.pollen_type_grass']);
+    // F2-root: localize() returns '' on a miss, so the chip's
+    // `localize(...) || type` fallback fires → the bare type name (not the
+    // leaked key id, which is exactly what F2-root stops).
+    expect(chipLabels).toEqual(['birch', 'grass']);
   });
 
   it('type chips honour the configured pollen_types list', () => {

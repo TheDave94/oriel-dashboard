@@ -66,16 +66,13 @@ class SimpleConfigEditorElement extends LitElement {
         .hass=${this.hass}
         .data=${this._config}
         .schema=${this.schema}
-        .computeLabel=${(s: { name: string }) => {
-          const key = `${this.labelPrefix}.${s.name}`;
-          const text = localize(key);
-          return text === key ? s.name : text;
-        }}
-        .computeHelper=${(s: { name: string }) => {
-          const key = `${this.labelPrefix}.${s.name}_desc`;
-          const text = localize(key);
-          return text === key ? '' : text;
-        }}
+        .computeLabel=${(s: { name: string }) =>
+          // F2-root: localize() returns '' on a miss, so fall back to the
+          // raw field name for the label.
+          localize(`${this.labelPrefix}.${s.name}`) || s.name}
+        .computeHelper=${(s: { name: string }) =>
+          // '' on a miss is the desired "no helper text" result.
+          localize(`${this.labelPrefix}.${s.name}_desc`)}
         @value-changed=${(ev: CustomEvent<{ value: Record<string, unknown> }>) => {
           this._config = ev.detail.value;
           this.dispatchEvent(

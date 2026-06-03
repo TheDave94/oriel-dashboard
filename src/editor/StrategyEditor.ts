@@ -2910,7 +2910,7 @@ class OrielEditor extends LitElement {
                     <span class="entity-name">${name}</span>
                     <input type="checkbox" class="badge-name-checkbox"
                       ?checked=${showName}
-                      title=${localize('editor.badges_show_name')}
+                      title=${localize('editor.badges_show_name') || 'Show name on badge'}
                       @change=${(e: Event) => this._badgeShowNameChanged(areaId, entityId, (e.target as HTMLInputElement).checked)} />
                     <span class="badge-name-label">${localize('editor.badges_name_short')}</span>
                     <span class="entity-id">${entityId}</span>
@@ -2931,12 +2931,12 @@ class OrielEditor extends LitElement {
                         <span class="entity-name">${name}</span>
                         <input type="checkbox" class="badge-name-checkbox"
                           ?checked=${showName}
-                          title=${localize('editor.badges_show_name')}
+                          title=${localize('editor.badges_show_name') || 'Show name on badge'}
                           @change=${(e: Event) => this._badgeShowNameChanged(areaId, entityId, (e.target as HTMLInputElement).checked)} />
                         <span class="badge-name-label">${localize('editor.badges_name_short')}</span>
                         <span class="entity-id">${entityId}</span>
                         <button class="badge-remove-btn"
-                          title=${localize('editor.badges_remove')}
+                          title=${localize('editor.badges_remove') || 'Remove'}
                           @click=${() => this._badgeAdditionalChanged(areaId, entityId, false)}>&#x2715;</button>
                       </div>
                     `;

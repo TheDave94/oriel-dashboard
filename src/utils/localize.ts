@@ -2,7 +2,11 @@
 // Localization Utility (i18n)
 // ====================================================================
 // Singleton localization function. Reads hass.locale.language once at
-// setup time. Falls back to English for missing keys/languages.
+// setup time. Falls back to English for a missing language; for a missing
+// KEY it returns '' (empty string) — NOT the key — so the
+// `localize(key) || 'fallback'` idiom fires and raw keys never leak into
+// the UI (F2-root). Callers wanting a specific fallback use
+// `localize(key) || 'their default'`.
 //
 // Adding a new locale:
 //   1. Drop `src/translations/<lang>.json` (mirroring en.json).
@@ -44,14 +48,15 @@ let _localize: ((key: string) => string) | undefined;
 export function setupLocalize(hass?: HomeAssistant): void {
   const lang = hass?.locale.language ?? hass?.language ?? DEFAULT_LANG;
   _localize = (key: string) =>
-    getTranslatedString(key, lang) ?? getTranslatedString(key, DEFAULT_LANG) ?? key;
+    getTranslatedString(key, lang) ?? getTranslatedString(key, DEFAULT_LANG) ?? '';
 }
 
 /**
  * Translate a key using dot notation (e.g. 'views.lights').
- * Returns the key itself if no translation is found.
+ * Returns '' (empty string) if no translation is found — so
+ * `localize(key) || 'fallback'` fires and raw keys never leak (F2-root).
  */
 export function localize(key: string): string {
-  if (!_localize) return key;
+  if (!_localize) return '';
   return _localize(key);
 }

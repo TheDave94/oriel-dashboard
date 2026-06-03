@@ -83,10 +83,10 @@ function renderRoomSectionOrder(ctx: AreasTabContext): TemplateResult {
           <div class="custom-item-header" data-key=${key}>
             <strong>${label}</strong>
             <button class="section-move-btn" type="button"
-              aria-label="${localize('editor.move_section_up')}: ${label}" title="${localize('editor.move_section_up')}"
+              aria-label="${localize('editor.move_section_up') || 'Move up'}: ${label}" title="${localize('editor.move_section_up') || 'Move up'}"
               ?disabled=${idx === 0} @click=${() => ctx.onMoveRoomSection(idx, 'up')}>&#x2191;</button>
             <button class="section-move-btn" type="button"
-              aria-label="${localize('editor.move_section_down')}: ${label}" title="${localize('editor.move_section_down')}"
+              aria-label="${localize('editor.move_section_down') || 'Move down'}: ${label}" title="${localize('editor.move_section_down') || 'Move down'}"
               ?disabled=${idx === order.length - 1} @click=${() => ctx.onMoveRoomSection(idx, 'down')}>&#x2193;</button>
           </div>
         `;

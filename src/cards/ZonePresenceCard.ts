@@ -525,7 +525,9 @@ class OrielZonePresenceCard extends LitElement {
                 aria-pressed=${active ? 'true' : 'false'}
                 aria-disabled=${unavailable ? 'true' : 'false'}
                 aria-label=${`${this._nameFor(z)} ${
-                  active ? localize('zone_presence.aria_active') : localize('zone_presence.aria_idle')
+                  active
+                    ? localize('zone_presence.aria_active') || 'active'
+                    : localize('zone_presence.aria_idle') || 'idle'
                 }`}
                 title=${this._nameFor(z)}
                 @action=${this._handleAction}

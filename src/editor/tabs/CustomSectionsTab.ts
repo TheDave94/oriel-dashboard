@@ -32,7 +32,7 @@ function renderSectionItem(
         <button
           class="btn-icon"
           @click=${() => ctx.onRemove(index)}
-          title=${localize('editor.remove')}
+          title=${localize('editor.remove') || 'Remove'}
         >
           &#x274C;
         </button>

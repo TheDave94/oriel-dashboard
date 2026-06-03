@@ -120,13 +120,10 @@ export function renderOverviewTab(ctx: TabRenderContext): TemplateResult {
         .data=${data}
         .schema=${schema}
         .computeLabel=${(s: { name: string }) => localize(`editor.${s.name}`)}
-        .computeHelper=${(s: { name: string }) => {
-          // Several fields have descriptions, but a few share the
-          // same key suffix. Keep one mapping for clarity.
-          const key = `editor.${s.name}_desc`;
-          const text = localize(key);
-          return text === key ? '' : text;
-        }}
+        .computeHelper=${(s: { name: string }) =>
+          // F2-root: localize() returns '' on a miss — the desired
+          // "no helper text" result, so no key-compare needed.
+          localize(`editor.${s.name}_desc`)}
         @value-changed=${(ev: CustomEvent<{ value: Partial<OverviewData> }>) => {
           onChange(buildPatch(ev.detail.value));
         }}
