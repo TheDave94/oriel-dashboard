@@ -23,6 +23,31 @@ actionable half.
 
 ## Open
 
+### F7 — bubble emission races bubble-card registration  · severity: medium (if confirmed) · ⚠️ CANDIDATE — needs confirmation
+
+- **Where:** `src/views/OverviewViewStrategy.ts` bubble-drawer emission (the
+  `isBubbleCardInstalled()` gate evaluated at strategy `generate()` time) +
+  the asynchronous load of the `bubble-card` HACS resource.
+- **Bug:** `bubble-card` is a HACS resource that loads **asynchronously**.
+  oriel's first strategy `generate()` — and even HA's bootstrap auto-reload —
+  can run **before** `bubble-card` registers, so `isBubbleCardInstalled()` is
+  `false` and **zero** bubble pop-ups are emitted. Only a render *after*
+  `bubble-card` has registered emits them. Discovered while building the
+  F6/Rung-0 e2e: the demo emitted no drawers until an explicit reload once
+  `bubble-card` was registered.
+- **Impact (needs confirmation):** a real user with `use_bubble_drawers: true`
+  **may** see no bubble drawers until they manually reload, if `generate()`
+  wins the race against `bubble-card`'s load. Whether this bites real users
+  (vs. only the test's cold-start) is **UNCONFIRMED** — needs its own
+  investigation.
+- **Fix shape:** TBD pending investigation — possibly re-run/refresh emission
+  once `bubble-card` registers (listen for the custom-element definition via
+  `customElements.whenDefined('bubble-card')`), or retry `generate()`. Do not
+  over-specify before confirming the race bites real users.
+- **Done when:** the race is either confirmed and closed (drawers appear
+  without a manual reload), or shown to not affect real users and recorded as
+  not-an-issue.
+
 ### F4 — ApexCharts sparkline renders invisible (0×0)  · severity: medium · USER-FACING · ✅ FIXED v4.17.1 (#114)
 
 - **Where:** `src/cards/SparklineCard.ts` (the `use_apexcharts: true` render
@@ -107,3 +132,13 @@ actionable half.
   shadow-DOM boundary. **No oriel bug.** Lesson for the e2e suite: verify the DOM
   walker pierces shadow roots before concluding non-emission. Full context:
   `ha-demo-harness/FINDINGS.md`.
+
+- **Test-coverage gap — `bubble-tile-tap-action.spec.ts` silently skips on the
+  demo.** `tests/e2e-browser/bubble-tile-tap-action.spec.ts` gates on a
+  precondition reading `panel.lovelace.config.strategy.use_bubble_drawers`, but
+  on a *rendered* demo the panel config is already **expanded** to
+  `{ title, views }` (no `strategy` key), so the precondition is always false and
+  the spec **skips** rather than runs — coverage masquerading as a pass.
+  **Not a product bug.** S3-proper cleanup item: fix the precondition to detect
+  bubble state from the *generated* config (the F6/Rung-0 spec reads the expanded
+  views directly), or drop the skip. Surfaced while building the F6/Rung-0 e2e.
