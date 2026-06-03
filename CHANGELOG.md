@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.17.3](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.2...v4.17.3) (2026-06-03)
+
+
+### Bug Fixes
+
+* bubble drawers respect hidden/no_dboard entities (F6/Rung-0) ([#120](https://github.com/TheDave94/oriel-dashboard/issues/120)) ([3991ee8](https://github.com/TheDave94/oriel-dashboard/commit/3991ee8cbe7097a3eff9fec638ff88ca790875c5))
+
 ## [4.17.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.1...v4.17.2) (2026-06-03)
 
 
