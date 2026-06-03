@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.17.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.1...v4.17.2) (2026-06-03)
+
+
+### Bug Fixes
+
+* accept card/config aliases for custom-* entries at render (F3) + warn on empty ([#118](https://github.com/TheDave94/oriel-dashboard/issues/118)) ([fb2a4fa](https://github.com/TheDave94/oriel-dashboard/commit/fb2a4fa8d1e875e47dfb4a56c01f494ad8d3dceb))
+
 ## [4.17.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.0...v4.17.1) (2026-06-03)
 
 
