@@ -40,7 +40,7 @@ When a new config field gets added, the editor work is part of the feature, not 
 
 ## 4. Don't lecture users about positioning
 
-[Oriel positions as a different option, not a replacement for simon42.](README.MD#origin) That framing belongs in README/info.md once, where someone choosing between the two can read it. It does **not** belong as a recurring template appended to issue comments, PR descriptions, or feature replies.
+[Oriel positions as a different option, not a replacement for simon42.](README.md#origin) That framing belongs in README/info.md once, where someone choosing between the two can read it. It does **not** belong as a recurring template appended to issue comments, PR descriptions, or feature replies.
 
 When responding to upstream simon42 issues or PRs: answer the technical question. Mention Oriel only when (a) the feature only exists in Oriel and (b) the conversation invites it. The user-facing pitch is in the README; let it stand on its own.
 

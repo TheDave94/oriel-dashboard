@@ -14,7 +14,7 @@ assignees: ""
 
 - [ ] **Browser-Cache geleert** (`Cmd+Shift+R` auf Mac / `Ctrl+Shift+R` auf Windows)
 - [ ] **Incognito-/Privat-Fenster getestet** — tritt das Problem dort auch auf?
-- [ ] **Alte manuelle Installation entfernt?** — Falls du die Strategy vor der HACS-Verfügbarkeit (vor 2025) schon mal manuell installiert hattest: Alte Dateien aus `www/` gelöscht und alte Resource-URL entfernt? (Siehe [Migration in der README](../README.MD#fehlerbehebung))
+- [ ] **Alte manuelle Installation entfernt?** — Falls du die Strategy vor der HACS-Verfügbarkeit (vor 2025) schon mal manuell installiert hattest: Alte Dateien aus `www/` gelöscht und alte Resource-URL entfernt? (Siehe [Troubleshooting in der README](../README.md#troubleshooting))
 
 ## Versionen
 

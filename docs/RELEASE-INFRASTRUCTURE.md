@@ -77,18 +77,26 @@ The minted token lasts one hour, scoped to the installed repo, with the permissi
 
 ## Acceptance test
 
-Next release after this setup ships should land entirely hands-off:
+A release after this setup ships should land entirely hands-off — the post-PR-#111 flow is fully autonomous from a `feat:`/`fix:` commit through to the published release:
 
 1. Merge any PR with a `feat:` / `fix:` / `feat!:` commit to `main`.
 2. Confirm `Release Please` workflow run succeeds. The release PR it opens should show `oriel-release-bot[bot]` as the commit author (not `github-actions[bot]`).
-3. Merge the release PR.
-4. Confirm:
+3. The same workflow run arms GitHub's native auto-merge on the release PR via the "Arm native auto-merge on release PR" step (see `release-please.yml`). The 6 required branch-protection checks are the sole gate — no human merge required.
+4. Once the required checks pass, GitHub auto-merges the release PR under the App actor. Release-please then tags the version and publishes the GitHub Release on the post-merge run.
+5. Confirm:
    - Tag created automatically — already worked under `GITHUB_TOKEN`.
-   - **`release-build.yml` auto-fires** from the `release: published` event. This is the regression we're fixing.
+   - **`release-build.yml` auto-fires** from the `release: published` event. This is the regression the App setup is fixing — it still has to work after the auto-merge changes.
    - Dist assets land on the GitHub release without a manual dispatch.
-5. Install on live HA via HACS — picks up the new version normally.
+6. Install on live HA via HACS — picks up the new version normally.
 
-If step 4's auto-fire fails, **do not** paper over with a fallback `gh workflow run` step. That masks whether the App approach actually works. Read the CI logs, then see Troubleshooting below.
+If step 5's auto-fire fails, **do not** paper over with a fallback `gh workflow run` step. That masks whether the App approach actually works. Read the CI logs, then see Troubleshooting below.
+
+## How to pause the autonomous flow
+
+Two options, both documented inline in `.github/workflows/release-please.yml`:
+
+1. **Repo setting**: Settings → General → Pull Requests → untick "Allow auto-merge". The arm step then fails-soft on subsequent runs and the release PR sits open for manual merge. Already-armed PRs continue to merge when their checks pass — to stop those too, cancel auto-merge on each via the PR UI.
+2. **Workflow edit**: comment out the "Arm native auto-merge on release PR" step. New release PRs stay open for manual merge; already-armed PRs are unaffected.
 
 ## Troubleshooting
 

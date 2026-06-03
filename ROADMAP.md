@@ -6,7 +6,7 @@ A current-state snapshot — not a list of aspirations. The project's working pa
 
 ## 1. Current state
 
-Oriel Dashboard is a Home Assistant Lovelace strategy at **v4.13.0**. It auto-generates dashboards from areas, devices, and entities, and exposes every advanced feature through a visual editor instead of YAML. For "what changed" by version, read [CHANGELOG.md](CHANGELOG.md) or the [GitHub releases](https://github.com/TheDave94/oriel-dashboard/releases) page; this file does not duplicate that.
+Oriel Dashboard is a Home Assistant Lovelace strategy at **v4.17.0**. It auto-generates dashboards from areas, devices, and entities, and exposes every advanced feature through a visual editor instead of YAML. For "what changed" by version, read [CHANGELOG.md](CHANGELOG.md) or the [GitHub releases](https://github.com/TheDave94/oriel-dashboard/releases) page; this file does not duplicate that.
 
 The strategy targets HA 2025.5+. The infrastructure-side state (release loop, branch hygiene, dependency posture) is documented in [docs/RELEASE-INFRASTRUCTURE.md](docs/RELEASE-INFRASTRUCTURE.md). The design principles every feature has to clear are in [PRINCIPLES.md](PRINCIPLES.md).
 

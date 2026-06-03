@@ -1,6 +1,6 @@
 # Oriel Dashboard
 
-Custom Lovelace strategy for Home Assistant — auto-generates the whole dashboard from area / device / entity metadata, then layers a setup wizard, per-user layouts, HACS plugin shims (Bubble Card, ApexCharts, decluttering-card, floorplan-card), a plugin extension API, and ten custom cards on top.
+Custom Lovelace strategy for Home Assistant — auto-generates the whole dashboard from area / device / entity metadata, then layers a setup wizard, per-user layouts, HACS plugin shims (Bubble Card, ApexCharts, decluttering-card, floorplan-card), a plugin extension API, and a set of custom cards and tile features on top.
 
 Built on the foundation [simon42-dashboard-strategy](https://github.com/TheRealSimon42/simon42-dashboard-strategy) established (auto-generated room views, summary tiles, area grid) and extends it with power-user surface above. Not aimed at replacing the upstream — Simon42 remains the right pick for users who want a focused, opinionated auto-dashboard. Oriel is for those who want more handles to pull. Simon42 users can migrate over with a one-shot YAML edit; see MIGRATION.md.
 
@@ -10,43 +10,23 @@ Built on the foundation [simon42-dashboard-strategy](https://github.com/TheRealS
 **Build:** Webpack → code-split chunks (main + lit + core + views + editor on-demand)
 **Distribution:** HACS-compatible (Custom Repository), deployed to `/config/www/community/oriel-dashboard/`
 
-### Module Overview
+### Module layout
 
-```
-src/
-├── oriel.ts    # Entry point: generate(config, hass) → {title, views[]}
-├── Registry.ts                      # Singleton registry (synchronous init from hass object, pre-computed Maps)
-├── types/                           # Type definitions
-│   ├── homeassistant.ts             #   HA interfaces (hass object, callWS, formatters)
-│   ├── registries.ts                #   Entity/device/area/floor registry types
-│   ├── strategy.ts                  #   Oriel config types
-│   └── lovelace.ts                  #   Lovelace card/view/section/badge types
-├── utils/
-│   ├── entity-filter.ts             #   Entity collection (collectPersons, findWeatherEntity, findDummySensor)
-│   ├── name-utils.ts                #   Name/entity helpers (stripAreaName, getVisibleAreas, sortByLastChanged)
-│   ├── badge-builder.ts             #   Person badge creation
-│   └── view-builder.ts              #   View generation (overview, utility, area views)
-├── sections/
-│   ├── OverviewSection.ts           #   Clock, alarm, search, summaries, favorites
-│   ├── AreasSection.ts              #   Area cards (with optional floor grouping)
-│   └── WeatherEnergySection.ts      #   Weather forecast + energy distribution
-├── cards/                           # LitElement custom cards (reactive, tile card pooling)
-│   ├── SummaryCard.ts               #   Reactive summary tiles (lights, covers, security, batteries, climate)
-│   ├── LightsGroupCard.ts           #   On/off light grouping (heading badges + tile card pool + floor grouping)
-│   └── CoversGroupCard.ts           #   Open/closed cover grouping (heading badges + tile card pool)
-├── views/                           # Specialized view strategies
-│   ├── RoomViewStrategy.ts          #   Room detail view (15+ device classes, Reolink + Aqara cameras)
-│   ├── LightsViewStrategy.ts        #   Light aggregation (optional floor grouping)
-│   ├── CoversViewStrategy.ts        #   Cover/blind aggregation
-│   ├── SecurityViewStrategy.ts      #   Security overview (locks, doors, windows, garages, smoke/gas detectors)
-│   ├── BatteriesViewStrategy.ts     #   Battery status (critical/low/ok)
-│   └── ClimateViewStrategy.ts       #   Climate/thermostat overview (heating/cooling/idle/off)
-└── editor/                          # Configuration UI
-    ├── StrategyEditor.ts            #   Editor class (largest file — config form, state management)
-    ├── editor-handlers.ts           #   Event listeners, drag/drop area reordering
-    ├── editor-template.ts           #   HTML template generation
-    └── editor-styles.ts             #   CSS styling
-```
+The codebase grows fast — exhaustive file lists rot. Browse `src/` directly for the current inventory; the dirs below describe purpose and ownership, not contents.
+
+| Directory | Purpose |
+|---|---|
+| `src/oriel.ts` | Entry point. `generate(config, hass) → {title, views[]}`. |
+| `src/Registry.ts` | Static singleton. Reads `hass.entities`/`devices`/`areas` synchronously, builds the pre-computed Maps everything else reads from. |
+| `src/types/` | Type definitions — HA interfaces, registry shapes, Oriel config types, Lovelace card/view/section/badge types. |
+| `src/utils/` | Pure helpers — entity collection, name/string handling, badge construction, view-builder primitives, debug, localization, viewport, staleness, pollen reader, and so on. |
+| `src/sections/` | Builders for the overview-view sections (overview, areas, weather/energy, plus the optional ones — agenda, todos, plants, persons, vacuums, maintenance, presence-zones). |
+| `src/cards/` | LitElement custom cards. Each registers a `oriel-*` custom element and uses the reactive `willUpdate` pattern (see "Design Decisions" below). |
+| `src/features/` | LitElement tile features (`oriel-sticky-lock-feature`, `oriel-cost-overlay-feature`). |
+| `src/views/` | Specialized view strategies — room detail, lights, covers, security, batteries, climate, humidity, camera. |
+| `src/editor/` | Strategy editor — config form, state management, tab implementations, drag/drop, live preview, HTML/CSS templates. `StrategyEditor.ts` is the largest file. |
+| `src/onboarding/` | Setup wizard, persona presets, adaptive hints. |
+| `src/extension/` | Plugin extension API (`window.oriel.registerSection`, registry, attribution helpers). |
 
 Output:
 ```
@@ -153,12 +133,23 @@ These files require extra care — changes here most likely cause regressions:
 6. **Test on the live system** — always before pushing to GitHub!
 7. Test via Playwright and/or HA MCP tools
 
-**Build scripts:**
-```
-npm run build       # Production (minified, no source maps)
-npm run build-dev   # Development (source maps)
-npm run watch       # Dev + auto-rebuild on file changes
-```
+**Scripts (from `package.json`):**
+
+| Script | Purpose |
+|---|---|
+| `npm run build` | Production bundle (minified, no source maps) |
+| `npm run build-dev` | Development bundle (source maps) |
+| `npm run watch` | Dev bundle + auto-rebuild on file changes |
+| `npm test` | Unit suite (vitest 4) — required CI check |
+| `npm run test:watch` | Watch-mode unit suite |
+| `npm run test:coverage` | Unit suite + v8 coverage report |
+| `npm run e2e:api` | Live-HA API smoke (vitest, hits HA WebSocket) — local-manual only, see [DEFERRED.md](DEFERRED.md) |
+| `npm run e2e:browser` | Live-HA browser suite (Playwright) — local-manual only |
+| `npm run e2e` | Both e2e layers in sequence |
+| `npm run lint` | ESLint (required CI check) |
+| `npm run lint:fix` | ESLint with auto-fix |
+| `npm run format` | Prettier write |
+| `npm run format:check` | Prettier check (no writes) |
 
 ## Git & Release Workflow
 
@@ -175,14 +166,15 @@ npm run watch       # Dev + auto-rebuild on file changes
 
 ### Release Flow
 
-What happens after your PR merges to `main`:
+What happens after your PR merges to `main` — **fully autonomous from a `feat:` or `fix:` commit through to the published release**:
 
-1. **release-please** opens (or updates) a chore PR titled `chore(main): release <next-version>` — bumps `package.json` + appends a CHANGELOG entry. Conventional-commit prefixes drive the bump: `fix:` → patch, `feat:` → minor, `feat!:` → major. `docs:` and `chore:` don't trigger a release; `test:` triggers a patch but doesn't appear in the changelog (release-please default config).
-2. **Merging the release PR** tags the new version and publishes a GitHub Release.
-3. **`release-build.yml`** triggers on the `release: published` event, checks out the tagged commit, runs `npm ci && npm run build`, and uploads every file in `dist/` as an individual release asset (`gh release upload <tag> dist/* --clobber`).
-4. **HACS users fetch the release assets**, not the source tree. The source-tree `dist/` is not load-bearing for users — release-build.yml builds it fresh on every release.
+1. **release-please** opens (or updates) a chore PR titled `chore(main): release <next-version>` — bumps `package.json` + appends a CHANGELOG entry. Conventional-commit prefixes drive the bump: `fix:` → patch, `feat:` → minor, `feat!:` → major. `docs:`, `chore:`, `ci:`, `build:` don't trigger a release; `test:` triggers a patch but doesn't appear in the changelog (release-please default config).
+2. **The release PR auto-merges** as soon as the 6 required checks (Unit tests, ESLint, Translation Lint, HA version-marker check, Bundle size budget, npm audit) go green. The arm step lives in `.github/workflows/release-please.yml` ("Arm native auto-merge on release PR") and uses GitHub's native auto-merge under the `oriel-release-bot` App identity. No human merge needed.
+3. **Merge tags the new version and publishes a GitHub Release** — release-please does this on the post-merge run.
+4. **`release-build.yml`** triggers on the `release: published` event, checks out the tagged commit, runs `npm ci && npm run build`, and uploads every file in `dist/` as an individual release asset (`gh release upload <tag> dist/* --clobber`).
+5. **HACS users fetch the release assets**, not the source tree. The source-tree `dist/` is not load-bearing for users — release-build.yml builds it fresh on every release.
 
-See [docs/RELEASE-INFRASTRUCTURE.md](docs/RELEASE-INFRASTRUCTURE.md) for the GitHub App + release-please auth setup that lets the `release: published` event actually fire `release-build.yml` (the suppression-rule workaround).
+See [docs/RELEASE-INFRASTRUCTURE.md](docs/RELEASE-INFRASTRUCTURE.md) for the GitHub App + release-please auth setup that lets the `release: published` event actually fire `release-build.yml` (the suppression-rule workaround), and for how to pause the autonomous flow if you need to.
 
 ### Porting Community PRs
 When PRs were created against the old codebase and cannot be merged directly:
@@ -245,7 +237,7 @@ Area cards only receive `controls` that actually exist in the area (e.g. `['ligh
 **Why:** Without pre-filtering, each card must scan all entities itself — with many areas and entities, this causes massive load times on weak devices (tablets, wall panels). Check here first when investigating performance issues!
 
 ### Custom Cards: LitElement with Reactive willUpdate() (PERFORMANCE-CRITICAL)
-All custom cards (SummaryCard, LightsGroupCard, CoversGroupCard) use LitElement with `willUpdate(changedProps)` instead of the previous innerHTML rebuild pattern. This means:
+Every custom card in `src/cards/` uses LitElement with `willUpdate(changedProps)` instead of the older innerHTML rebuild pattern. This means:
 - HA calls `card.hass = ...` on **every** state change (any entity in the entire system) — this happens hundreds of times per minute
 - Without the reactive pattern, each card would rebuild its entire DOM on every `set hass()` call → massive performance problems
 - With `willUpdate()`, cards check whether relevant states actually changed and only re-render when needed
