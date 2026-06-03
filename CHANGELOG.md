@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.17.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.0...v4.17.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* render apex sparkline via setConfig (F4) + add sections.routines key (F1/F2) with regression tests ([#114](https://github.com/TheDave94/oriel-dashboard/issues/114)) ([a776851](https://github.com/TheDave94/oriel-dashboard/commit/a7768518adc5eac1fd0e1b551d01f72b6455afcd))
+
 ## [4.17.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.16.2...v4.17.0) (2026-06-01)
 
 
