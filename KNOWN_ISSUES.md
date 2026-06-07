@@ -166,3 +166,20 @@ actionable half.
   reload-after-registration flow (mirroring the F6/Rung-0 spec), so it actually
   exercises a tap-action → `#bubble-` hash navigation instead of skipping.
   Surfaced while building the F6/Rung-0 e2e.
+
+- **GUI editor and `card:`/`config:` alias entries — preserved on save, not data
+  loss.** After F3 (v4.17.2) made render-time accept the `card:`/`config:`
+  aliases for `custom_cards`, the open question was whether saving via the GUI
+  strategy editor *destroys* a hand-written alias entry. It does **not**:
+  verified stored → loaded (`setConfig`) → emitted (`config-changed`)
+  byte-identical through the real (minified) `oriel-editor` — the save serializer
+  (`_fireConfigChanged`) shallow-copies entries and retains unknown keys, so
+  `card:`/`config:` survive a round-trip intact. **Not a product bug.** The only
+  gap is cosmetic: the YAML textarea binds `card.yaml`, so an alias entry (which
+  has no `yaml` field) renders an **empty** box — the content is preserved but
+  not *displayed* or *editable* in the GUI. Editor-backfill (hydrate
+  `yaml`/`parsed_config` from the alias on load so it shows + edits) is therefore
+  **deferred polish**, not a fix: no ecosystem precedent (peer strategies ship no
+  GUI editors) and zero demand (no issues/discussions touch it). **Wake
+  condition:** a user reports alias entries showing **empty in the editor** —
+  that report revives the backfill as wanted work.
