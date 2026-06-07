@@ -285,12 +285,15 @@ In-repo docs and when to load each. Inline references to these files elsewhere i
 
 ## References
 
-Local reference copies for architecture and pattern lookup (sparse checkouts, read-only):
+> **Local sparse-checkout copies removed.** The `../references/` directory
+> (`/opt/repos/references/`) no longer exists — do **not** point tooling or
+> subagents at it. The upstream sources below remain the canonical references;
+> clone or browse them directly if you need them.
 
-| Local Path | Repository | Contents |
-|------------|------------|----------|
-| `../references/ha-strategies/` | `home-assistant/frontend` → `src/panels/lovelace/strategies/` | Official HA strategies (TypeScript, architecture reference) |
-| `../references/mushroom-strategy/` | `DigiLive/mushroom-strategy` | Community dashboard strategy (TypeScript + build pipeline reference) |
-| `../references/hacs-docs/` | `hacs/documentation` → `source/docs/publish/` | HACS publishing documentation (hacs.json options, release handling) |
+| Repository | Contents |
+|------------|----------|
+| `home-assistant/frontend` → `src/panels/lovelace/strategies/` | Official HA strategies (TypeScript, architecture reference) |
+| `DigiLive/mushroom-strategy` | Community dashboard strategy (TypeScript + build pipeline reference) |
+| `hacs/documentation` → `source/docs/publish/` | HACS publishing documentation (hacs.json options, release handling) |
 
 **HA Release Notes (Markdown)**: `https://github.com/home-assistant/home-assistant.io/blob/rc/source/_posts/` — Blog posts in MD format. Example for April 2026: `2026-04-01-release-20264.markdown`. Useful for checking which HA features/changes are current and whether issues have become obsolete due to HA updates.

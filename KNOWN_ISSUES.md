@@ -23,30 +23,52 @@ actionable half.
 
 ## Open
 
-### F7 — bubble emission races bubble-card registration  · severity: medium (if confirmed) · ⚠️ CANDIDATE — needs confirmation
+### F7 — bubble emission races bubble-card registration  · severity: low-medium · CONFIRMED — cold-cache/first-visit only · self-healing on reload · fix deliberately DEFERRED
 
+- **Status:** CONFIRMED — affects **cold-cache / first-visit only**, is
+  **self-healing on any reload**, and the fix is **deliberately DEFERRED**
+  (rationale below).
 - **Where:** `src/views/OverviewViewStrategy.ts` bubble-drawer emission (the
-  `isBubbleCardInstalled()` gate evaluated at strategy `generate()` time) +
-  the asynchronous load of the `bubble-card` HACS resource.
-- **Bug:** `bubble-card` is a HACS resource that loads **asynchronously**.
-  oriel's first strategy `generate()` — and even HA's bootstrap auto-reload —
-  can run **before** `bubble-card` registers, so `isBubbleCardInstalled()` is
-  `false` and **zero** bubble pop-ups are emitted. Only a render *after*
-  `bubble-card` has registered emits them. Discovered while building the
-  F6/Rung-0 e2e: the demo emitted no drawers until an explicit reload once
-  `bubble-card` was registered.
-- **Impact (needs confirmation):** a real user with `use_bubble_drawers: true`
-  **may** see no bubble drawers until they manually reload, if `generate()`
-  wins the race against `bubble-card`'s load. Whether this bites real users
-  (vs. only the test's cold-start) is **UNCONFIRMED** — needs its own
-  investigation.
-- **Fix shape:** TBD pending investigation — possibly re-run/refresh emission
-  once `bubble-card` registers (listen for the custom-element definition via
-  `customElements.whenDefined('bubble-card')`), or retry `generate()`. Do not
-  over-specify before confirming the race bites real users.
-- **Done when:** the race is either confirmed and closed (drawers appear
-  without a manual reload), or shown to not affect real users and recorded as
-  not-an-issue.
+  `isBubbleCardInstalled()` gate evaluated at strategy `generate()` time), the
+  per-view strategies (lights/covers/climate/room — each evaluates the same gate
+  independently), and the asynchronous load of the `bubble-card` HACS resource.
+- **Mechanism (confirmed):** `bubble-card` is an **async HACS resource**; every
+  bubble surface gates on a synchronous `customElements.get('bubble-card')` at
+  strategy `generate()` time. HA **never re-invokes `generate()`** on resource
+  load, and HA's `whenDefined`→`ll-rebuild` rescue net lives **below** strategies
+  — it upgrades emitted-but-undefined cards, but **cannot rescue configs a
+  strategy never emitted**. Per-view strategies each evaluate the gate
+  independently and their output is **cached for the session**; the overview
+  pop-up emission does an `await import()` first, giving `bubble-card`
+  asymmetrically more time to register than the per-view paths.
+- **Evidence — demo (cold, harness v0.1.4):** on a fresh-cache load, after HA's
+  ~9s bootstrap auto-reload, drawers were absent **4/4 runs** even though
+  `bubble-card` registered ~400ms into the document; **one explicit reload
+  recovers fully (35 pop-ups)**. Resource registration itself is clean and fast
+  every time.
+- **Evidence — production (warm, 2026-06-07):** read-only diagnostic confirmed
+  `bubble-card` registered (`/hacsfiles/Bubble-Card/bubble-card.js`, 200) and
+  `use_bubble_drawers: true`; browser-console tile audit on a warm session:
+  Lights view **19/19** actionable tiles carry `#bubble-`, room view **20/20**,
+  non-actionable tiles correctly lack it. **Warm / steady-state sessions are
+  unaffected.**
+- **Affected population:** first-ever visit, new device, cleared cache,
+  kiosk-after-cache-purge. **Zero field reports to date.**
+- **Fix shape (recorded, NOT built):** *Option 1* — when `use_bubble_drawers` is
+  true **AND** `bubble-card` is present in the lovelace resource list but not yet
+  registered, `customElements.whenDefined('bubble-card')` → trigger **one**
+  guarded re-generation so drawers appear without a manual reload. Must cover the
+  overview **and** the per-view strategies (asymmetric timing); must be
+  loop/flash-guarded; must **not** regress genuinely-not-installed users (the
+  resource-list gate ensures `whenDefined` is never awaited for them). Medium
+  regression risk (render timing).
+- **Why deferred:** self-heals on any reload; steady-state users unaffected; zero
+  reports; medium-risk render-timing change for a first-load-only wart. Revisit
+  if a user reports it or when next touching the bubble emission code.
+- **Linked latent race (same root, no separate F-number):** the `floorplan_view`
+  gate (`src/oriel.ts`, `customElements.get('floorplan-card')` at `generate()`
+  time) has the **identical** latent race — any F7 fix should treat both, and any
+  reclassification covers both.
 
 ### F4 — ApexCharts sparkline renders invisible (0×0)  · severity: medium · USER-FACING · ✅ FIXED v4.17.1 (#114)
 
@@ -134,11 +156,13 @@ actionable half.
   `ha-demo-harness/FINDINGS.md`.
 
 - **Test-coverage gap — `bubble-tile-tap-action.spec.ts` silently skips on the
-  demo.** `tests/e2e-browser/bubble-tile-tap-action.spec.ts` gates on a
-  precondition reading `panel.lovelace.config.strategy.use_bubble_drawers`, but
-  on a *rendered* demo the panel config is already **expanded** to
-  `{ title, views }` (no `strategy` key), so the precondition is always false and
-  the spec **skips** rather than runs — coverage masquerading as a pass.
-  **Not a product bug.** S3-proper cleanup item: fix the precondition to detect
-  bubble state from the *generated* config (the F6/Rung-0 spec reads the expanded
-  views directly), or drop the skip. Surfaced while building the F6/Rung-0 e2e.
+  demo. ✅ FIXED in #125.** `tests/e2e-browser/bubble-tile-tap-action.spec.ts`
+  gated on a precondition reading `panel.lovelace.config.strategy.use_bubble_drawers`,
+  but on a *rendered* demo the panel config is already **expanded** to
+  `{ title, views }` (no `strategy` key), so the precondition was always false and
+  the spec **skipped** rather than ran — coverage masquerading as a pass.
+  **Not a product bug.** Resolved in **PR #125**: the spec now detects bubble
+  state from the *expanded* config (`card_type: 'pop-up'`) and runs via a
+  reload-after-registration flow (mirroring the F6/Rung-0 spec), so it actually
+  exercises a tap-action → `#bubble-` hash navigation instead of skipping.
+  Surfaced while building the F6/Rung-0 e2e.
