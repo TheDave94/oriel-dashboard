@@ -1,0 +1,70 @@
+{
+  "repo": "oriel-dashboard",
+  "default_branch": "main",
+  "node_version": "22",
+  "purpose": "Local CI-green predictor for the autonomous PR lane. Mirrors the locally-runnable subset of main's required status checks (validate.yml).",
+  "predicts": "6 of the 7 required checks (the pure Node ones).",
+  "does_not_cover": [
+    "API smoke (demo HA) [e2e.yml demo-api-smoke] - dockerized + ghcr image pull; INTENTIONALLY required (deliberately promoted), CI-confirmed only.",
+    "HACS Validation [validate.yml hacs] - GitHub-Action-only (hacs/action); NOT a required check, does not gate merges."
+  ],
+  "setup": {
+    "npm_ci": "npm ci",
+    "build": "npm run build"
+  },
+  "gates": [
+    {
+      "id": "unit-tests",
+      "ci_check": "Unit tests",
+      "command": "npm test",
+      "needs": ["npm_ci"],
+      "ci_only": false
+    },
+    {
+      "id": "eslint",
+      "ci_check": "ESLint",
+      "command": "npm run lint",
+      "needs": ["npm_ci"],
+      "ci_only": false
+    },
+    {
+      "id": "translation-lint",
+      "ci_check": "Translation Lint",
+      "command": "node scripts/lint-translations.mjs",
+      "needs": [],
+      "ci_only": false,
+      "note": "CI runs this without npm ci (dependency-free script); npm_ci not required."
+    },
+    {
+      "id": "ha-version-marker",
+      "ci_check": "HA version-marker check",
+      "command": "node scripts/check-ha-version-markers.mjs",
+      "needs": [],
+      "ci_only": false,
+      "note": "CI runs this without npm ci (dependency-free script); npm_ci not required."
+    },
+    {
+      "id": "npm-audit",
+      "ci_check": "npm audit (moderate+)",
+      "command": "npm audit --audit-level=moderate --omit=dev",
+      "needs": ["npm_ci"],
+      "ci_only": false
+    },
+    {
+      "id": "bundle-size",
+      "ci_check": "Bundle size budget",
+      "command": "npm run build && bash -c 'set -e; fail=0; check(){ f=$(ls dist/$1 2>/dev/null|head -1); if [ -z \"$f\" ]; then echo \"  MISSING: $1\"; fail=1; return; fi; kb=$(( $(stat -c%s \"$f\") / 1024 )); if [ \"$kb\" -gt \"$2\" ]; then echo \"  OVER: $f = ${kb}KB (limit $2KB)\"; fail=1; else echo \"  OK: $f = ${kb}KB / $2KB\"; fi; }; echo \"Bundle-size budget (gzipped):\"; check \"oriel.js.gz\" 5; check \"oriel-core.*.js.gz\" 67; exit $fail'",
+      "needs": ["npm_ci", "build"],
+      "ci_only": false,
+      "note": "Replicates validate.yml bundle-size step exactly: oriel.js.gz<=5KB, oriel-core.*.js.gz<=67KB."
+    },
+    {
+      "id": "demo-api-smoke",
+      "ci_check": "API smoke (demo HA)",
+      "command": "docker run -d --name demo -p 8123:8123 ghcr.io/thedave94/ha-demo-harness:v0.1.4 && HA_URL=http://localhost:8123 npm run e2e:api",
+      "needs": ["npm_ci", "docker", "ghcr_pull"],
+      "ci_only": true,
+      "note": "Required check, but dockerized + ghcr-dependent; intentionally promoted. Confirmed in CI, NOT part of the local-green predictor."
+    }
+  ]
+}
