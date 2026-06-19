@@ -138,3 +138,9 @@ Built by [@TheDave94](https://github.com/TheDave94).
 - [CHANGELOG.md](CHANGELOG.md) — what changed in each version
 - [GitHub Releases](https://github.com/TheDave94/oriel-dashboard/releases) — full release notes with assets
 - [TRANSLATING.md](TRANSLATING.md) — how to translate this README
+
+---
+
+## License
+
+[MIT](LICENSE) © Oriel Dashboard contributors.
