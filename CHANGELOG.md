@@ -6,6 +6,14 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.17.5](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.4...v4.17.5) (2026-06-19)
+
+
+### Bug Fixes
+
+* **docs:** correct card name + HACS category ([ba7283e](https://github.com/TheDave94/oriel-dashboard/commit/ba7283e11cfa3f2f154c04803d78f11dedeac93b))
+* **docs:** correct card name + HACS category, refresh stale comments ([f4af960](https://github.com/TheDave94/oriel-dashboard/commit/f4af960dad476db801c48d1d31d1bc98c58f2bdb))
+
 ## [4.17.4](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.3...v4.17.4) (2026-06-03)
 
 
