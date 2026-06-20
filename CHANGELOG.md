@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.18.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.6...v4.18.0) (2026-06-20)
+
+
+### Features
+
+* area context in summaries (extend area name beyond batteries) ([#139](https://github.com/TheDave94/oriel-dashboard/issues/139)) ([5252602](https://github.com/TheDave94/oriel-dashboard/commit/5252602f86115c8d5ff7bfd57f6d59c6e4b6fb1d)), closes [#131](https://github.com/TheDave94/oriel-dashboard/issues/131)
+
 ## [4.17.6](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.5...v4.17.6) (2026-06-20)
 
 
