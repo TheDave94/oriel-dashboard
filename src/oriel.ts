@@ -410,6 +410,23 @@ class Oriel extends HTMLElement {
     // forward it verbatim so users can reference templates by name
     // from custom_cards / custom_views.
     const decluttering = config.decluttering_templates;
+    // Principle 2 parity with floorplan_view: warn (never fail) when templates
+    // are configured but the decluttering-card HACS plugin isn't installed — a
+    // `custom:decluttering-card` referencing them would otherwise be a silent
+    // dead card. The templates are still forwarded (harmless if unreferenced).
+    if (
+      decluttering &&
+      Object.keys(decluttering).length > 0 &&
+      typeof customElements !== 'undefined' &&
+      !customElements.get('decluttering-card')
+    ) {
+      console.warn(
+        '[oriel] decluttering_templates is set but the decluttering-card HACS ' +
+        "plugin isn't installed. Templates are forwarded, but any " +
+        'custom:decluttering-card referencing them will not render — install ' +
+        'custom-cards/decluttering-card to use them.',
+      );
+    }
     // Apply the configured HA theme (#74) and background (simon42#188) to
     // every generated view. Theme = colors + the theme's default
     // background; the per-view `background` (object for images, string for

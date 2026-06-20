@@ -947,8 +947,10 @@ class OrielViewRoom extends HTMLElement {
       let zoneEntities: unknown[];
       if (Array.isArray(curatedPresence) && curatedPresence.length > 0) {
         zoneEntities = curatedPresence.filter((e) => {
-          if (typeof e === 'string') return e.length > 0;
-          return typeof (e as { entity?: unknown }).entity === 'string';
+          const id = typeof e === 'string' ? e : (e as { entity?: unknown }).entity;
+          // Existence guard — match the auto-detect branch (present-only): drop
+          // curated entries whose entity no longer exists (renamed/removed).
+          return typeof id === 'string' && id.length > 0 && hass.states[id] !== undefined;
         });
       } else {
         const ZONE_CLASSES = new Set(['occupancy', 'motion', 'presence']);

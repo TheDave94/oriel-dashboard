@@ -116,8 +116,11 @@ function buildZonePresenceCard(
     // malformed entries. Pass through verbatim so per-entry
     // overrides (name/icon/color) work.
     entities = curated.filter((e) => {
-      if (typeof e === 'string') return e.length > 0;
-      return typeof (e as { entity?: unknown }).entity === 'string';
+      const id = typeof e === 'string' ? e : (e as { entity?: unknown }).entity;
+      // Existence guard — match the auto-detect branch (which only ever yields
+      // present entities). Drop curated entries whose entity no longer exists so
+      // a renamed/removed sensor isn't a dead grey dot on the card.
+      return typeof id === 'string' && id.length > 0 && hass.states[id] !== undefined;
     });
     if (entities.length === 0) return null;
   } else {

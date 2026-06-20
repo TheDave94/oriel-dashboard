@@ -76,12 +76,19 @@ function escapeHtml(input: string): string {
  * single-user case, but we still validate so that copy-pasted community
  * templates can't smuggle in HTML or template injection.
  */
-function buildWeatherSensorRow(sensors: WeatherSensorConfig[]): LovelaceCardConfig | null {
+function buildWeatherSensorRow(
+  sensors: WeatherSensorConfig[],
+  hass?: HomeAssistant,
+): LovelaceCardConfig | null {
   if (sensors.length === 0) return null;
 
   const parts: string[] = [];
   for (const s of sensors) {
     if (typeof s.entity !== 'string' || !ENTITY_ID_RE.test(s.entity)) continue;
+    // Existence guard: skip a configured sensor whose entity no longer exists,
+    // so the row doesn't show an icon next to a blank "unknown" value. (When
+    // hass is unavailable we can't check — emit as before.)
+    if (hass && !hass.states[s.entity]) continue;
 
     const icon = typeof s.icon === 'string' && ICON_RE.test(s.icon) ? s.icon : 'mdi:gauge';
     const round =
@@ -303,7 +310,7 @@ export function createWeatherSection(
     cards.push(heading);
   }
 
-  const sensorRow = buildWeatherSensorRow(weatherSensors);
+  const sensorRow = buildWeatherSensorRow(weatherSensors, hass);
   if (sensorRow) cards.push(sensorRow);
 
   const card = buildPresentationCard(weatherEntity, resolvedPresentation);

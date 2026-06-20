@@ -10,6 +10,30 @@
 import { describe, it, expect } from 'vitest';
 
 import { createEnergySection, createWeatherSection } from '../../src/sections/WeatherEnergySection';
+import { makeHass } from '../fixtures/hass';
+
+describe('createWeatherSection — weather_sensors existence guard (Part 2 D)', () => {
+  it('skips a configured weather sensor whose entity no longer exists', () => {
+    const hass = makeHass({
+      entities: [{ entity_id: 'weather.home' }, { entity_id: 'sensor.present', state: '5' }],
+    });
+    const section = createWeatherSection(
+      'weather.home',
+      true,
+      false, // no forecast card — keep the row isolated
+      [
+        { entity: 'sensor.present', icon: 'mdi:gauge' },
+        { entity: 'sensor.gone', icon: 'mdi:gauge' },
+      ],
+      undefined,
+      false,
+      hass,
+    );
+    const dump = JSON.stringify(section);
+    expect(dump).toContain('sensor.present'); // present → in the row
+    expect(dump).not.toContain('sensor.gone'); // gone → dropped, no blank "unknown" value
+  });
+});
 
 describe('createWeatherSection', () => {
   it('returns null when no weather entity is available', () => {
