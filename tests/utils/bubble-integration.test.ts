@@ -149,40 +149,82 @@ describe('buildBubblePopupCards()', () => {
     expect((popup as { cards: unknown[] }).cards.length).toBeGreaterThan(0);
   });
 
-  it('renders a slider button for light + cover domains', () => {
+  // ----------------------------------------------------------------
+  // Real-control regression (the bug this fix closes): the pop-up body
+  // must be an HA `tile` carrying real inline controls — NOT a bare
+  // Bubble button shell. The old emit put a `button_type: slider`
+  // (light/cover → one slider at best) or `button_type: state`
+  // (climate/fan/media → ZERO controls) in here; the drawer was far
+  // less capable than HA more-info. These assert the opposite.
+  // ----------------------------------------------------------------
+  const popupBody = (id: string, hass: ReturnType<typeof makeHass>) =>
+    (buildBubblePopupCards([id], hass)[0] as { cards: Array<Record<string, unknown>> }).cards[0];
+
+  it('light pop-up body is a tile with brightness (+ colour-temp when supported)', () => {
     const hass = makeHass({
-      entities: [{ entity_id: 'light.kitchen' }, { entity_id: 'cover.shutter' }],
+      entities: [{ entity_id: 'light.kitchen', attributes: { supported_color_modes: ['color_temp'] } }],
     });
-    const cards = buildBubblePopupCards(['light.kitchen', 'cover.shutter'], hass) as Array<{
-      cards: Array<Record<string, unknown>>;
-    }>;
-    expect(cards[0].cards[0]).toEqual({
-      type: 'custom:bubble-card',
-      card_type: 'button',
-      button_type: 'slider',
-      entity: 'light.kitchen',
-    });
-    expect(cards[1].cards[0]).toEqual({
-      type: 'custom:bubble-card',
-      card_type: 'button',
-      button_type: 'slider',
-      entity: 'cover.shutter',
-    });
+    const body = popupBody('light.kitchen', hass);
+    expect(body.type).toBe('tile');
+    expect(body.entity).toBe('light.kitchen');
+    expect(body.features).toEqual([{ type: 'light-brightness' }, { type: 'light-color-temp' }]);
   });
 
-  it('renders a state button for climate / fan / media_player', () => {
+  it('cover pop-up body is a tile with open/close (+ position when supported)', () => {
     const hass = makeHass({
-      entities: [{ entity_id: 'climate.bedroom' }, { entity_id: 'fan.lounge' }, { entity_id: 'media_player.sonos' }],
+      entities: [{ entity_id: 'cover.shutter', attributes: { supported_features: 4 } }], // SET_POSITION
     });
-    const cards = buildBubblePopupCards(['climate.bedroom', 'fan.lounge', 'media_player.sonos'], hass) as Array<{
-      cards: Array<Record<string, unknown>>;
-    }>;
-    for (const c of cards) {
-      expect(c.cards[0]).toMatchObject({
-        type: 'custom:bubble-card',
-        card_type: 'button',
-        button_type: 'state',
-      });
+    const body = popupBody('cover.shutter', hass);
+    expect(body.type).toBe('tile');
+    expect(body.features).toEqual([{ type: 'cover-open-close' }, { type: 'cover-position' }]);
+  });
+
+  it('climate pop-up body is a tile with setpoint + HVAC modes', () => {
+    const hass = makeHass({
+      entities: [{ entity_id: 'climate.bedroom', attributes: { supported_features: 1 } }], // TARGET_TEMPERATURE
+    });
+    const body = popupBody('climate.bedroom', hass);
+    expect(body.type).toBe('tile');
+    expect(body.features).toEqual([{ type: 'target-temperature' }, { type: 'climate-hvac-modes' }]);
+  });
+
+  it('fan pop-up body is a tile with a speed control', () => {
+    const hass = makeHass({
+      entities: [{ entity_id: 'fan.lounge', attributes: { supported_features: 1 } }], // SET_SPEED
+    });
+    const body = popupBody('fan.lounge', hass);
+    expect(body.type).toBe('tile');
+    expect(body.features).toEqual([{ type: 'fan-speed' }]);
+  });
+
+  it('media_player pop-up body is a tile with transport + volume', () => {
+    const hass = makeHass({
+      entities: [{ entity_id: 'media_player.sonos', attributes: { supported_features: 16388 } }], // PLAY | VOLUME_SET
+    });
+    const body = popupBody('media_player.sonos', hass);
+    expect(body.type).toBe('tile');
+    expect(body.features).toEqual([
+      { type: 'media-player-playback' },
+      { type: 'media-player-volume-slider' },
+    ]);
+  });
+
+  it('NO actionable pop-up body is a bare Bubble button shell (the original bug)', () => {
+    const hass = makeHass({
+      entities: [
+        { entity_id: 'light.k', attributes: { supported_color_modes: ['brightness'] } },
+        { entity_id: 'cover.c', attributes: { supported_features: 4 } },
+        { entity_id: 'climate.t', attributes: { supported_features: 1 } },
+        { entity_id: 'fan.f', attributes: { supported_features: 1 } },
+        { entity_id: 'media_player.m', attributes: { supported_features: 16388 } },
+      ],
+    });
+    for (const id of ['light.k', 'cover.c', 'climate.t', 'fan.f', 'media_player.m']) {
+      const body = popupBody(id, hass);
+      expect(body.type).toBe('tile'); // never a custom:bubble-card button
+      expect(Array.isArray(body.features)).toBe(true);
+      expect((body.features as unknown[]).length).toBeGreaterThan(0); // real controls present
+      expect(body.button_type).toBeUndefined();
     }
   });
 

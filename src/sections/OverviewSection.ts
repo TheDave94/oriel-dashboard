@@ -500,6 +500,7 @@ export function createCustomCardsSection(
   const cards: LovelaceCardConfig[] = hideHeading
     ? []
     : [{ type: 'heading', heading: heading || localize('sections.custom_cards'), icon: icon || 'mdi:cards' }];
+  const contentStart = cards.length;
 
   for (const card of validCards) {
     if (Array.isArray(card.parsed_config)) {
@@ -511,6 +512,10 @@ export function createCustomCardsSection(
       cards.push(card.parsed_config as LovelaceCardConfig);
     }
   }
+
+  // Every validated entry was an empty array — the section would be just a
+  // heading with no content cards. Omit it rather than emit an orphan title.
+  if (cards.length === contentStart) return null;
 
   return { type: 'grid', cards };
 }

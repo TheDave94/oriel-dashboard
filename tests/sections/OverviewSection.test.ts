@@ -33,6 +33,26 @@ describe('createCustomCardsSection', () => {
     ).toBeNull();
   });
 
+  it('returns null when every entry is an empty array (no orphan heading)', () => {
+    // parsed_config: [] passes the validity filter (it's truthy) but contributes
+    // zero content cards — without the guard the section would be a lone heading.
+    expect(
+      createCustomCardsSection([
+        { parsed_config: [] as unknown as Record<string, unknown> },
+        { parsed_config: [] as unknown as Record<string, unknown> },
+      ])
+    ).toBeNull();
+  });
+
+  it('still renders when at least one entry has content alongside empty ones', () => {
+    const section = createCustomCardsSection([
+      { parsed_config: [] as unknown as Record<string, unknown> },
+      { parsed_config: { type: 'markdown', content: 'present' } as Record<string, unknown> },
+    ]);
+    expect(section).not.toBeNull();
+    expect(section?.cards?.some((c) => (c as { content?: string }).content === 'present')).toBe(true);
+  });
+
   it('renders parsed cards under the default heading', () => {
     const section = createCustomCardsSection([
       { parsed_config: { type: 'markdown', content: 'hello' } as Record<string, unknown> },

@@ -20,14 +20,19 @@
 // Bubble Card v3.2.0 (May 2026) made pop-ups **standalone cards** that
 // require a `cards: []` array of children — the pre-3.2 shape that
 // auto-rendered controls from a single top-level `entity`/`button_type`
-// pair no longer renders any content. `buildBubblePopupCards` now emits
-// the v3.2+ shape with a domain-appropriate Bubble button inside the
-// pop-up. The hash-routed navigation (`withBubbleTapAction`) is
-// unchanged across the v3.2 break.
+// pair no longer renders any content. `buildBubblePopupCards` emits the
+// v3.2+ shape and fills `cards:` with an HA `tile` carrying the
+// entity's real inline controls (brightness, setpoint, position,
+// transport, …) — a control surface on par with HA more-info, not a
+// bare button shell. The tile is HA-native, so it renders identically
+// on every Bubble Card 3.2.x (verified against v3.2.3, David's prod).
+// The hash-routed navigation (`withBubbleTapAction`) is unchanged
+// across the v3.2 break.
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
+import { buildDomainControlFeatures } from './domain-features';
 
 /**
  * Entity domains for which we emit Bubble Card pop-ups and rewire tile
@@ -79,39 +84,41 @@ export function withBubbleTapAction<T extends Record<string, unknown>>(
 }
 
 /**
- * Domain-appropriate content rendered inside the pop-up `cards: []`.
- * Lights and covers default to a slider button (the natural primary
- * control); climate / fan / media_player default to a state button
- * (Bubble auto-picks the right secondary controls per domain). Any
- * other domain falls through to a plain HA tile so the pop-up still
- * has something useful even for unsupported domains.
+ * Content rendered inside the pop-up `cards: []` — a real control
+ * surface, not a bare shell.
  *
- * Required as of Bubble Card v3.2.0 — a pop-up with no `cards:` renders
- * empty content (or surfaces the migration nag dialog on each load).
+ * Bubble Card pop-ups (v3.2+) are containers: they render whatever
+ * cards are in `cards:` and add no domain controls of their own. The
+ * previous implementation put a single Bubble *button* in here
+ * (`button_type: slider` for light/cover → at most one slider;
+ * `button_type: state` for climate/fan/media → a read-only label with
+ * ZERO controls), so the drawer was far less capable than HA's native
+ * more-info dialog.
+ *
+ * We instead drop an HA `tile` card carrying the entity's full set of
+ * supported inline features (brightness + colour-temp, position +
+ * open/close, setpoint + HVAC modes, fan speed, media transport +
+ * volume — see {@link buildDomainControlFeatures}). The tile is HA-
+ * native, so it renders identically regardless of Bubble Card version,
+ * and reuses Oriel's per-domain control knowledge rather than
+ * re-encoding it in Bubble's dialect. A pop-up has the vertical room to
+ * stack every supported control, giving more-info-equivalent parity
+ * inside the Bubble slide-up.
+ *
+ * Falls back to a bare `tile` (toggle + tap-through to more-info) for
+ * any entity with no inline features — still useful, never a shell.
  */
-function buildPopupContent(entityId: string): LovelaceCardConfig[] {
-  const domain = entityId.split('.')[0] ?? '';
-  switch (domain) {
-    case 'light':
-    case 'cover':
-      return [{
-        type: 'custom:bubble-card',
-        card_type: 'button',
-        button_type: 'slider',
-        entity: entityId,
-      }];
-    case 'climate':
-    case 'fan':
-    case 'media_player':
-      return [{
-        type: 'custom:bubble-card',
-        card_type: 'button',
-        button_type: 'state',
-        entity: entityId,
-      }];
-    default:
-      return [{ type: 'tile', entity: entityId }];
+function buildPopupContent(entityId: string, hass: HomeAssistant): LovelaceCardConfig[] {
+  const state = hass.states[entityId];
+  const features = state ? buildDomainControlFeatures(state) : [];
+  const tile: LovelaceCardConfig = { type: 'tile', entity: entityId };
+  if (features.length > 0) {
+    tile.features = features;
+    // Stack controls below the tile header (the drawer has the room) —
+    // not the compact inline row the summary tiles use.
+    tile.features_position = 'bottom';
   }
+  return [tile];
 }
 
 /**
@@ -158,7 +165,7 @@ export function buildBubblePopupCards(
       card_type: 'pop-up',
       hash: bubbleHashFor(id),
       name: friendly,
-      cards: buildPopupContent(id),
+      cards: buildPopupContent(id, hass),
     });
   }
   return cards;

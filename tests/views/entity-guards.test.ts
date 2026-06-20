@@ -84,3 +84,32 @@ describe('overview view — panel screensaver entity existence guard (E)', () =>
     expect(card.entity).toBe('sensor.kiosk');
   });
 });
+
+describe('room view — custom_cards orphan-title guard (hollow-shell class)', () => {
+  it('does not emit a lone title heading for an area custom card with an empty body', async () => {
+    const areaId = 'area_test';
+    const hass = makeHass({ areas: [{ area_id: areaId, name: 'Test Area' }], entities: [] });
+    const area = (hass.areas as Record<string, any>)[areaId];
+    const strategy = customElements.get('ll-strategy-view-oriel-room') as any;
+    const view = await strategy.generate(
+      {
+        area,
+        groups_options: {},
+        dashboardConfig: {
+          custom_cards: [
+            // Titled but parses to an empty array — must NOT yield a section that
+            // is just the "Empty" heading with nothing under it.
+            { target_area: areaId, title: 'Empty', parsed_config: [] },
+            { target_area: areaId, title: 'Has Content', parsed_config: [{ type: 'markdown', content: 'hi' }] },
+          ],
+        },
+      },
+      hass,
+    );
+    const headings = deepCards(view)
+      .filter((c) => c.type === 'heading')
+      .map((c) => c.heading);
+    expect(headings).not.toContain('Empty'); // orphan title suppressed
+    expect(headings).toContain('Has Content'); // real one still rendered
+  });
+});

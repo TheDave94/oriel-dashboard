@@ -2,7 +2,7 @@
 // VIEW STRATEGY — ROOM (Room detail with sensor badges + cameras)
 // ====================================================================
 
-import type { HomeAssistant, HassEntity } from '../types/homeassistant';
+import type { HomeAssistant } from '../types/homeassistant';
 import type {
   LovelaceViewConfig,
   LovelaceCardConfig,
@@ -31,23 +31,9 @@ import {
   isBubbleCardInstalled,
   withBubbleTapAction,
 } from '../utils/bubble-integration';
-
-// HA supported_features bitmask values
-const FAN_SET_SPEED = 1;
-const MEDIA_PAUSE = 1;
-const MEDIA_PLAY = 16384;
-const MEDIA_STOP = 4096;
-
-/** Check if a fan supports speed control */
-function fanSupportsSpeed(state: HassEntity): boolean {
-  return ((state.attributes?.supported_features as number) & FAN_SET_SPEED) !== 0;
-}
-
-/** Check if a media player supports playback controls */
-function mediaPlayerSupportsPlayback(state: HassEntity): boolean {
-  const f = (state.attributes?.supported_features as number) || 0;
-  return (f & (MEDIA_PAUSE | MEDIA_PLAY | MEDIA_STOP)) !== 0;
-}
+// Per-domain support predicates live in utils/domain-features — the
+// single source of truth shared with the Bubble pop-up control builder.
+import { fanSupportsSpeed, mediaPlayerSupportsPlayback } from '../utils/domain-features';
 
 class OrielViewRoom extends HTMLElement {
   static async generate(config: any, hass: HomeAssistant): Promise<LovelaceViewConfig> {
@@ -987,6 +973,9 @@ class OrielViewRoom extends HTMLElement {
       const inner = Array.isArray(cc.parsed_config)
         ? (cc.parsed_config as LovelaceCardConfig[])
         : [cc.parsed_config as LovelaceCardConfig];
+      // Skip when the entry has a title but an empty card array — emitting
+      // just the heading would leave an orphan title with nothing under it.
+      if (inner.length === 0) continue;
       const cards: LovelaceCardConfig[] = [];
       if (cc.title) {
         cards.push({ type: 'heading', heading: cc.title, heading_style: 'title' });
