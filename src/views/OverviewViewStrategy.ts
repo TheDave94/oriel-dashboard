@@ -496,7 +496,8 @@ class OrielViewOverview extends HTMLElement {
           {
             type: 'custom:oriel-screensaver-card',
             idle_minutes: dashboardConfig.panel_screensaver_after_minutes ?? 5,
-            ...(dashboardConfig.panel_screensaver_entity
+            ...(dashboardConfig.panel_screensaver_entity &&
+            hass.states[dashboardConfig.panel_screensaver_entity]
               ? { entity: dashboardConfig.panel_screensaver_entity }
               : {}),
             grid_options: { columns: 'full', rows: 0 },
