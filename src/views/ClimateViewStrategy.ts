@@ -7,6 +7,7 @@ import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelac
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
+import { applyAreaContextToSections, showAreaInSummaries } from '../utils/name-utils';
 import { isBubbleCardInstalled, withBubbleTapAction } from '../utils/bubble-integration';
 
 interface ClimateViewStrategyParams {
@@ -90,7 +91,12 @@ class OrielViewClimate extends HTMLElement {
     buildSection(idle, localize('climate.idle'), 'mdi:thermostat');
     buildSection(off, localize('climate.off'), 'mdi:power-off');
 
-    return { type: 'sections', sections };
+    return {
+      type: 'sections',
+      sections: showAreaInSummaries(dashboardConfig)
+        ? applyAreaContextToSections(sections, hass)
+        : sections,
+    };
   }
 }
 

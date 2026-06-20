@@ -7,8 +7,9 @@
 
 import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
+import type { LovelaceSectionConfig } from '../types/lovelace';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
-import type { AreasDisplay } from '../types/strategy';
+import type { AreasDisplay, OrielConfig } from '../types/strategy';
 
 // -- Module-level RegExp caches (shared across all calls) -------------
 
@@ -211,4 +212,69 @@ export function sortByLastChanged(a: string, b: string, hass: HomeAssistant): nu
   const dateA = new Date(stateA.last_changed).getTime();
   const dateB = new Date(stateB.last_changed).getTime();
   return dateB - dateA; // Newest first
+}
+
+// -- Area context for summary tiles (#131) ----------------------------
+
+/**
+ * Resolves the area name for an entity, falling back through its device:
+ * entity.area_id → device.area_id → null. Returns null when neither the
+ * entity nor its device is assigned to an area.
+ */
+export function getAreaNameForEntity(entityId: string, hass: HomeAssistant): string | null {
+  const entity = Registry.getEntity(entityId);
+  let areaId: string | null = entity?.area_id ?? null;
+  if (!areaId && entity?.device_id) {
+    const device = Registry.getDevice(entity.device_id);
+    areaId = device?.area_id ?? null;
+  }
+  if (!areaId) return null;
+  return hass.areas?.[areaId]?.name ?? null;
+}
+
+/**
+ * Builds an area-qualified tile label — "Area • Friendly name", or just the
+ * area name when no friendly name exists. Returns null when the entity has no
+ * area, so callers can leave the tile's default name untouched.
+ */
+export function areaQualifiedTileName(entityId: string, hass: HomeAssistant): string | null {
+  const areaName = getAreaNameForEntity(entityId, hass);
+  if (!areaName) return null;
+  const friendly = hass.states[entityId]?.attributes?.friendly_name as string | undefined;
+  return friendly ? `${areaName} • ${friendly}` : areaName;
+}
+
+/**
+ * Whether the "area context in summaries" capability is enabled. Reads the
+ * general `show_area_in_summaries` flag and honors the legacy battery-only
+ * `show_area_in_battery_view` flag as an alias (read-migration), so existing
+ * configs keep working. See issue #131.
+ */
+export function showAreaInSummaries(config: OrielConfig): boolean {
+  return config.show_area_in_summaries === true || config.show_area_in_battery_view === true;
+}
+
+/**
+ * Applies area-qualified names to every tile in a summary view's sections,
+ * mutating in place. Skips non-tile cards (headings, badges) and tiles that
+ * already carry an explicit name, and leaves area-less entities untouched.
+ * This is the single application point for the area-context capability across
+ * the flat summary views (batteries/security/climate). See issue #131.
+ */
+export function applyAreaContextToSections(
+  sections: LovelaceSectionConfig[],
+  hass: HomeAssistant,
+): LovelaceSectionConfig[] {
+  for (const section of sections) {
+    const cards = (section as { cards?: Array<Record<string, unknown>> }).cards;
+    if (!Array.isArray(cards)) continue;
+    for (const card of cards) {
+      if (card?.type !== 'tile' || typeof card.entity !== 'string' || card.name !== undefined) {
+        continue;
+      }
+      const label = areaQualifiedTileName(card.entity, hass);
+      if (label) card.name = label;
+    }
+  }
+  return sections;
 }

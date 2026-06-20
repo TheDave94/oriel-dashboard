@@ -236,7 +236,8 @@ export interface OrielConfig {
   hide_battery_notes_entities?: boolean; // default: false
   battery_critical_threshold?: number; // default: 20
   battery_low_threshold?: number; // default: 50
-  show_area_in_battery_view?: boolean; // default: false
+  show_area_in_battery_view?: boolean; // default: false — legacy alias of show_area_in_summaries (#131)
+  show_area_in_summaries?: boolean; // default: false — area context across battery/security/climate summaries (#131)
   unavailable_batteries_bucket?: 'critical' | 'good'; // default: 'good'
   show_camera_view?: boolean; // default: false
   show_humidity_summary?: boolean; // default: false

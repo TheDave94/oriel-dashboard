@@ -9,6 +9,7 @@
 //
 // Field list:
 //   summaries_columns                 select(2|4)
+//   show_area_in_summaries            boolean default false (cross-cutting)
 //   show_light_summary                boolean default true
 //   group_lights_by_floors            boolean
 //   nested_light_groups               boolean
@@ -20,7 +21,6 @@
 //   show_climate_summary              boolean
 //   show_battery_summary              boolean default true
 //     hide_mobile_app_batteries       boolean
-//     show_area_in_battery_view       boolean
 //     hide_battery_notes_entities     boolean
 //     battery_critical_threshold      number 1..99
 //     battery_low_threshold           number 1..99
@@ -52,7 +52,7 @@ interface SummariesData {
   show_climate_summary: boolean;
   show_battery_summary: boolean;
   hide_mobile_app_batteries: boolean;
-  show_area_in_battery_view: boolean;
+  show_area_in_summaries: boolean;
   hide_battery_notes_entities: boolean;
   battery_critical_threshold: number;
   battery_low_threshold: number;
@@ -78,7 +78,8 @@ function readData(c: OrielConfig): SummariesData {
     show_climate_summary: c.show_climate_summary === true,
     show_battery_summary: c.show_battery_summary !== false,
     hide_mobile_app_batteries: c.hide_mobile_app_batteries === true,
-    show_area_in_battery_view: c.show_area_in_battery_view === true,
+    // General flag; honor the legacy battery-only flag as a read-migrated alias (#131).
+    show_area_in_summaries: c.show_area_in_summaries === true || c.show_area_in_battery_view === true,
     hide_battery_notes_entities: c.hide_battery_notes_entities === true,
     battery_critical_threshold: c.battery_critical_threshold ?? 20,
     battery_low_threshold: c.battery_low_threshold ?? 50,
@@ -103,6 +104,9 @@ const SCHEMA = [
       },
     },
   },
+  // Cross-cutting summary option — applies to the flat summary views
+  // (batteries/security/climate). See issue #131.
+  { name: 'show_area_in_summaries', selector: { boolean: {} } },
   { name: 'show_light_summary', selector: { boolean: {} } },
   { name: 'group_lights_by_floors', selector: { boolean: {} } },
   { name: 'nested_light_groups', selector: { boolean: {} } },
@@ -125,7 +129,6 @@ const SCHEMA = [
   { name: 'show_climate_summary', selector: { boolean: {} } },
   { name: 'show_battery_summary', selector: { boolean: {} } },
   { name: 'hide_mobile_app_batteries', selector: { boolean: {} } },
-  { name: 'show_area_in_battery_view', selector: { boolean: {} } },
   { name: 'hide_battery_notes_entities', selector: { boolean: {} } },
   {
     name: 'battery_critical_threshold',
@@ -178,7 +181,9 @@ function buildPatch(v: Partial<SummariesData>): Partial<OrielConfig> {
   p.group_covers_by_floors = v.group_covers_by_floors === true ? true : undefined;
   p.show_climate_summary = v.show_climate_summary === true ? true : undefined;
   p.hide_mobile_app_batteries = v.hide_mobile_app_batteries === true ? true : undefined;
-  p.show_area_in_battery_view = v.show_area_in_battery_view === true ? true : undefined;
+  p.show_area_in_summaries = v.show_area_in_summaries === true ? true : undefined;
+  // Migrate the legacy battery-only flag away once the general toggle is saved (#131).
+  p.show_area_in_battery_view = undefined;
   p.hide_battery_notes_entities = v.hide_battery_notes_entities === true ? true : undefined;
 
   // selects → only persist when not the default.

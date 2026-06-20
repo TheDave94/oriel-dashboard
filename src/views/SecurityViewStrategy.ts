@@ -8,6 +8,7 @@ import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
 import { SECURITY_EXCLUDED_PLATFORMS } from '../utils/entity-filter';
+import { applyAreaContextToSections, showAreaInSummaries } from '../utils/name-utils';
 import { phoneFullWidth } from '../utils/viewport';
 
 interface SecurityViewStrategyParams {
@@ -345,7 +346,12 @@ class OrielViewSecurity extends HTMLElement {
       sections.push({ type: 'grid', cards });
     }
 
-    return { type: 'sections', sections };
+    return {
+      type: 'sections',
+      sections: showAreaInSummaries(config.config || {})
+        ? applyAreaContextToSections(sections, hass)
+        : sections,
+    };
   }
 }
 
