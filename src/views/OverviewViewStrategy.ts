@@ -249,6 +249,11 @@ class OrielViewOverview extends HTMLElement {
             showBadges: dashboardConfig.show_pollen_badges === true,
             showInactive: dashboardConfig.pollen_show_inactive === true,
           },
+          {
+            show: dashboardConfig.show_air_quality === true,
+            pollutants: dashboardConfig.air_quality_pollutants,
+            showGood: dashboardConfig.air_quality_show_good === true,
+          },
         ),
       ],
       [

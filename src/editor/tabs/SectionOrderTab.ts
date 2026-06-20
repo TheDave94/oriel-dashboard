@@ -37,6 +37,7 @@ import {
   detectAvailableTypes,
   detectPollenwatchInstalled,
 } from '../../utils/pollen';
+import { detectAirwatchInstalled } from '../../utils/airquality';
 
 export interface SectionMeta {
   icon: string;
@@ -356,7 +357,7 @@ function renderWeatherSub(
         `
       : nothing;
 
-  return html`${presentationDropdown}${entityDropdown}${renderPollenSub(ctx)}`;
+  return html`${presentationDropdown}${entityDropdown}${renderPollenSub(ctx)}${renderAirQualitySub(ctx)}`;
 }
 
 /**
@@ -500,6 +501,55 @@ function renderPollenSub(ctx: SectionOrderTabContext): TemplateResult | typeof n
       </label>
     </div>
     <div class="description">${localize('editor.show_pollen_badges_desc') || ''}</div>
+  `;
+}
+
+// Air-quality sub-controls — auto-hidden unless the AirWatch integration is
+// installed (mirrors the pollen subgroup's detect-gate). Minimal for v1: a
+// master toggle plus the "show good pollutants" density control.
+function renderAirQualitySub(ctx: SectionOrderTabContext): TemplateResult | typeof nothing {
+  if (!detectAirwatchInstalled(ctx.hass)) return nothing;
+
+  const showAirQuality = ctx.config.show_air_quality === true;
+  const showGood = ctx.config.air_quality_show_good === true;
+
+  const toggleRow = html`
+    <div class="section-order-sub">
+      <input
+        type="checkbox"
+        id="show-air-quality"
+        ?checked=${showAirQuality}
+        @change=${(e: Event) =>
+          ctx.onToggleChange('show_air_quality', (e.target as HTMLInputElement).checked, false)}
+      />
+      <label for="show-air-quality"
+        >${localize('editor.show_air_quality') || 'Show air quality card'}</label
+      >
+    </div>
+    <div class="description">${localize('editor.show_air_quality_desc') || ''}</div>
+  `;
+
+  if (!showAirQuality) return toggleRow;
+
+  return html`
+    ${toggleRow}
+    <div class="section-order-sub">
+      <input
+        type="checkbox"
+        id="air-quality-show-good"
+        ?checked=${showGood}
+        @change=${(e: Event) =>
+          ctx.onToggleChange(
+            'air_quality_show_good',
+            (e.target as HTMLInputElement).checked,
+            false,
+          )}
+      />
+      <label for="air-quality-show-good"
+        >${localize('editor.air_quality_show_good') || 'Show pollutants rated good'}</label
+      >
+    </div>
+    <div class="description">${localize('editor.air_quality_show_good_desc') || ''}</div>
   `;
 }
 
