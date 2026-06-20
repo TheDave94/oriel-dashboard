@@ -57,18 +57,41 @@ Ten custom cards and two tile features. Oriel emits them automatically where the
 - `oriel-notification-card` — sticky banner for smoke, leak, doorbell, and other alerts
 - `oriel-screensaver-card` — wall-panel idle screen
 - `oriel-voice-fab` — floating Assist voice button
-- `oriel-pollen-card` — pollen levels from the [PollenWatch](https://github.com/TheDave94/pollenwatch) integration
+- `oriel-pollen-card` — pollen levels, **auto-detected** from the [PollenWatch](https://github.com/TheDave94/pollenwatch) integration (rendered as a first-party card, no manual config)
 
 **Tile features**
 
 - `oriel-sticky-lock-feature` — keep a room mode pinned
 - `oriel-cost-overlay-feature` — per-tile €/h reading from power × tariff
 
+### Optional components
+
+Oriel generates a complete dashboard with **zero optional dependencies**. Install any of the six optional components it auto-detects and it lights up the matching surface — no manual card config — and every one has a built-in fallback, so nothing is ever broken.
+
+| Without optional components | With them installed |
+|---|---|
+| ![Oriel dashboard with no optional components](docs/images/dashboard-floor.png) | ![Oriel dashboard with the optional components installed](docs/images/dashboard-with.png) |
+
+Same home, same config. The **right** tier adds PollenWatch's pollen-forecast tiles under Weather — the one optional component that contributes a *new* static section. The other five enhance interaction or data density rather than adding a card (see the table). Both tiers render Oriel's built-in SVG sparkline in *Trends*; with ApexCharts installed that becomes a richer chart in a live browser.
+
+| Optional component | Type | How Oriel detects it | What it lights up | Fallback when absent |
+|---|---|---|---|---|
+| **PollenWatch** | HA integration | any `sensor.pollenwatch_*` entity | First-party pollen-forecast tiles (`oriel-pollen-card`) under Weather | Pollen section omitted |
+| **Bubble Card** | HACS plugin | `bubble-card` element registered | Pop-up tile navigation / actionable tiles | Standard more-info dialogs |
+| **ApexCharts** (`apexcharts-card`) | HACS plugin | `apexcharts-card` element + per-card `use_apexcharts` | Richer historical trend charts in the sparkline | Built-in SVG sparkline |
+| **Floorplan** (`floorplan-card`) | HACS plugin | `floorplan-card` element registered | Dedicated interactive floorplan view | View omitted; standard area cards |
+| **decluttering-card** | HACS plugin | `decluttering_templates` defined in config | Reusable card templates at the lovelace root | Templates ignored; inline cards |
+| **search-card** | HACS plugin | `search-card` element (+ `card-tools`), `show_search_card` | Entity search card | No search card; editor flags it missing |
+
+None is required; each has a clean fallback that works without it — less polished, never broken.
+
 ---
 
 ## Configuration
 
 The editor exposes everything. The notes below describe the main axes you will touch; the editor surfaces them with descriptions and HACS-install hints where relevant.
+
+![The Oriel strategy editor](docs/images/editor.png)
 
 **Section toggles.** Turn each overview section on or off — clock, search, weather, energy, summaries, favorites, areas. The summaries themselves are also individually toggleable (lights, covers, security, batteries, climate).
 
@@ -80,7 +103,7 @@ The editor exposes everything. The notes below describe the main axes you will t
 
 **Per-user dashboards.** Different layouts per Home Assistant user or label.
 
-**HACS plugin enhancements.** When Bubble Card, ApexCharts, decluttering-card, or floorplan-card are installed, Oriel auto-detects them and offers richer card variants. Every feature also has a clean fallback that works without any HACS plugin — less polished, never broken.
+**HACS plugin enhancements.** Oriel auto-detects optional components — PollenWatch, Bubble Card, ApexCharts, decluttering-card, floorplan-card, and search-card — and lights up richer variants, each with a clean fallback that works without it. See the full table under [Optional components](#optional-components).
 
 **Plugin extension API.** Third-party plugins can register sections and badges via `window.oriel.registerSection(...)`.
 
@@ -140,6 +163,18 @@ Built by [@TheDave94](https://github.com/TheDave94).
 - [TRANSLATING.md](TRANSLATING.md) — how to translate this README
 
 ---
+
+## Related projects
+
+Oriel works on its own, and is also deliberately built to work alongside two
+multi-source Home Assistant integrations:
+
+- **[PollenWatch](https://github.com/TheDave94/pollenwatch)** — a pollen
+  integration that Oriel **auto-detects** and renders as a first-party pollen
+  card + badges, with no manual card configuration.
+- **[AirWatch](https://github.com/TheDave94/airwatch)** — an air-quality
+  integration sharing PollenWatch's architecture. Oriel is designed to complement
+  it; a first-party AirWatch air-quality card is *planned* (not yet shipped).
 
 ## License
 

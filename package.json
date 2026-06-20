@@ -18,6 +18,7 @@
     "e2e:api": "vitest run tests/e2e/strategy-api.test.ts",
     "e2e:browser": "playwright test",
     "e2e": "npm run e2e:api && npm run e2e:browser",
+    "screenshots": "tools/screenshots/run.sh",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
