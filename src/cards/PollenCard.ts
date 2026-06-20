@@ -26,8 +26,10 @@ import {
   pollenLevel,
   pollenSensorId,
   pollenSeverityColor,
+  pollenSourceMeta,
   pollenThresholdBasis,
   type PollenLevel,
+  type PollenSourceMeta,
   type ThresholdBasis,
 } from '../utils/pollen';
 import { localize } from '../utils/localize';
@@ -136,6 +138,13 @@ class OrielPollenCard extends LitElement {
       color: var(--secondary-text-color);
       text-transform: capitalize;
     }
+    .tile-sources {
+      font-size: var(--ha-font-size-xs, 11px);
+      color: var(--secondary-text-color);
+      opacity: 0.8;
+      font-variant-numeric: tabular-nums;
+      cursor: help;
+    }
     .chips {
       display: flex;
       flex-wrap: wrap;
@@ -228,7 +237,11 @@ class OrielPollenCard extends LitElement {
       const id = pollenSensorId(source, type);
       const state = this.hass!.states[id];
       const level = pollenLevel(source, state);
-      return { type, id, level };
+      // N-of-M source-count badge + which-sources-disagree detail, read from
+      // the consensus sensor's attributes. Analytics-only — raw sources carry
+      // no consensus. See pollenSourceMeta (#131 audit, Finding 1 + 2b).
+      const meta = source === 'analytics' ? pollenSourceMeta(state) : null;
+      return { type, id, level, meta };
     });
     // When show_inactive is off (default), drop species currently at
     // `none`. Unknown/null levels still render — the user might want to
@@ -253,12 +266,17 @@ class OrielPollenCard extends LitElement {
   }
 
   private _renderTiles(
-    rows: Array<{ type: PollenType; id: string; level: PollenLevel | null }>,
+    rows: Array<{
+      type: PollenType;
+      id: string;
+      level: PollenLevel | null;
+      meta: PollenSourceMeta | null;
+    }>,
   ): TemplateResult {
     return html`
       <ha-card>
         <div class="tiles">
-          ${rows.map(({ type, id, level }) => {
+          ${rows.map(({ type, id, level, meta }) => {
             const basis = pollenThresholdBasis(this.hass!.states[id]);
             return html`
               <div
@@ -280,6 +298,7 @@ class OrielPollenCard extends LitElement {
                 ></ha-icon>
                 <span class="tile-name">${this._typeLabel(type)}</span>
                 <span class="tile-state">${this._levelLabel(level)}</span>
+                ${this._renderSourceBadge(meta)}
                 ${this._renderProvenanceMarker(basis, 'dot')}
               </div>
             `;
@@ -290,12 +309,17 @@ class OrielPollenCard extends LitElement {
   }
 
   private _renderChips(
-    rows: Array<{ type: PollenType; id: string; level: PollenLevel | null }>,
+    rows: Array<{
+      type: PollenType;
+      id: string;
+      level: PollenLevel | null;
+      meta: PollenSourceMeta | null;
+    }>,
   ): TemplateResult {
     return html`
       <ha-card>
         <div class="chips">
-          ${rows.map(({ type, id, level }) => {
+          ${rows.map(({ type, id, level, meta }) => {
             const basis = pollenThresholdBasis(this.hass!.states[id]);
             return html`
               <button
@@ -308,6 +332,7 @@ class OrielPollenCard extends LitElement {
                 ></ha-icon>
                 <span>${this._typeLabel(type)}</span>
                 <span style="opacity: 0.7;">${this._levelLabel(level)}</span>
+                ${this._renderSourceBadge(meta)}
                 ${this._renderProvenanceMarker(basis, 'icon')}
               </button>
             `;
@@ -322,6 +347,7 @@ class OrielPollenCard extends LitElement {
       type: PollenType;
       id: string;
       level: PollenLevel | null;
+      meta: PollenSourceMeta | null;
     }>,
   ): TemplateResult {
     return html`
@@ -394,6 +420,31 @@ class OrielPollenCard extends LitElement {
         aria-label=${text}
       ></span>
     `;
+  }
+
+  // "N of M sources" honesty badge — distinguishes a single-source reading
+  // (1/3) from a cross-validated one (3/3), read straight from the consensus
+  // sensor's source_count / max_possible_sources. The title surfaces the
+  // per-source detail (which sources, and on a `mixed` species which ones
+  // disagree). Only present for the analytics source. See #131 audit.
+  private _renderSourceBadge(
+    meta: PollenSourceMeta | null,
+  ): TemplateResult | typeof nothing {
+    if (!meta) return nothing;
+    const detail = this._sourcesDetail(meta);
+    return html`
+      <span class="tile-sources" title=${detail} aria-label=${detail}
+        >${meta.count}/${meta.max}</span
+      >
+    `;
+  }
+
+  private _sourcesDetail(meta: PollenSourceMeta): string {
+    const LABELS = ['none', 'low', 'high'];
+    const parts = Object.entries(meta.levels).map(
+      ([src, lvl]) => `${src.replace(/_/g, ' ')}: ${LABELS[lvl] ?? lvl}`,
+    );
+    return parts.length ? parts.join(' · ') : `${meta.count} of ${meta.max} sources`;
   }
 
   private _typeLabel(type: PollenType): string {

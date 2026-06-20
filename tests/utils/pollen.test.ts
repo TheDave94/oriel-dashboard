@@ -31,6 +31,7 @@ import {
   pollenLevel,
   pollenSensorId,
   pollenSeverityColor,
+  pollenSourceMeta,
   resolvePollenTypes,
 } from '../../src/utils/pollen';
 import type { HassEntity } from '../../src/types/homeassistant';
@@ -343,5 +344,45 @@ describe('pollenIcon', () => {
 
   it('uses a mushroom mark for the lone fungal spore', () => {
     expect(pollenIcon('alternaria')).toBe('mdi:mushroom-outline');
+  });
+});
+
+describe('pollenSourceMeta — consensus source-count provenance (#131 audit)', () => {
+  const mk = (attributes: Record<string, unknown>): HassEntity =>
+    ({ state: 'high', attributes }) as unknown as HassEntity;
+
+  it('reads count / max / levels from the consensus attributes', () => {
+    expect(
+      pollenSourceMeta(
+        mk({ source_count: 2, max_possible_sources: 3, source_levels: { open_meteo: 2, dwd: 0 } }),
+      ),
+    ).toEqual({ count: 2, max: 3, levels: { open_meteo: 2, dwd: 0 } });
+  });
+
+  it('surfaces a single-source reading as 1 of M (the honesty signal)', () => {
+    const meta = pollenSourceMeta(
+      mk({ source_count: 1, max_possible_sources: 3, source_levels: { open_meteo: 1 } }),
+    );
+    expect(meta?.count).toBe(1);
+    expect(meta?.max).toBe(3);
+  });
+
+  it('returns null when the count/max attributes are absent (pre-contract sensor)', () => {
+    expect(pollenSourceMeta(mk({ level_label: 'high' }))).toBeNull();
+  });
+
+  it('returns null when max < 1 (no real denominator)', () => {
+    expect(pollenSourceMeta(mk({ source_count: 0, max_possible_sources: 0 }))).toBeNull();
+  });
+
+  it('returns null for a missing state object', () => {
+    expect(pollenSourceMeta(undefined)).toBeNull();
+  });
+
+  it('drops non-numeric source_levels entries', () => {
+    const meta = pollenSourceMeta(
+      mk({ source_count: 2, max_possible_sources: 2, source_levels: { open_meteo: 2, bad: 'x' } }),
+    );
+    expect(meta?.levels).toEqual({ open_meteo: 2 });
   });
 });

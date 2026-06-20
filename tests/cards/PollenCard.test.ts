@@ -217,3 +217,62 @@ describe('oriel-pollen-card — threshold provenance marker', () => {
     });
   });
 });
+
+describe('oriel-pollen-card — N of M source badge (#131 audit)', () => {
+  async function renderBadge(
+    source: 'analytics' | 'open_meteo',
+    attrs: Record<string, unknown>,
+  ): Promise<ShadowRoot> {
+    const el = mount();
+    el.setConfig({
+      source,
+      types: ['grass'],
+      presentation: 'consensus_tiles',
+      show_inactive: true,
+    });
+    const id =
+      source === 'analytics'
+        ? 'sensor.pollenwatch_analytics_grass_consensus'
+        : `sensor.pollenwatch_${source}_grass`;
+    el.hass = { states: { [id]: { state: 'high', attributes: attrs } }, locale: { language: 'en' } };
+    await el.updateComplete;
+    return el.shadowRoot!;
+  }
+
+  it('renders N/M from the analytics consensus attributes', async () => {
+    const root = await renderBadge('analytics', {
+      source_count: 2,
+      max_possible_sources: 3,
+      source_levels: { open_meteo: 2, dwd: 0 },
+    });
+    const badge = root.querySelector('.tile-sources');
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent?.trim()).toBe('2/3');
+    // which-sources-disagree detail (Finding 2b) on the title
+    expect(badge!.getAttribute('title')).toContain('open meteo: high');
+    expect(badge!.getAttribute('title')).toContain('dwd: none');
+  });
+
+  it('surfaces a single-source reading as 1/3 (honesty signal)', async () => {
+    const root = await renderBadge('analytics', {
+      source_count: 1,
+      max_possible_sources: 3,
+      source_levels: { open_meteo: 2 },
+    });
+    expect(root.querySelector('.tile-sources')!.textContent?.trim()).toBe('1/3');
+  });
+
+  it('omits the badge gracefully when the consensus carries no source counts', async () => {
+    const root = await renderBadge('analytics', { level_label: 'high' });
+    expect(root.querySelector('.tile-sources')).toBeNull();
+  });
+
+  it('omits the badge for a raw source (no consensus to count)', async () => {
+    const root = await renderBadge('open_meteo', {
+      level_label: 'high',
+      source_count: 2,
+      max_possible_sources: 3,
+    });
+    expect(root.querySelector('.tile-sources')).toBeNull();
+  });
+});

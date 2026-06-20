@@ -219,6 +219,42 @@ export function pollenThresholdBasis(
   return null;
 }
 
+/**
+ * Source-count provenance from the analytics consensus sensor. PollenWatch
+ * exposes `source_count` / `max_possible_sources` (the "N of M sources" badge
+ * denominator) and `source_levels` (the per-source `{source: level}` dict —
+ * which sources disagree) on the SAME consensus entity oriel already reads, so
+ * this is a pure read of attributes that were previously dropped — no new
+ * entity. It is the honesty signal that distinguishes a single-source reading
+ * from a cross-validated one, and on a `mixed` species it names which sources
+ * disagree. Analytics-only: raw per-source sensors carry no consensus, so this
+ * returns `null` for them. Mirrors the thin-reader pattern (read, never
+ * re-derive). See PollenWatch `ConsensusSensor.extra_state_attributes`.
+ */
+export interface PollenSourceMeta {
+  /** Sources contributing to this species right now. */
+  count: number;
+  /** Registry ceiling — the badge denominator (how many sources could cover it). */
+  max: number;
+  /** Per-source level `{source_key: 0|1|2}` for the contributing sources. */
+  levels: Record<string, number>;
+}
+
+export function pollenSourceMeta(state: HassEntity | undefined): PollenSourceMeta | null {
+  if (!state) return null;
+  const count = state.attributes?.source_count;
+  const max = state.attributes?.max_possible_sources;
+  if (typeof count !== 'number' || typeof max !== 'number' || max < 1) return null;
+  const rawLevels = state.attributes?.source_levels;
+  const levels: Record<string, number> = {};
+  if (rawLevels && typeof rawLevels === 'object') {
+    for (const [key, value] of Object.entries(rawLevels)) {
+      if (typeof value === 'number') levels[key] = value;
+    }
+  }
+  return { count, max, levels };
+}
+
 /** Severity → HA palette token used by tiles, chips, badges. */
 export function pollenSeverityColor(level: PollenLevel | null): string {
   switch (level) {
