@@ -9,6 +9,7 @@ import type { AreaRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
+import { showAreaInSummaries, joinAreaName } from '../utils/name-utils';
 import { withBubbleTapAction } from '../utils/bubble-integration';
 
 interface LovelaceCardElement extends HTMLElement {
@@ -400,10 +401,20 @@ class OrielCoversGroupCard extends LitElement {
 
     card = document.createElement('hui-tile-card');
     card.hass = this.hass;
+    // The covers group card is summary-only (room covers render as inline tiles
+    // in RoomViewStrategy), so there's no single-area context to guard against —
+    // when the area-context capability is on, always prefix the entity's area.
+    // Cached area resolver keeps this tile-pooling friendly. See issue #131.
+    let name = this._stripCoverType(entityId);
+    if (showAreaInSummaries(this._config.config || {})) {
+      const areaId = this._getAreaForEntity(entityId);
+      const areaName = areaId ? this.hass?.areas?.[areaId]?.name : undefined;
+      name = joinAreaName(areaName, name);
+    }
     let tileConfig: Record<string, unknown> = {
       type: 'tile',
       entity: entityId,
-      name: this._stripCoverType(entityId),
+      name,
       features: [{ type: 'cover-open-close' }],
       vertical: false,
       features_position: 'inline',

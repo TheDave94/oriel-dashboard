@@ -9,7 +9,7 @@ import type { AreaRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
-import { stripAreaName } from '../utils/name-utils';
+import { stripAreaName, showAreaInSummaries, joinAreaName } from '../utils/name-utils';
 import { withBubbleTapAction } from '../utils/bubble-integration';
 
 declare global {
@@ -318,7 +318,20 @@ class OrielLightsGroupCard extends LitElement {
   private _getDisplayName(entityId: string): string | undefined {
     if (!this.hass) return undefined;
     if (this._config.area) {
+      // Single-area (room) context — strip the redundant area from the name.
       return stripAreaName(entityId, this._config.area, this.hass);
+    }
+    // Cross-area (summary) context — when the area-context capability is on,
+    // prefix the entity's area so identically named lights in different rooms
+    // are distinguishable. Uses the card's cached area resolver to stay
+    // tile-pooling friendly (no per-render registry lookups). See issue #131.
+    if (showAreaInSummaries(this._config.config || {})) {
+      const areaId = this._getAreaForEntity(entityId);
+      const areaName = areaId ? this.hass.areas?.[areaId]?.name : undefined;
+      if (areaName) {
+        const friendly = this.hass.states[entityId]?.attributes?.friendly_name as string | undefined;
+        return joinAreaName(areaName, friendly ?? entityId.split('.')[1] ?? entityId);
+      }
     }
     return undefined;
   }
