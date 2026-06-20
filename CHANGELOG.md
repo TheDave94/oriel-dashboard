@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.21.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.0...v4.21.1) (2026-06-20)
+
+
+### Bug Fixes
+
+* light/cover/climate tile taps do nothing with Bubble drawers (dead-hash) ([#148](https://github.com/TheDave94/oriel-dashboard/issues/148)) ([781b5b6](https://github.com/TheDave94/oriel-dashboard/commit/781b5b600f354f15560002bdc7c4477aa4f3e8b8))
+
 ## [4.21.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.20.0...v4.21.0) (2026-06-20)
 
 
