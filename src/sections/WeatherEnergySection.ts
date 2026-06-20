@@ -25,6 +25,7 @@ import {
   pollenSeverityColor,
   resolvePollenTypes,
 } from '../utils/pollen';
+import { detectAirwatchInstalled } from '../utils/airquality';
 
 // Entity ids follow `domain.object_id` where each part is lowercase
 // letters/digits/underscores. Anything else is a malformed config value
@@ -209,6 +210,31 @@ function buildPollenCard(
   };
 }
 
+export interface AirQualitySectionOptions {
+  show: boolean;
+  /** Empty → the card shows all pollutants currently present. */
+  pollutants?: string[];
+  /** When false (default), the card hides pollutants at level `good`. */
+  showGood: boolean;
+}
+
+/**
+ * Build the air-quality sub-card. Returns null when disabled or the AirWatch
+ * integration isn't installed. Mirrors buildPollenCard — detection lives here.
+ */
+function buildAirQualityCard(
+  hass: HomeAssistant | undefined,
+  opts: AirQualitySectionOptions | undefined,
+): LovelaceCardConfig | null {
+  if (!hass || !opts || !opts.show) return null;
+  if (!detectAirwatchInstalled(hass)) return null;
+  return {
+    type: 'custom:oriel-air-quality-card',
+    pollutants: opts.pollutants ?? [],
+    show_good: opts.showGood,
+  };
+}
+
 /**
  * Build heading badges for every pollen type whose analytics consensus
  * is currently "active" (medium or high). Always reads from
@@ -255,6 +281,7 @@ export function createWeatherSection(
   hideHeading: boolean = false,
   hass?: HomeAssistant,
   pollen?: PollenSectionOptions,
+  airQuality?: AirQualitySectionOptions,
 ): LovelaceSectionConfig | null {
   if (!weatherEntity || !showWeather) return null;
 
@@ -284,6 +311,9 @@ export function createWeatherSection(
 
   const pollenCard = buildPollenCard(hass, pollen);
   if (pollenCard) cards.push(pollenCard);
+
+  const airQualityCard = buildAirQualityCard(hass, airQuality);
+  if (airQualityCard) cards.push(airQualityCard);
 
   return { type: 'grid', cards };
 }

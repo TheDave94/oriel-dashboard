@@ -638,6 +638,16 @@ export interface OrielConfig {
    * bad?" signal). Default: false.
    */
   show_pollen_badges?: boolean;
+  /**
+   * Show the air-quality card in the weather section, auto-detected from the
+   * AirWatch integration (multi-source consensus, worst sub-index, N-of-M
+   * source badge, explicit divergence). Default: false.
+   */
+  show_air_quality?: boolean;
+  /** Restrict the air-quality card to these pollutant keys; empty → all present. */
+  air_quality_pollutants?: string[];
+  /** When true, the air-quality card also shows pollutants at level `good`. Default: false. */
+  air_quality_show_good?: boolean;
   show_now_playing_badge?: boolean; // default: false (auto-hides when nothing's playing)
   show_vacuums_section?: boolean; // default: false (auto-hides without vacuum/mower)
   show_sun_badge?: boolean; // default: false (requires HA sun integration / sun.sun entity)

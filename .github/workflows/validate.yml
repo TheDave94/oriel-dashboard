@@ -182,7 +182,12 @@ jobs:
           # `pollen_show_inactive` editor toggle + descriptions.
           # Growth is ~1KB gzipped; budget set with headroom for future
           # locale expansion without churning this file on every PR.
-          check "oriel-core.*.js.gz" 67
+          # v4.20 — raised 67 → 70 KB to absorb oriel-air-quality-card: a
+          # generate-time home-screen sub-card (sibling of oriel-pollen-card,
+          # so it lives in core too) — the AirWatch reader + Lit card +
+          # per-pollutant labels/icons + en/de i18n keys. ~2KB gzipped; 1KB
+          # headroom kept.
+          check "oriel-core.*.js.gz" 70
           check "oriel-views.*.js.gz" 20
           check "oriel-editor.*.js.gz" 80
           check "oriel-lit.*.js.gz" 25
