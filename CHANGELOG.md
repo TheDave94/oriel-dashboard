@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.21.3](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.2...v4.21.3) (2026-06-20)
+
+
+### Bug Fixes
+
+* render real controls in Bubble pop-up drawers (all 5 domains) ([#153](https://github.com/TheDave94/oriel-dashboard/issues/153)) ([36daf10](https://github.com/TheDave94/oriel-dashboard/commit/36daf10dfb096d96cd56bc3f9323205bb1970f2a))
+
 ## [4.21.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.1...v4.21.2) (2026-06-20)
 
 
