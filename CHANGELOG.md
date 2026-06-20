@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.21.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.20.0...v4.21.0) (2026-06-20)
+
+
+### Features
+
+* AirWatch air-quality card (oriel-air-quality-card) ([#146](https://github.com/TheDave94/oriel-dashboard/issues/146)) ([42bcc19](https://github.com/TheDave94/oriel-dashboard/commit/42bcc19ba400b9c017171c73ad3cceca4cccf367)), closes [#131](https://github.com/TheDave94/oriel-dashboard/issues/131)
+
 ## [4.20.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.19.0...v4.20.0) (2026-06-20)
 
 
