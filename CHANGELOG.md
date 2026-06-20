@@ -6,6 +6,14 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.21.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.1...v4.21.2) (2026-06-20)
+
+
+### Bug Fixes
+
+* guard search-card emit, alarm_entity drift, and idle-nav home target ([#150](https://github.com/TheDave94/oriel-dashboard/issues/150)) ([05af421](https://github.com/TheDave94/oriel-dashboard/commit/05af421e5461ed17be70ece1001edf363a7d3d66))
+* guard view emissions against absent/drifted entity refs ([#151](https://github.com/TheDave94/oriel-dashboard/issues/151)) ([a4f892c](https://github.com/TheDave94/oriel-dashboard/commit/a4f892c84805844040126943730c8c075bd87818))
+
 ## [4.21.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.0...v4.21.1) (2026-06-20)
 
 
