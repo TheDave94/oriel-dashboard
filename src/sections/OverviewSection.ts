@@ -18,6 +18,7 @@ import {
   isBubbleCardInstalled,
   withBubbleTapAction,
 } from '../utils/bubble-integration';
+import { isCardInstalled } from '../utils/section-card-registry';
 
 // --------------------------------------------------------------------
 // Helpers to surface room-section cards inside the favorites grid.
@@ -161,8 +162,14 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
   const showClockCard = config.show_clock_card !== false;
   const hidden = new Set(config.hidden_section_headings || []);
 
-  // Check if alarm entity is configured
-  const alarmEntity = config.alarm_entity;
+  // Check if alarm entity is configured AND still exists. Guarding on
+  // hass.states avoids pinning a dead "entity not found" tile (and an
+  // otherwise-empty heading) when the alarm entity was renamed/removed — the
+  // same existence check every other user-supplied tile source already applies.
+  const alarmEntity =
+    config.alarm_entity && hass.states[config.alarm_entity]
+      ? config.alarm_entity
+      : undefined;
 
   const cards: LovelaceCardConfig[] = [];
 
@@ -217,17 +224,23 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
   // pointing at HA's built-in global search (no external dependency).
   if (showSearchCard) {
     const variant = config.search_card_variant === 'tip' ? 'tip' : 'custom';
-    if (variant === 'tip') {
+    // Only emit the HACS custom:search-card when it's actually installed —
+    // otherwise it's a dead "Custom element doesn't exist" card. The editor
+    // warns, but YAML-authored config or a post-config uninstall bypasses that,
+    // so gate at emit time and fall back to the dependency-free tip (mirrors the
+    // floorplan/apex/registry degrade pattern).
+    const useCustom = variant === 'custom' && isCardInstalled('search-card');
+    if (useCustom) {
+      cards.push({
+        type: 'custom:search-card',
+        grid_options: { columns: 'full' },
+      });
+    } else {
       cards.push({
         type: 'markdown',
         content:
           '### 🔍 ' + localize('editor.search_card_tip_title') + '\n\n' +
           localize('editor.search_card_tip_body'),
-        grid_options: { columns: 'full' },
-      });
-    } else {
-      cards.push({
-        type: 'custom:search-card',
         grid_options: { columns: 'full' },
       });
     }

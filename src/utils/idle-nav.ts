@@ -28,19 +28,27 @@ function clearTimer(): void {
 
 function navigateHome(): void {
   if (typeof window === 'undefined') return;
-  // Don't navigate if we're already on /home — saves an unnecessary
-  // history push and re-render.
-  const parts = window.location.pathname.split('/').filter(Boolean);
-  const currentView = parts[parts.length - 1] ?? '';
-  if (currentView === 'home') return;
-  // Replace the last segment with 'home'. HA's lovelace router treats
-  // the path as `/<dashboard>/<view>` so we keep the dashboard segment
-  // and swap the view.
-  const newPath = '/' + [...parts.slice(0, -1), 'home'].join('/');
+  const newPath = homePathFor(window.location.pathname);
+  // Already on the overview → skip the history push + re-render.
+  if (newPath === window.location.pathname) return;
   window.history.pushState(null, '', newPath);
   window.dispatchEvent(
     new CustomEvent('location-changed', { detail: { replace: false } }),
   );
+}
+
+/**
+ * The overview path for the dashboard the given pathname belongs to: the
+ * dashboard ROOT segment + `home` (Oriel emits the overview at path `home`).
+ *
+ * Anchoring to `parts[0]` (not swapping the last segment) keeps the dashboard
+ * for `/<dashboard>` (1-segment) and deeper paths alike — swapping the last
+ * segment dropped the dashboard on a 1-segment path (→ `/home`) and mis-nested
+ * on a 3-segment one. For the standard `/<dashboard>/<view>` both agree.
+ */
+export function homePathFor(pathname: string): string {
+  const parts = pathname.split('/').filter(Boolean);
+  return parts.length > 0 ? `/${parts[0]}/home` : '/home';
 }
 
 function arm(): void {

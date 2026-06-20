@@ -13,6 +13,7 @@ import { Registry } from '../../src/Registry';
 import { createCustomCardsSection, createOverviewSection } from '../../src/sections/OverviewSection';
 import { makeHass } from '../fixtures/hass';
 import { bubbleHashFor } from '../../src/utils/bubble-integration';
+import { localize } from '../../src/utils/localize';
 
 beforeEach(() => {
   Registry.resetForTesting();
@@ -269,6 +270,88 @@ describe('createOverviewSection', () => {
       for (const id of favEntities) {
         expect(byEntity[id]).not.toHaveProperty('tap_action');
       }
+    });
+  });
+});
+
+describe('createOverviewSection — emit-time guards (Part 2 A/B)', () => {
+  const realGet = customElements.get.bind(customElements);
+  let spy: ReturnType<typeof vi.spyOn> | undefined;
+  afterEach(() => {
+    spy?.mockRestore();
+    spy = undefined;
+  });
+
+  function cardsFor(
+    config: Record<string, unknown>,
+    states: Array<{ entity_id: string }> = [],
+    showSearchCard = false,
+  ): Array<Record<string, unknown>> {
+    const hass = makeHass({ entities: states });
+    Registry.initialize(hass, config);
+    const section = createOverviewSection({
+      someSensorId: 'sensor.dummy',
+      showSearchCard,
+      config,
+      hass,
+    });
+    return (section?.cards ?? []) as Array<Record<string, unknown>>;
+  }
+
+  describe('search card — gate the HACS custom:search-card on install', () => {
+    function withSearchCard(installed: boolean): void {
+      spy = vi.spyOn(customElements, 'get').mockImplementation((tag) =>
+        tag === 'search-card' && installed
+          ? (HTMLElement as unknown as CustomElementConstructor)
+          : realGet(tag),
+      );
+    }
+
+    it('emits custom:search-card when it is installed', () => {
+      withSearchCard(true);
+      const types = cardsFor({}, [], true).map((c) => c.type);
+      expect(types).toContain('custom:search-card');
+    });
+
+    it('falls back to the markdown tip when search-card is NOT installed (no dead card)', () => {
+      withSearchCard(false);
+      const types = cardsFor({}, [], true).map((c) => c.type);
+      expect(types).not.toContain('custom:search-card');
+      expect(types).toContain('markdown');
+    });
+
+    it('tip variant always emits markdown regardless of install', () => {
+      withSearchCard(true);
+      const types = cardsFor({ search_card_variant: 'tip' }, [], true).map((c) => c.type);
+      expect(types).not.toContain('custom:search-card');
+      expect(types).toContain('markdown');
+    });
+  });
+
+  describe('alarm_entity — existence guard (entity drift)', () => {
+    it('emits the alarm tile when the entity exists', () => {
+      const cards = cardsFor({ alarm_entity: 'alarm_control_panel.home' }, [
+        { entity_id: 'alarm_control_panel.home' },
+      ]);
+      expect(
+        cards.some((c) => c.type === 'tile' && c.entity === 'alarm_control_panel.home'),
+      ).toBe(true);
+    });
+
+    it('omits a dead alarm tile — and does not force the overview heading — when the entity is gone', () => {
+      const overviewHeading = localize('sections.overview');
+      const gone = cardsFor({ alarm_entity: 'alarm_control_panel.gone', show_clock_card: false }, []);
+      expect(gone.some((c) => c.entity === 'alarm_control_panel.gone')).toBe(false);
+      // clock off + alarm gone → the overview heading must NOT be forced
+      expect(gone.some((c) => c.type === 'heading' && c.heading === overviewHeading)).toBe(false);
+      // contrast: a present alarm (clock off) DOES surface the overview heading + tile
+      const present = cardsFor({ alarm_entity: 'alarm_control_panel.home', show_clock_card: false }, [
+        { entity_id: 'alarm_control_panel.home' },
+      ]);
+      expect(
+        present.some((c) => c.type === 'tile' && c.entity === 'alarm_control_panel.home'),
+      ).toBe(true);
+      expect(present.some((c) => c.type === 'heading' && c.heading === overviewHeading)).toBe(true);
     });
   });
 });
