@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.20.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.19.0...v4.20.0) (2026-06-20)
+
+
+### Features
+
+* N-of-M source badge on the pollen card ([#143](https://github.com/TheDave94/oriel-dashboard/issues/143)) ([fecb12d](https://github.com/TheDave94/oriel-dashboard/commit/fecb12d441bba3015e52af1de426000f347cfb6e)), closes [#131](https://github.com/TheDave94/oriel-dashboard/issues/131)
+
 ## [4.19.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.18.0...v4.19.0) (2026-06-20)
 
 
