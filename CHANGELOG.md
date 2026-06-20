@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.19.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.18.0...v4.19.0) (2026-06-20)
+
+
+### Features
+
+* extend area context in summaries to lights & covers ([#141](https://github.com/TheDave94/oriel-dashboard/issues/141)) ([2169607](https://github.com/TheDave94/oriel-dashboard/commit/21696076434b1b9b4fba536ad106cedd31531767)), closes [#131](https://github.com/TheDave94/oriel-dashboard/issues/131)
+
 ## [4.18.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.17.6...v4.18.0) (2026-06-20)
 
 
