@@ -437,7 +437,11 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
           : undefined);
       if (visibility) (tile as { visibility?: unknown }).visibility = visibility;
       cards.push(
-        bubbleEnabled && isBubbleActionable(entityId)
+        // Gate the rewrite on the SAME exclusion the pop-up candidate set uses
+        // (collectBubbleCandidates → Registry.isEntityExcluded). Otherwise an
+        // excluded-but-favourited actionable entity gets a navigate→#bubble tap
+        // with no co-located pop-up — a dead tap. Excluded → keep HA more-info.
+        bubbleEnabled && isBubbleActionable(entityId) && !Registry.isEntityExcluded(entityId)
           ? withBubbleTapAction(tile, entityId)
           : tile,
       );

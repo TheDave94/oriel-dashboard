@@ -32,6 +32,7 @@ import '../../src/views/RoomViewStrategy';
 import '../../src/views/ClimateViewStrategy';
 import '../../src/views/LightsViewStrategy';
 import '../../src/views/CoversViewStrategy';
+import '../../src/views/OverviewViewStrategy';
 
 // Helpers ----------------------------------------------------------------
 
@@ -389,5 +390,91 @@ describe('Bubble pop-ups are co-located on every view that rewires taps', () => 
     cleanup = withBubbleCardInstalled(false);
     const view = await generateClimateView({ use_bubble_drawers: true });
     expect(popupHashes(view).size).toBe(0);
+  });
+});
+
+// GENERAL invariant (Part 1): every rewired `navigate → #bubble-<id>` tap MUST
+// resolve to a co-located pop-up with that hash. This holds the line that the
+// per-view fix established, and catches the residual source-divergence bugs:
+// the rewrite set and the pop-up set must be computed from the SAME exclusion
+// filter, or an excluded-but-favourited / excluded-but-pinned actionable entity
+// gets a dead #bubble tap.
+async function generateOverviewView(dashboardConfig: Record<string, unknown>): Promise<ViewLike> {
+  const hass = makeHass({
+    entities: [
+      { entity_id: 'light.fav_ok', area_id: 'area_test' },
+      { entity_id: 'light.fav_excluded', area_id: 'area_test', hidden_by: 'user' },
+    ],
+    areas: [{ area_id: 'area_test', name: 'Test Area' }],
+    language: HASS_LANGUAGE,
+  });
+  Registry.resetForTesting();
+  const strategy = customElements.get('ll-strategy-view-oriel-overview') as any;
+  return await strategy.generate({ dashboardConfig }, hass);
+}
+
+async function generateRoomViewWithPins(dashboardConfig: Record<string, unknown>): Promise<ViewLike> {
+  const areaId = 'area_test';
+  const hass = makeHass({
+    areas: [{ area_id: areaId, name: 'Test Area' }],
+    entities: [
+      { entity_id: 'light.pin_ok', area_id: areaId },
+      { entity_id: 'light.pin_excluded', area_id: areaId, hidden_by: 'user' },
+    ],
+    language: HASS_LANGUAGE,
+  });
+  const area = (hass.areas as Record<string, any>)[areaId];
+  Registry.resetForTesting();
+  const strategy = customElements.get('ll-strategy-view-oriel-room') as any;
+  return await strategy.generate({ area, groups_options: {}, dashboardConfig }, hass);
+}
+
+describe('General invariant: rewired #bubble taps resolve to a co-located pop-up', () => {
+  let cleanup: (() => void) | undefined;
+  beforeEach(() => {
+    cleanup = withBubbleCardInstalled(true);
+  });
+  afterEach(() => {
+    cleanup?.();
+    cleanup = undefined;
+    Registry.resetForTesting();
+  });
+
+  // the core invariant, reusable across views
+  function assertEveryNavResolves(view: ViewLike): void {
+    const popups = popupHashes(view);
+    for (const h of tileNavHashes(view)) expect(popups.has(h)).toBe(true);
+  }
+
+  it('overview favourites: excluded actionable favourite is NOT rewired (no dead hash)', async () => {
+    const view = await generateOverviewView({
+      use_bubble_drawers: true,
+      favorite_entities: ['light.fav_ok', 'light.fav_excluded'],
+    });
+    assertEveryNavResolves(view); // would FAIL if the excluded fav were rewired with no pop-up
+    const navs = tileNavHashes(view);
+    expect(navs).toContain(bubbleHashFor('light.fav_ok')); // normal favourite still rewired + resolves
+    expect(navs).not.toContain(bubbleHashFor('light.fav_excluded')); // excluded → kept on more-info
+  });
+
+  it('room pins: excluded pinned actionable entity is NOT rewired (no dead hash)', async () => {
+    const view = await generateRoomViewWithPins({
+      use_bubble_drawers: true,
+      room_pin_entities: ['light.pin_ok', 'light.pin_excluded'],
+    });
+    assertEveryNavResolves(view);
+    const navs = tileNavHashes(view);
+    expect(navs).toContain(bubbleHashFor('light.pin_ok'));
+    expect(navs).not.toContain(bubbleHashFor('light.pin_excluded'));
+  });
+
+  it('every view that rewires inline tiles satisfies the invariant', async () => {
+    for (const view of [
+      await generateClimateView({ use_bubble_drawers: true }),
+      await generateRoomView({ use_bubble_drawers: true }),
+      await generateOverviewView({ use_bubble_drawers: true, favorite_entities: ['light.fav_ok'] }),
+    ]) {
+      assertEveryNavResolves(view);
+    }
   });
 });

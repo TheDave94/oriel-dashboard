@@ -836,7 +836,13 @@ class OrielViewRoom extends HTMLElement {
               vertical: false,
               ...(pinStateContent.length > 0 ? { state_content: pinStateContent } : {}),
             };
-            return bubbleEnabled && isBubbleActionable(e) ? withBubbleTapAction(tile, e) : tile;
+            // Same exclusion gate as the co-located pop-up set (room_pins are
+            // sourced from the raw registry, the pop-up set from the pre-filtered
+            // visible entities — without this an excluded pinned actionable
+            // entity gets a navigate→#bubble tap with no pop-up = dead tap).
+            return bubbleEnabled && isBubbleActionable(e) && !Registry.isEntityExcluded(e)
+              ? withBubbleTapAction(tile, e)
+              : tile;
           }),
         ],
       };
