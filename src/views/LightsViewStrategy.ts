@@ -3,10 +3,11 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { LovelaceViewConfig } from '../types/lovelace';
+import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
+import { Registry } from '../Registry';
 import { resolveDensity } from '../utils/density';
-import { isBubbleCardInstalled } from '../utils/bubble-integration';
+import { buildBubblePopupSection, isBubbleCardInstalled } from '../utils/bubble-integration';
 
 interface LightsViewStrategyParams {
   entities?: string[];
@@ -18,7 +19,7 @@ interface LightsViewStrategyParams {
 class OrielViewLights extends HTMLElement {
   static async generate(
     config: LightsViewStrategyParams,
-    _hass: HomeAssistant,
+    hass: HomeAssistant,
   ): Promise<LovelaceViewConfig> {
     const dashboardConfig: OrielConfig = config.dashboardConfig || config.config || {};
     const groupByFloors = dashboardConfig.group_lights_by_floors === true;
@@ -51,13 +52,20 @@ class OrielViewLights extends HTMLElement {
     // (responsive, wrapping on narrow), each at full section width — so On and
     // Off sit beside each other without being squeezed into one width-capped
     // section, which crammed the wide tiles together and overlapped them.
-    return {
-      type: 'sections',
-      sections: [
-        { type: 'grid', cards: [card('on')] },
-        { type: 'grid', cards: [card('off')] },
-      ],
-    };
+    const sections: LovelaceSectionConfig[] = [
+      { type: 'grid', cards: [card('on')] },
+      { type: 'grid', cards: [card('off')] },
+    ];
+    // Co-locate the bubble pop-ups for this view's lights — Bubble Card pop-ups
+    // are view-scoped, so the rewired tile taps need a matching pop-up here.
+    if (bubbleEnabled) {
+      const popups = buildBubblePopupSection(
+        Registry.getVisibleEntityIdsForDomain('light'),
+        hass,
+      );
+      if (popups) sections.push(popups);
+    }
+    return { type: 'sections', sections };
   }
 }
 

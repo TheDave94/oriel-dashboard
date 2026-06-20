@@ -26,6 +26,7 @@ import {
   sanitizeCompanionList,
 } from '../utils/camera-companions';
 import {
+  buildBubblePopupSection,
   isBubbleActionable,
   isBubbleCardInstalled,
   withBubbleTapAction,
@@ -984,6 +985,24 @@ class OrielViewRoom extends HTMLElement {
       }
       cards.push(...inner);
       sections.push({ type: 'grid', cards });
+    }
+
+    // Co-locate the bubble pop-ups for this room's actionable tiles — Bubble
+    // Card pop-ups are view-scoped, so the tiles rewired via `bubbleTap`
+    // (lights group card + the per-domain inline tiles) need a matching pop-up
+    // on THIS room view, not just the overview.
+    if (bubbleEnabled) {
+      const actionable = [
+        ...roomEntities.lights,
+        ...roomEntities.covers,
+        ...roomEntities.covers_curtain,
+        ...roomEntities.covers_window,
+        ...roomEntities.climate,
+        ...roomEntities.fan,
+        ...roomEntities.media_player,
+      ];
+      const popups = buildBubblePopupSection(actionable, hass);
+      if (popups) sections.push(popups);
     }
 
     // Per-area room view overrides (v3.4.0). When the user has set

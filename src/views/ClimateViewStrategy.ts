@@ -8,7 +8,11 @@ import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
 import { applyAreaContextToSections, showAreaInSummaries } from '../utils/name-utils';
-import { isBubbleCardInstalled, withBubbleTapAction } from '../utils/bubble-integration';
+import {
+  buildBubblePopupSection,
+  isBubbleCardInstalled,
+  withBubbleTapAction,
+} from '../utils/bubble-integration';
 
 interface ClimateViewStrategyParams {
   config?: OrielConfig;
@@ -90,6 +94,13 @@ class OrielViewClimate extends HTMLElement {
     buildSection(cooling, localize('climate.cooling'), 'mdi:snowflake');
     buildSection(idle, localize('climate.idle'), 'mdi:thermostat');
     buildSection(off, localize('climate.off'), 'mdi:power-off');
+
+    // Co-locate the bubble pop-ups for this view's climates — view-scoped
+    // pop-ups, so the rewired tile taps need a matching pop-up on this view.
+    if (bubbleEnabled) {
+      const popups = buildBubblePopupSection(climateIds, hass);
+      if (popups) sections.push(popups);
+    }
 
     return {
       type: 'sections',

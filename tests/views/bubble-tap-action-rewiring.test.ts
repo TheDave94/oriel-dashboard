@@ -30,6 +30,8 @@ import {
 // them up-front loads the modules.
 import '../../src/views/RoomViewStrategy';
 import '../../src/views/ClimateViewStrategy';
+import '../../src/views/LightsViewStrategy';
+import '../../src/views/CoversViewStrategy';
 
 // Helpers ----------------------------------------------------------------
 
@@ -141,6 +143,51 @@ async function generateClimateView(
   Registry.resetForTesting();
   const strategy = customElements.get('ll-strategy-view-oriel-climate') as any;
   return await strategy.generate({ config: dashboardConfig }, hass);
+}
+
+async function generateLightsView(dashboardConfig: Record<string, unknown>): Promise<ViewLike> {
+  const hass = makeHass({
+    entities: [{ ...ACTIONABLE_ENTITIES.light, area_id: 'area_test' }],
+    areas: [{ area_id: 'area_test', name: 'Test Area' }],
+    language: HASS_LANGUAGE,
+  });
+  Registry.resetForTesting();
+  Registry.initialize(hass, dashboardConfig); // lights view doesn't init Registry itself
+  const strategy = customElements.get('ll-strategy-view-oriel-lights') as any;
+  return await strategy.generate({ config: dashboardConfig }, hass);
+}
+
+async function generateCoversView(dashboardConfig: Record<string, unknown>): Promise<ViewLike> {
+  const hass = makeHass({
+    entities: [{ ...ACTIONABLE_ENTITIES.cover, area_id: 'area_test' }],
+    areas: [{ area_id: 'area_test', name: 'Test Area' }],
+    language: HASS_LANGUAGE,
+  });
+  Registry.resetForTesting();
+  Registry.initialize(hass, dashboardConfig);
+  const strategy = customElements.get('ll-strategy-view-oriel-covers') as any;
+  return await strategy.generate({ config: dashboardConfig }, hass);
+}
+
+// Bubble pop-up co-location helpers (the invariant the bug violated):
+// every `navigate → #bubble-<id>` target must resolve to a pop-up ON THE SAME VIEW.
+function popupHashes(view: ViewLike): Set<string> {
+  const out = new Set<string>();
+  for (const s of view.sections ?? [])
+    for (const c of s.cards ?? [])
+      if (c?.type === 'custom:bubble-card' && c.card_type === 'pop-up' && typeof c.hash === 'string')
+        out.add(c.hash as string);
+  return out;
+}
+function tileNavHashes(view: ViewLike): string[] {
+  const out: string[] = [];
+  for (const s of view.sections ?? [])
+    for (const c of s.cards ?? []) {
+      const ta = c?.tap_action as { action?: string; navigation_path?: string } | undefined;
+      if (c?.type === 'tile' && ta?.action === 'navigate' && ta.navigation_path)
+        out.push(ta.navigation_path);
+    }
+  return out;
 }
 
 // Tests ------------------------------------------------------------------
@@ -291,5 +338,56 @@ describe('Bubble tile tap_action rewiring — actionable-domain pin', () => {
       expect(byEntity['switch.pinned']).not.toHaveProperty('tap_action');
       expect(byEntity['sensor.pinned']).not.toHaveProperty('tap_action');
     });
+  });
+});
+
+// Regression for the dead-hash bug: bubble pop-ups were emitted only on the
+// Overview, but rewired tiles live on Lights/Covers/Climate/Room views — so the
+// `navigate → #bubble-<id>` taps there resolved to nothing (Bubble Card pop-ups
+// are view-scoped). The invariant: every rewired target has a co-located pop-up.
+describe('Bubble pop-ups are co-located on every view that rewires taps', () => {
+  let cleanup: (() => void) | undefined;
+  afterEach(() => {
+    cleanup?.();
+    cleanup = undefined;
+    Registry.resetForTesting();
+  });
+
+  describe('with use_bubble_drawers: true AND bubble-card installed', () => {
+    beforeEach(() => {
+      cleanup = withBubbleCardInstalled(true);
+    });
+
+    it('climate view: every rewired inline tile tap resolves to a co-located pop-up', async () => {
+      const view = await generateClimateView({ use_bubble_drawers: true });
+      const navs = tileNavHashes(view);
+      expect(navs.length).toBeGreaterThan(0); // tiles ARE rewired
+      const popups = popupHashes(view);
+      for (const h of navs) expect(popups.has(h)).toBe(true); // ...and each resolves here
+    });
+
+    it('room view: inline tile taps resolve AND the lights group card pop-up is present', async () => {
+      const view = await generateRoomView({ use_bubble_drawers: true });
+      const popups = popupHashes(view);
+      for (const h of tileNavHashes(view)) expect(popups.has(h)).toBe(true);
+      // the lights group card rewires the room's lights; their pop-up must be here too
+      expect(popups.has(bubbleHashFor(ACTIONABLE_ENTITIES.light.entity_id))).toBe(true);
+    });
+
+    it('lights view: pop-ups present for the lights the group card rewires', async () => {
+      const view = await generateLightsView({ use_bubble_drawers: true });
+      expect(popupHashes(view).has(bubbleHashFor(ACTIONABLE_ENTITIES.light.entity_id))).toBe(true);
+    });
+
+    it('covers view: pop-ups present for the covers the group card rewires', async () => {
+      const view = await generateCoversView({ use_bubble_drawers: true });
+      expect(popupHashes(view).has(bubbleHashFor(ACTIONABLE_ENTITIES.cover.entity_id))).toBe(true);
+    });
+  });
+
+  it('no pop-ups when bubble-card is not installed (gate holds)', async () => {
+    cleanup = withBubbleCardInstalled(false);
+    const view = await generateClimateView({ use_bubble_drawers: true });
+    expect(popupHashes(view).size).toBe(0);
   });
 });

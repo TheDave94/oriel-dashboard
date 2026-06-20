@@ -3,11 +3,12 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { LovelaceViewConfig } from '../types/lovelace';
+import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
+import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
 import { resolveDensity } from '../utils/density';
-import { isBubbleCardInstalled } from '../utils/bubble-integration';
+import { buildBubblePopupSection, isBubbleCardInstalled } from '../utils/bubble-integration';
 
 interface CoversViewStrategyParams {
   entities?: string[];
@@ -18,7 +19,7 @@ interface CoversViewStrategyParams {
 class OrielViewCovers extends HTMLElement {
   static async generate(
     config: CoversViewStrategyParams,
-    _hass: HomeAssistant,
+    hass: HomeAssistant,
   ): Promise<LovelaceViewConfig> {
     const strategyConfig: OrielConfig = config.config || {};
     const showPartiallyOpen = strategyConfig.show_partially_open_covers === true;
@@ -151,10 +152,17 @@ class OrielViewCovers extends HTMLElement {
     // (responsive, wrapping on narrow), each at full section width. Putting
     // multiple group cards in a single width-capped section squeezed and
     // overlapped them; separate sections give each group its own column.
-    return {
-      type: 'sections',
-      sections: cards.map((c) => ({ type: 'grid', cards: [c] })),
-    };
+    const sections: LovelaceSectionConfig[] = cards.map((c) => ({ type: 'grid', cards: [c] }));
+    // Co-locate the bubble pop-ups for this view's covers — view-scoped pop-ups,
+    // so the rewired tile taps need a matching pop-up on this view.
+    if (bubbleEnabled) {
+      const popups = buildBubblePopupSection(
+        Registry.getVisibleEntityIdsForDomain('cover'),
+        hass,
+      );
+      if (popups) sections.push(popups);
+    }
+    return { type: 'sections', sections };
   }
 }
 

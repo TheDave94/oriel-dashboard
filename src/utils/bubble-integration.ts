@@ -27,7 +27,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
-import type { LovelaceCardConfig } from '../types/lovelace';
+import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
 
 /**
  * Entity domains for which we emit Bubble Card pop-ups and rewire tile
@@ -126,6 +126,24 @@ function buildPopupContent(entityId: string): LovelaceCardConfig[] {
  * domain-appropriate Bubble button, and the top-level no longer carries
  * `entity`/`button_type` (those fields are non-functional in v3.2+).
  */
+/**
+ * Wraps {@link buildBubblePopupCards} in an invisible grid section, or returns
+ * null when there are no pop-ups to emit.
+ *
+ * Bubble Card pop-ups are **view-scoped**: a tile's `navigate → #bubble-<id>`
+ * tap only opens if a pop-up with that hash is rendered on the SAME view. So
+ * every view whose tiles are rewired (`withBubbleTapAction` / `bubble_drawers`)
+ * must co-locate its pop-ups — not just the Overview. Pop-ups are invisible
+ * until their hash is active, so the section adds zero visual footprint.
+ */
+export function buildBubblePopupSection(
+  entityIds: string[],
+  hass: HomeAssistant,
+): LovelaceSectionConfig | null {
+  const cards = buildBubblePopupCards(entityIds, hass);
+  return cards.length > 0 ? { type: 'grid', cards } : null;
+}
+
 export function buildBubblePopupCards(
   entityIds: string[],
   hass: HomeAssistant,

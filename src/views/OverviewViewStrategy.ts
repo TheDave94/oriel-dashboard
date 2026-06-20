@@ -438,7 +438,7 @@ class OrielViewOverview extends HTMLElement {
     // gated on the same `use_bubble_drawers && isBubbleCardInstalled()`
     // pair — see `BUBBLE_ACTIONABLE_DOMAINS` in utils/bubble-integration.
     if (dashboardConfig.use_bubble_drawers === true) {
-      const { isBubbleCardInstalled, buildBubblePopupCards, collectBubbleCandidates } =
+      const { isBubbleCardInstalled, buildBubblePopupSection, collectBubbleCandidates } =
         await import('../utils/bubble-integration');
       if (isBubbleCardInstalled()) {
         // F6/Rung-0: honor the exclusion pipeline so hidden / no_dboard
@@ -446,13 +446,8 @@ class OrielViewOverview extends HTMLElement {
         const candidates = collectBubbleCandidates(hass, (id) =>
           Registry.isEntityExcluded(id),
         );
-        const popupCards = buildBubblePopupCards(candidates, hass);
-        if (popupCards.length > 0) {
-          overviewSections.push({
-            type: 'grid',
-            cards: popupCards,
-          });
-        }
+        const popups = buildBubblePopupSection(candidates, hass);
+        if (popups) overviewSections.push(popups);
       }
     }
 
