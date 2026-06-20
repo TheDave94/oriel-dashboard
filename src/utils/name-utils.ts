@@ -233,6 +233,17 @@ export function getAreaNameForEntity(entityId: string, hass: HomeAssistant): str
 }
 
 /**
+ * Joins a resolved area name and a display name as "Area • name", returning the
+ * display name unchanged when there is no area. Shared formatter so the section
+ * pass and the summary group cards (lights/covers) produce the same label; the
+ * group cards resolve the area via their own cached lookup and pass the name in
+ * here. See issue #131.
+ */
+export function joinAreaName(areaName: string | null | undefined, displayName: string): string {
+  return areaName ? `${areaName} • ${displayName}` : displayName;
+}
+
+/**
  * Builds an area-qualified tile label — "Area • Friendly name", or just the
  * area name when no friendly name exists. Returns null when the entity has no
  * area, so callers can leave the tile's default name untouched.
@@ -241,7 +252,7 @@ export function areaQualifiedTileName(entityId: string, hass: HomeAssistant): st
   const areaName = getAreaNameForEntity(entityId, hass);
   if (!areaName) return null;
   const friendly = hass.states[entityId]?.attributes?.friendly_name as string | undefined;
-  return friendly ? `${areaName} • ${friendly}` : areaName;
+  return friendly ? joinAreaName(areaName, friendly) : areaName;
 }
 
 /**

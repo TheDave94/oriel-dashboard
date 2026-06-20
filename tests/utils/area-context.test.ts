@@ -29,6 +29,25 @@ import '../../src/views/BatteriesViewStrategy';
 import '../../src/views/SecurityViewStrategy';
 import '../../src/views/ClimateViewStrategy';
 
+// Lights/covers summaries render via group cards, not section-level tiles, so
+// the area qualifier lives in the cards' own name path — exercise those too.
+import '../../src/cards/LightsGroupCard';
+import '../../src/cards/CoversGroupCard';
+
+// <hui-tile-card> shim — records setConfig so we can read the name the covers
+// group card would have emitted. (Same shim the existing card tests use.)
+class HuiTileCardShim extends HTMLElement {
+  public lastConfig: Record<string, unknown> | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public hass: any;
+  setConfig(cfg: Record<string, unknown>): void {
+    this.lastConfig = cfg;
+  }
+}
+if (!customElements.get('hui-tile-card')) {
+  customElements.define('hui-tile-card', HuiTileCardShim);
+}
+
 beforeEach(() => {
   Registry.resetForTesting();
 });
@@ -264,4 +283,103 @@ describe('summary views apply area context under the flag', () => {
       expect(tiles.every((t) => t.name === undefined)).toBe(true);
     });
   }
+});
+
+// -- 6. Summary group cards (lights / covers) -------------------------------
+// These render via oriel-lights-group-card / oriel-covers-group-card, so the
+// qualifier lives in the cards' own name path. The lights card is shared with
+// room views (single-area), so it must qualify only in the cross-area summary
+// context (no `_config.area`); the covers card is summary-only, so it always
+// qualifies under the flag.
+
+const WZ = { area_id: 'wz', name: 'Wohnzimmer' };
+
+function lightsCard(config: Record<string, unknown>, hass: ReturnType<typeof makeHass>): any {
+  const el = document.createElement('oriel-lights-group-card') as any;
+  el.setConfig({ group_type: 'on', ...config });
+  el.hass = hass;
+  return el;
+}
+
+function coversCard(config: Record<string, unknown>, hass: ReturnType<typeof makeHass>): any {
+  const el = document.createElement('oriel-covers-group-card') as any;
+  el.setConfig({ group_type: 'open', ...config });
+  el.hass = hass;
+  return el;
+}
+
+describe('lights group card — area qualifier (summary context only)', () => {
+  function hassWithLight(areaId: string | null): ReturnType<typeof makeHass> {
+    const hass = makeHass({
+      areas: [WZ],
+      entities: [{ entity_id: 'light.lamp', area_id: areaId, attributes: { friendly_name: 'Stehlampe' } }],
+    });
+    Registry.initialize(hass, {});
+    return hass;
+  }
+
+  it('summary + flag on + area → "Area • Friendly"', () => {
+    const el = lightsCard({ config: { show_area_in_summaries: true } }, hassWithLight('wz'));
+    expect(el._getDisplayName('light.lamp')).toBe('Wohnzimmer • Stehlampe');
+  });
+
+  it('summary + flag off → no qualifier (undefined, default name)', () => {
+    const el = lightsCard({ config: {} }, hassWithLight('wz'));
+    expect(el._getDisplayName('light.lamp')).toBeUndefined();
+  });
+
+  it('summary + flag on + no area → no qualifier', () => {
+    const el = lightsCard({ config: { show_area_in_summaries: true } }, hassWithLight(null));
+    expect(el._getDisplayName('light.lamp')).toBeUndefined();
+  });
+
+  it('room context (single area) + flag on → strips area, does NOT prefix', () => {
+    const el = lightsCard({ area: WZ, config: { show_area_in_summaries: true } }, hassWithLight('wz'));
+    const name = el._getDisplayName('light.lamp');
+    expect(name).toBe('Stehlampe'); // stripAreaName output, not "Wohnzimmer • …"
+    expect(name).not.toContain(' • ');
+  });
+
+  it('legacy show_area_in_battery_view alias also qualifies the lights summary', () => {
+    const el = lightsCard({ config: { show_area_in_battery_view: true } }, hassWithLight('wz'));
+    expect(el._getDisplayName('light.lamp')).toBe('Wohnzimmer • Stehlampe');
+  });
+});
+
+describe('covers group card — area qualifier (summary-only)', () => {
+  function hassWithCover(areaId: string | null): ReturnType<typeof makeHass> {
+    const hass = makeHass({
+      areas: [WZ],
+      entities: [
+        {
+          entity_id: 'cover.fenster',
+          area_id: areaId,
+          state: 'open',
+          attributes: { device_class: 'shutter', friendly_name: 'Fenster' },
+        },
+      ],
+    });
+    Registry.initialize(hass, {});
+    return hass;
+  }
+
+  it('flag on + area → "Area • name"', () => {
+    const el = coversCard({ config: { show_area_in_summaries: true } }, hassWithCover('wz'));
+    expect(el._getOrCreateTileCard('cover.fenster').lastConfig?.name).toBe('Wohnzimmer • Fenster');
+  });
+
+  it('flag off → bare (stripped) name, no prefix', () => {
+    const el = coversCard({ config: {} }, hassWithCover('wz'));
+    expect(el._getOrCreateTileCard('cover.fenster').lastConfig?.name).toBe('Fenster');
+  });
+
+  it('flag on + no area → no prefix', () => {
+    const el = coversCard({ config: { show_area_in_summaries: true } }, hassWithCover(null));
+    expect(el._getOrCreateTileCard('cover.fenster').lastConfig?.name).toBe('Fenster');
+  });
+
+  it('legacy alias also qualifies the covers summary', () => {
+    const el = coversCard({ config: { show_area_in_battery_view: true } }, hassWithCover('wz'));
+    expect(el._getOrCreateTileCard('cover.fenster').lastConfig?.name).toBe('Wohnzimmer • Fenster');
+  });
 });
