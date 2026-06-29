@@ -227,7 +227,11 @@ export function detectHealthIssues(
   if (Array.isArray(triggers)) {
     const stale = triggers
       .map((t, i) => ({ entity: t.entity, index: i }))
-      .filter((x) => typeof x.entity === 'string' && !entityExists(hass, x.entity));
+      // Ignore empty-entity placeholder rows (in-progress triggers from the
+      // editor, #156) — only non-empty references to missing entities are stale.
+      .filter(
+        (x) => typeof x.entity === 'string' && x.entity.length > 0 && !entityExists(hass, x.entity),
+      );
     if (stale.length > 0) {
       issues.push({
         id: 'orphan-notification-triggers',
@@ -238,8 +242,12 @@ export function detectHealthIssues(
         fix: (c) => {
           const list = c.notification_triggers as Array<{ entity?: string }> | undefined;
           if (!Array.isArray(list)) return c;
+          // Drop only non-empty references to missing entities; keep empty
+          // placeholder rows so an in-progress trigger isn't wiped (#156).
           const filtered = list.filter(
-            (t) => typeof t.entity === 'string' && entityExists(hass, t.entity),
+            (t) =>
+              typeof t.entity === 'string' &&
+              (t.entity.length === 0 || entityExists(hass, t.entity)),
           );
           if (filtered.length === 0) {
             const next = { ...c };

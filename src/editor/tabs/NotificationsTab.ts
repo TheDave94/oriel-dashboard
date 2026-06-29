@@ -33,8 +33,12 @@ export function renderNotificationsTab(ctx: NotificationsTabContext): TemplateRe
     : [];
 
   const update = (next: Trigger[]) => {
-    // Strip empty triggers (entity is required) and call onChange.
-    ctx.onChange(next.filter((t) => typeof t.entity === 'string' && t.entity.length > 0));
+    // Keep placeholder rows with an empty entity so a freshly-added trigger
+    // stays visible for the user to fill in. Previously these were stripped
+    // here, which made the "Add trigger" button a no-op (#156). Empty-entity
+    // triggers are inert: NotificationCard never matches them and health.ts
+    // ignores them. They're removed via the row's Remove button.
+    ctx.onChange(next);
   };
 
   return html`
