@@ -53,10 +53,10 @@
     {
       "id": "bundle-size",
       "ci_check": "Bundle size budget",
-      "command": "npm run build && bash -c 'set -e; fail=0; check(){ f=$(ls dist/$1 2>/dev/null|head -1); if [ -z \"$f\" ]; then echo \"  MISSING: $1\"; fail=1; return; fi; kb=$(( $(stat -c%s \"$f\") / 1024 )); if [ \"$kb\" -gt \"$2\" ]; then echo \"  OVER: $f = ${kb}KB (limit $2KB)\"; fail=1; else echo \"  OK: $f = ${kb}KB / $2KB\"; fi; }; echo \"Bundle-size budget (gzipped):\"; check \"oriel.js.gz\" 5; check \"oriel-core.*.js.gz\" 67; exit $fail'",
+      "command": "npm run build && bash -c 'set -e; fail=0; check(){ f=$(ls dist/$1 2>/dev/null|head -1); if [ -z \"$f\" ]; then echo \"  MISSING: $1\"; fail=1; return; fi; kb=$(( $(stat -c%s \"$f\") / 1024 )); if [ \"$kb\" -gt \"$2\" ]; then echo \"  OVER: $f = ${kb}KB (limit $2KB)\"; fail=1; else echo \"  OK: $f = ${kb}KB / $2KB\"; fi; }; echo \"Bundle-size budget (gzipped):\"; check \"oriel.js.gz\" 5; check \"oriel-core.*.js.gz\" 70; exit $fail'",
       "needs": ["npm_ci", "build"],
       "ci_only": false,
-      "note": "Replicates validate.yml bundle-size step exactly: oriel.js.gz<=5KB, oriel-core.*.js.gz<=67KB."
+      "note": "Replicates validate.yml bundle-size step: oriel.js.gz<=5KB, oriel-core.*.js.gz<=70KB (core raised to 70 in v4.20)."
     },
     {
       "id": "demo-api-smoke",
