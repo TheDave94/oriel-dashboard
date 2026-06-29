@@ -30,9 +30,13 @@ class OrielViewClimate extends HTMLElement {
     const bubbleEnabled =
       dashboardConfig.use_bubble_drawers === true && isBubbleCardInstalled();
 
-    const climateIds = Registry.getVisibleEntityIdsForDomain('climate').filter(
-      (id) => hass.states[id] !== undefined
-    );
+    // Include state-only climate entities (e.g. YAML-configured MQTT thermostats
+    // without a unique_id) that never get an entity-registry entry and so are
+    // absent from the registry-built visible-domain map (#155).
+    const climateIds = [
+      ...Registry.getVisibleEntityIdsForDomain('climate'),
+      ...Registry.getStateOnlyEntityIdsForDomain('climate'),
+    ].filter((id) => hass.states[id] !== undefined);
 
     // Group by hvac_action or state
     const heating: string[] = [];
