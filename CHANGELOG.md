@@ -6,6 +6,15 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.21.4](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.3...v4.21.4) (2026-06-29)
+
+
+### Bug Fixes
+
+* localize air-quality and pollen cards from live hass on standalone dashboards ([36058a5](https://github.com/TheDave94/oriel-dashboard/commit/36058a505394eb0739395f279f63ce57a016ff75)), closes [#157](https://github.com/TheDave94/oriel-dashboard/issues/157)
+* make the notification-banner "Add trigger" button work ([17fe3dd](https://github.com/TheDave94/oriel-dashboard/commit/17fe3dda2f09a81ea692a83995b57089b72b85b4)), closes [#156](https://github.com/TheDave94/oriel-dashboard/issues/156)
+* show state-only (YAML/MQTT) thermostats in the Climate view ([416fb9b](https://github.com/TheDave94/oriel-dashboard/commit/416fb9bdd9fa350f501caa9e04ab5ade3644b0ba)), closes [#155](https://github.com/TheDave94/oriel-dashboard/issues/155)
+
 ## [4.21.3](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.2...v4.21.3) (2026-06-20)
 
 
