@@ -59,6 +59,7 @@ class OrielViewRoom extends HTMLElement {
       humidifier: [],
       valve: [],
       water_heater: [],
+      siren: [],
       switches: [],
       locks: [],
       automations: [],
@@ -148,6 +149,10 @@ class OrielViewRoom extends HTMLElement {
       }
       if (domain === 'water_heater') {
         roomEntities.water_heater.push(entityId);
+        continue;
+      }
+      if (domain === 'siren') {
+        roomEntities.siren.push(entityId);
         continue;
       }
       if (domain === 'switch') {
@@ -739,6 +744,16 @@ class OrielViewRoom extends HTMLElement {
         features_position: 'inline',
         vertical: false,
         state_content: ['operation_mode', 'current_temperature'],
+      });
+    for (const e of roomEntities.siren)
+      miscCards.push({
+        type: 'tile',
+        entity: e,
+        name: tileName(e, area, hass, dashboardConfig),
+        features: [{ type: 'toggle' }],
+        features_position: 'inline',
+        vertical: false,
+        state_content: 'last_changed',
       });
 
     miscCards.sort((a, b) => {
