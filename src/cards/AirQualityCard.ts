@@ -29,7 +29,7 @@ import {
   type AirPollutant,
   type AirPollutantReading,
 } from '../utils/airquality';
-import { localize } from '../utils/localize';
+import { setupLocalize, localize } from '../utils/localize';
 
 interface AirQualityCardConfig {
   /** Which pollutants to show; empty → all currently present. */
@@ -167,6 +167,11 @@ class OrielAirQualityCard extends LitElement {
 
   render(): TemplateResult {
     if (!this.hass) return html``;
+    // The strategy calls setupLocalize() during Registry.initialize, but this
+    // card can be placed standalone on any Lovelace view where the strategy
+    // never runs — re-resolve the language from the live hass so the UI follows
+    // HA's locale instead of falling back to English (#157).
+    setupLocalize(this.hass);
     const pollutants = this._resolvePollutants();
     const readings = pollutants.map((p) => readAirPollutant(this.hass!, p));
     const overall = readAirOverall(this.hass, readings);

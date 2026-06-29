@@ -32,7 +32,7 @@ import {
   type PollenSourceMeta,
   type ThresholdBasis,
 } from '../utils/pollen';
-import { localize } from '../utils/localize';
+import { setupLocalize, localize } from '../utils/localize';
 
 interface PollenCardConfig {
   source: PollenSource;
@@ -228,6 +228,10 @@ class OrielPollenCard extends LitElement {
 
   render(): TemplateResult {
     if (!this.hass) return html``;
+    // Standalone-capable card: re-resolve language from the live hass so the UI
+    // follows HA's locale rather than falling back to English when the strategy
+    // (which normally calls setupLocalize) never ran (#157).
+    setupLocalize(this.hass);
     const { source, types, presentation, show_inactive } = this._config;
     if (types.length === 0) {
       return html`<ha-card><div class="empty">${localize('editor.pollen_no_data') || 'No pollen data'}</div></ha-card>`;

@@ -46,6 +46,20 @@ async function render(
 }
 
 describe('oriel-air-quality-card', () => {
+  it('localizes from the live hass language standalone, without an explicit setupLocalize (#157)', async () => {
+    // beforeEach reset the global localize to default English, simulating a
+    // standalone dashboard where the strategy never called setupLocalize. The
+    // card must still follow HA's locale by re-resolving language from hass on
+    // render — otherwise its text wrongly stays English.
+    const el = mount();
+    el.setConfig({ pollutants: [] });
+    el.hass = { states: {}, locale: { language: 'de' } };
+    await el.updateComplete;
+    const text = el.shadowRoot!.textContent || '';
+    expect(text).toContain('gesamt'); // de for editor.air_quality_overall
+    expect(text).not.toContain('overall'); // would appear if it fell back to English
+  });
+
   it('renders a row per pollutant with the N-of-M source badge', async () => {
     const root = await render(['pm2_5', 'ozone'], {
       'sensor.airwatch_analytics_pm2_5_consensus': consensus('elevated', {
