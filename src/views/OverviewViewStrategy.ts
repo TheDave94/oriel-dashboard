@@ -224,6 +224,7 @@ class OrielViewOverview extends HTMLElement {
       hass,
       hiddenHeadings.has('areas'),
       hiddenHeadings.has('areas_other'),
+      dashboardConfig.floors_display,
     );
 
     // Section map: key → section(s) or null. Keyed by string so custom keys fit alongside built-ins.

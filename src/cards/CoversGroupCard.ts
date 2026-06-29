@@ -9,7 +9,7 @@ import type { AreaRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
-import { showAreaInSummaries, joinAreaName } from '../utils/name-utils';
+import { showAreaInSummaries, joinAreaName, getOrderedFloorIds } from '../utils/name-utils';
 import { withBubbleTapAction } from '../utils/bubble-integration';
 
 interface LovelaceCardElement extends HTMLElement {
@@ -295,9 +295,10 @@ class OrielCoversGroupCard extends LitElement {
       floorMap.get(floorId)?.push(id);
     }
 
-    // HA's floor registry order preserves the user-defined "Reorder areas and floors" sequence
+    // Floor order: user-configured (floors_display.order) → HA registry order,
+    // via the shared helper so this matches the overview + lights views. (#129)
     const floors = this.hass.floors;
-    const floorOrder = Object.keys(floors);
+    const floorOrder = getOrderedFloorIds(this.hass, this._config.config?.floors_display);
     const sortedKeys: (string | null)[] = [
       ...floorOrder.filter((id) => floorMap.has(id)),
       ...(floorMap.has(null) ? [null] : []),

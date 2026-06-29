@@ -9,7 +9,7 @@ import type { AreaRegistryEntry } from '../types/registries';
 import { Registry } from '../Registry';
 import { trackHassUpdate } from '../utils/debug';
 import { localize } from '../utils/localize';
-import { stripAreaName, showAreaInSummaries, joinAreaName } from '../utils/name-utils';
+import { stripAreaName, showAreaInSummaries, joinAreaName, getOrderedFloorIds } from '../utils/name-utils';
 import { withBubbleTapAction } from '../utils/bubble-integration';
 
 declare global {
@@ -454,11 +454,10 @@ class OrielLightsGroupCard extends LitElement {
       floorMap.get(floorId)?.push(id);
     }
 
-    // Use HA's floor order from the registry. The hass.floors object preserves
-    // the user-defined order from HA's "Reorder areas and floors" dialog via
-    // Object.keys() insertion order — no separate sort_order field needed.
+    // Floor order: user-configured (floors_display.order) → HA registry order,
+    // via the shared helper so this matches the overview + covers views. (#129)
     const floors = this.hass.floors;
-    const floorOrder = Object.keys(floors);
+    const floorOrder = getOrderedFloorIds(this.hass, this._config.config?.floors_display);
     const sortedKeys = [
       ...floorOrder.filter((id) => floorMap.has(id)),
       ...(floorMap.has(null) ? [null] : []),

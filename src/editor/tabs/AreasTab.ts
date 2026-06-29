@@ -9,12 +9,13 @@
 // moves here, the helpers are called back through the context.
 // ====================================================================
 
-import { html, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
 import type { HomeAssistant } from '../../types/homeassistant';
 import type { OrielConfig, RoomSectionKey } from '../../types/strategy';
 import { DEFAULT_ROOM_SECTION_ORDER } from '../../types/strategy';
 import type { AreaRegistryEntry } from '../../types/registries';
 import { localize } from '../../utils/localize';
+import { getOrderedFloorIds } from '../../utils/name-utils';
 
 const ROOM_SECTION_LABEL: Record<RoomSectionKey, string> = {
   lights: 'room.lighting', locks: 'room.locks', climate: 'room.climate',
@@ -69,6 +70,38 @@ export interface AreasTabContext {
   ) => void;
   /** Move a room-section-order row up/down (#293). */
   onMoveRoomSection: (index: number, direction: 'up' | 'down') => void;
+  /** Move a floor-order row up/down (#129). */
+  onMoveFloor: (index: number, direction: 'up' | 'down') => void;
+}
+
+/**
+ * Floor-order reorder controls (#129). Only meaningful when floors are
+ * grouped (`group_by_floors`) and there's more than one floor to order.
+ */
+function renderFloorOrder(ctx: AreasTabContext): TemplateResult | typeof nothing {
+  if (ctx.config.group_by_floors !== true) return nothing;
+  const orderedIds = getOrderedFloorIds(ctx.hass, ctx.config.floors_display);
+  if (orderedIds.length < 2) return nothing;
+  return html`
+    <div class="section-title" style="margin-top: 16px;">${localize('editor.floor_order')}</div>
+    <div class="description">${localize('editor.floor_order_desc')}</div>
+    <div class="area-list">
+      ${orderedIds.map((floorId, idx) => {
+        const label = ctx.hass.floors[floorId]?.name || floorId;
+        return html`
+          <div class="custom-item-header" data-floor=${floorId}>
+            <strong>${label}</strong>
+            <button class="section-move-btn" type="button"
+              aria-label="${localize('editor.move_section_up') || 'Move up'}: ${label}" title="${localize('editor.move_section_up') || 'Move up'}"
+              ?disabled=${idx === 0} @click=${() => ctx.onMoveFloor(idx, 'up')}>&#x2191;</button>
+            <button class="section-move-btn" type="button"
+              aria-label="${localize('editor.move_section_down') || 'Move down'}: ${label}" title="${localize('editor.move_section_down') || 'Move down'}"
+              ?disabled=${idx === orderedIds.length - 1} @click=${() => ctx.onMoveFloor(idx, 'down')}>&#x2193;</button>
+          </div>
+        `;
+      })}
+    </div>
+  `;
 }
 
 function renderRoomSectionOrder(ctx: AreasTabContext): TemplateResult {
@@ -128,6 +161,7 @@ export function renderAreasTab(ctx: AreasTabContext): TemplateResult {
         (checked) => ctx.onToggleChange('group_by_floors', checked, false),
       )}
       <div class="description">${localize('editor.group_by_floors_desc')}</div>
+      ${renderFloorOrder(ctx)}
 
       ${ctx.renderCheckbox(
         'show-switches-on-areas',

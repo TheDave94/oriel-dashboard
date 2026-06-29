@@ -385,6 +385,8 @@
     "section_areas": "Areas",
     "group_by_floors": "Group areas by floors",
     "group_by_floors_desc": "Groups areas on the overview by floors. When enabled, a separate section is created for each floor.",
+    "floor_order": "Floor order",
+    "floor_order_desc": "Reorder floors in the floor-grouped views (overview, lights, covers). Defaults to Home Assistant's floor order.",
     "show_switches_on_areas": "Show switches on area cards",
     "show_switches_on_areas_desc": "Shows switches as controls on the area cards in the overview. Home Assistant hides these by default.",
     "show_alerts_on_areas": "Show alert icons on area cards",

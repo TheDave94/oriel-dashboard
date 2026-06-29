@@ -38,6 +38,7 @@ import { renderOverviewTab } from './tabs/OverviewTab';
 import { renderSummariesTab } from './tabs/SummariesTab';
 import { renderSectionOrderTab } from './tabs/SectionOrderTab';
 import { renderAreasTab, effectiveRoomSectionOrder } from './tabs/AreasTab';
+import { getOrderedFloorIds } from '../utils/name-utils';
 import { renderRoomPinsTab } from './tabs/RoomPinsTab';
 import { renderLightFavoritesTab } from './tabs/LightFavoritesTab';
 import {
@@ -2474,6 +2475,7 @@ class OrielEditor extends LitElement {
         this._roomVisibilityChanged(areaId, field, value),
       onCameraCompanionsChange: (kinds) => this._cameraCompanionsChanged(kinds),
       onMoveRoomSection: (idx, dir) => this._moveRoomSection(idx, dir),
+      onMoveFloor: (idx, dir) => this._moveFloor(idx, dir),
     });
   }
 
@@ -2488,6 +2490,23 @@ class OrielEditor extends LitElement {
     const newConfig: OrielConfig = { ...this._config };
     if (isDefault) delete newConfig.room_section_order;
     else newConfig.room_section_order = arr;
+    this._config = newConfig;
+    this._fireConfigChanged(newConfig);
+  }
+
+  /** Move a floor up/down in floors_display.order (#129). */
+  private _moveFloor(idx: number, dir: 'up' | 'down'): void {
+    const order = getOrderedFloorIds(this.hass, this._config.floors_display);
+    const next = (dir === 'up' ? swapAdjacentUp : swapAdjacentDown)(order, idx);
+    if (next === order) return; // out-of-range — no-op
+    const arr = next as string[];
+    // Strip the key when the order matches HA's registry order — keeps YAML sparse.
+    const registryOrder = Object.keys(this.hass.floors);
+    const isDefault =
+      arr.length === registryOrder.length && arr.every((k, i) => k === registryOrder[i]);
+    const newConfig: OrielConfig = { ...this._config };
+    if (isDefault) delete newConfig.floors_display;
+    else newConfig.floors_display = { ...newConfig.floors_display, order: arr };
     this._config = newConfig;
     this._fireConfigChanged(newConfig);
   }

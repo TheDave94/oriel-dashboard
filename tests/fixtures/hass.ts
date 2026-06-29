@@ -48,10 +48,18 @@ interface AreaFixture {
   icon?: string | null;
 }
 
+interface FloorFixture {
+  floor_id: string;
+  name: string;
+  level?: number | null;
+  icon?: string | null;
+}
+
 export interface HassFixtureSpec {
   entities?: EntityFixture[];
   devices?: DeviceFixture[];
   areas?: AreaFixture[];
+  floors?: FloorFixture[];
   language?: string;
 }
 
@@ -65,6 +73,7 @@ export function makeHass(spec: HassFixtureSpec = {}): HomeAssistant {
   const entities: Record<string, EntityFixture> = {};
   const devices: Record<string, DeviceFixture> = {};
   const areas: Record<string, AreaFixture> = {};
+  const floors: Record<string, FloorFixture> = {};
 
   for (const e of spec.entities ?? []) {
     const entry: EntityFixture & { hidden?: boolean } = {
@@ -96,12 +105,17 @@ export function makeHass(spec: HassFixtureSpec = {}): HomeAssistant {
   for (const a of spec.areas ?? []) {
     areas[a.area_id] = a;
   }
+  // Floors record preserves insertion order (HA registry order) via Object key order.
+  for (const f of spec.floors ?? []) {
+    floors[f.floor_id] = f;
+  }
 
   return {
     states,
     entities,
     devices,
     areas,
+    floors,
     language: spec.language ?? 'en',
     locale: { language: spec.language ?? 'en' },
     // Anything else the code reads → cast-safe undefined

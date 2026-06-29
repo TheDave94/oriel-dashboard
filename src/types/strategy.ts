@@ -737,6 +737,7 @@ export interface OrielConfig {
   // Area management
   use_default_area_sort?: boolean; // default: false
   areas_display?: AreasDisplay;
+  floors_display?: FloorsDisplay;
   areas_options?: Record<string, AreaOptions>;
 
   // Custom views
@@ -760,6 +761,16 @@ export interface OrielConfig {
 
 export interface AreasDisplay {
   hidden?: string[];
+  order?: string[];
+}
+
+/**
+ * Floor ordering for floor-grouped views (overview areas, lights, covers).
+ * `order` is a list of floor_ids, first = top. Floors absent from `order`
+ * keep HA's registry order after the ordered ones. Default (no config) =
+ * HA registry order, unchanged. (#129)
+ */
+export interface FloorsDisplay {
   order?: string[];
 }
 

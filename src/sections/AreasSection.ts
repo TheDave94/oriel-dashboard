@@ -9,8 +9,10 @@
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { AreaRegistryEntry } from '../types/registries';
+import type { FloorsDisplay } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
+import { getOrderedFloorIds } from '../utils/name-utils';
 
 // Area control domains to check (same as HA, with optional 'switch')
 const CONTROL_DOMAINS = [
@@ -197,7 +199,8 @@ export function createAreasSection(
   groupByFloors: boolean = false,
   hass: HomeAssistant | null = null,
   hideAreasHeading: boolean = false,
-  hideAreasOtherHeading: boolean = false
+  hideAreasOtherHeading: boolean = false,
+  floorsDisplay?: FloorsDisplay
 ): LovelaceSectionConfig | LovelaceSectionConfig[] | null {
   // Auto-hide: no visible areas → no section at all (not a lonely heading)
   if (visibleAreas.length === 0) return null;
@@ -234,10 +237,10 @@ export function createAreasSection(
   // Build sections per floor
   const sections: LovelaceSectionConfig[] = [];
 
-  // Use HA's floor order from the registry. The hass.floors object preserves
-  // the user-defined order from HA's "Reorder areas and floors" dialog via
-  // Object.keys() insertion order — no separate sort_order field needed.
-  const floorOrder = Object.keys(hass.floors);
+  // Floor order: user-configured (floors_display.order) falling back to HA's
+  // registry order. getOrderedFloorIds is the shared source of truth so the
+  // overview, lights, and covers views never disagree. (#129)
+  const floorOrder = getOrderedFloorIds(hass, floorsDisplay);
   const sortedFloors = floorOrder.filter((id) => areasByFloor.has(id));
 
   for (const floorId of sortedFloors) {

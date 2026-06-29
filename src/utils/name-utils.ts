@@ -9,7 +9,7 @@ import { Registry } from '../Registry';
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceSectionConfig } from '../types/lovelace';
 import type { AreaRegistryEntry, EntityRegistryEntry } from '../types/registries';
-import type { AreasDisplay, OrielConfig } from '../types/strategy';
+import type { AreasDisplay, FloorsDisplay, OrielConfig } from '../types/strategy';
 
 // -- Module-level RegExp caches (shared across all calls) -------------
 
@@ -135,6 +135,27 @@ export function stripCoverType(entityId: string, hass: HomeAssistant): string {
   // Fallback to original friendly name
   const objectId = entityId.split('.')[1] ?? entityId;
   return (state.attributes?.friendly_name as string | undefined) ?? objectId.replace(/_/g, ' ');
+}
+
+/**
+ * Resolve floor display order. Returns floor_ids in the user-configured
+ * order (`floors_display.order`), with any floors not listed appended in
+ * HA registry order. With no config, returns HA registry order unchanged
+ * (zero behavioural change for existing dashboards). Single source of truth
+ * for every floor-grouped view so they never disagree. (#129)
+ */
+export function getOrderedFloorIds(hass: HomeAssistant, display?: FloorsDisplay): string[] {
+  const all = Object.keys(hass.floors);
+  const order = display?.order ?? [];
+  if (order.length === 0) return all;
+  return [...all].sort((a, b) => {
+    const ia = order.indexOf(a);
+    const ib = order.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1;
+    if (ib !== -1) return 1;
+    return all.indexOf(a) - all.indexOf(b); // unordered → keep registry order
+  });
 }
 
 /**
