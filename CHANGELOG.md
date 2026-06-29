@@ -6,6 +6,14 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.22.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.4...v4.22.0) (2026-06-29)
+
+
+### Features
+
+* localize the pollen source-detail tooltip ([f1a7aa9](https://github.com/TheDave94/oriel-dashboard/commit/f1a7aa9b3b9ece8a0f3139486c1e898e57f4bacb)), closes [#144](https://github.com/TheDave94/oriel-dashboard/issues/144)
+* surface siren entities in room views ([a398ab6](https://github.com/TheDave94/oriel-dashboard/commit/a398ab682f30ed39e36bf3eb56913cb41d20e752)), closes [#138](https://github.com/TheDave94/oriel-dashboard/issues/138)
+
 ## [4.21.4](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.3...v4.21.4) (2026-06-29)
 
 
