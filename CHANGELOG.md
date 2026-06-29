@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.23.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.22.0...v4.23.0) (2026-06-29)
+
+
+### Features
+
+* user-configurable floor ordering ([f82d685](https://github.com/TheDave94/oriel-dashboard/commit/f82d6851c94b8ada3004bf58c79974b73149f4bb)), closes [#129](https://github.com/TheDave94/oriel-dashboard/issues/129)
+
 ## [4.22.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.21.4...v4.22.0) (2026-06-29)
 
 
