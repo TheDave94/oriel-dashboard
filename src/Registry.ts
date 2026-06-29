@@ -441,6 +441,35 @@ class Registry {
   }
 
   /**
+   * Get state-only entity IDs for a domain — entities present in
+   * `hass.states` but absent from the entity registry (`hass.entities`).
+   *
+   * These are typically legacy YAML / MQTT entities configured without a
+   * `unique_id`, so HA never creates a registry entry. The Registry's domain
+   * maps are built entirely from the registry, so such entities are invisible
+   * to `getVisibleEntityIdsForDomain`. Views that should surface them (e.g. the
+   * Climate view for YAML-configured MQTT thermostats, #155) merge this list in.
+   *
+   * Filtered by the criteria checkable without a registry entry: the no_dboard
+   * label set, areas_options config-hidden, and config/diagnostic category from
+   * state attributes. O(n) over hass.states — call once per view, not per card.
+   */
+  static getStateOnlyEntityIdsForDomain(domain: string): string[] {
+    const prefix = `${domain}.`;
+    const out: string[] = [];
+    for (const entityId of Object.keys(Registry._hass.states)) {
+      if (!entityId.startsWith(prefix)) continue;
+      if (Registry._entityById.has(entityId)) continue; // registry entity — already handled
+      if (Registry._excludeSet.has(entityId)) continue;
+      if (Registry._hiddenFromConfig.has(entityId)) continue;
+      const cat = Registry._hass.states[entityId]?.attributes?.entity_category;
+      if (cat === 'config' || cat === 'diagnostic') continue;
+      out.push(entityId);
+    }
+    return out;
+  }
+
+  /**
    * Get visible entity registry entries for an area. O(1).
    * Pre-filtered: no hidden, no_dboard, config/diagnostic, config-hidden.
    */

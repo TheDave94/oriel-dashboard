@@ -23,6 +23,12 @@ interface EntityFixture {
   disabled_by?: string | null;
   platform?: string;
   labels?: string[];
+  /**
+   * When true, create only a `hass.states` entry and NO entity-registry entry —
+   * simulates legacy YAML / MQTT entities configured without a `unique_id`,
+   * which HA never registers. Registry-built maps won't see these.
+   */
+  stateOnly?: boolean;
   /** State timestamps (ISO 8601). Default to a fixed past instant. */
   last_updated?: string;
   last_changed?: string;
@@ -74,7 +80,8 @@ export function makeHass(spec: HassFixtureSpec = {}): HomeAssistant {
       // Registry.isEntityExcluded sees the right shape in tests.
       hidden: e.hidden_by != null,
     };
-    entities[e.entity_id] = entry;
+    // State-only entities exist in hass.states but not in the registry.
+    if (!e.stateOnly) entities[e.entity_id] = entry;
     states[e.entity_id] = {
       entity_id: e.entity_id,
       state: e.state ?? 'on',
