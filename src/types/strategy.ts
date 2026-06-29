@@ -1169,6 +1169,8 @@ export interface RoomEntities {
   valve: string[];
   /** water_heater domain — boilers, heat pumps */
   water_heater: string[];
+  /** siren domain — actionable alarm/output devices */
+  siren: string[];
   switches: string[];
   locks: string[];
   automations: string[];

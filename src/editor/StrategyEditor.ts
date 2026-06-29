@@ -4188,6 +4188,7 @@ async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant): Prom
     humidifier: [],
     valve: [],
     water_heater: [],
+    siren: [],
     switches: [],
     locks: [],
     automations: [],
