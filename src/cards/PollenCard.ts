@@ -444,10 +444,13 @@ class OrielPollenCard extends LitElement {
   }
 
   private _sourcesDetail(meta: PollenSourceMeta): string {
-    const LABELS = ['none', 'low', 'high'];
-    const parts = Object.entries(meta.levels).map(
-      ([src, lvl]) => `${src.replace(/_/g, ' ')}: ${LABELS[lvl] ?? lvl}`,
-    );
+    const LEVEL_KEYS = ['none', 'low', 'high'];
+    const parts = Object.entries(meta.levels).map(([src, lvl]) => {
+      const srcLabel = localize(`editor.pollen_source_short_${src}`) || src.replace(/_/g, ' ');
+      const levelKey = LEVEL_KEYS[lvl];
+      const levelLabel = levelKey ? localize(`editor.pollen_level_${levelKey}`) || levelKey : String(lvl);
+      return `${srcLabel}: ${levelLabel}`;
+    });
     return parts.length ? parts.join(' · ') : `${meta.count} of ${meta.max} sources`;
   }
 

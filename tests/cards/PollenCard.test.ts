@@ -248,9 +248,29 @@ describe('oriel-pollen-card — N of M source badge (#131 audit)', () => {
     const badge = root.querySelector('.tile-sources');
     expect(badge).not.toBeNull();
     expect(badge!.textContent?.trim()).toBe('2/3');
-    // which-sources-disagree detail (Finding 2b) on the title
-    expect(badge!.getAttribute('title')).toContain('open meteo: high');
-    expect(badge!.getAttribute('title')).toContain('dwd: none');
+    // which-sources-disagree detail (Finding 2b) on the title — now with
+    // localized source names + level labels (#144).
+    expect(badge!.getAttribute('title')).toContain('Open-Meteo: high');
+    expect(badge!.getAttribute('title')).toContain('DWD: none');
+  });
+
+  it('localizes the source-detail tooltip into the HA language (#144)', async () => {
+    const el = mount();
+    el.setConfig({ source: 'analytics', types: ['grass'], presentation: 'consensus_tiles', show_inactive: true });
+    el.hass = {
+      states: {
+        'sensor.pollenwatch_analytics_grass_consensus': {
+          state: 'high',
+          attributes: { source_count: 2, max_possible_sources: 3, source_levels: { open_meteo: 2, dwd: 0 } },
+        },
+      },
+      locale: { language: 'de' },
+    };
+    await el.updateComplete;
+    const title = el.shadowRoot!.querySelector('.tile-sources')!.getAttribute('title') ?? '';
+    expect(title).toContain('Open-Meteo: hoch'); // de: pollen_level_high → "hoch"
+    expect(title).toContain('DWD: keine'); // de: pollen_level_none → "keine"
+    expect(title).not.toContain('high'); // English level label must not leak
   });
 
   it('surfaces a single-source reading as 1/3 (honesty signal)', async () => {
