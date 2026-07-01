@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.23.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.23.0...v4.23.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* hide notification banner section until a trigger is active ([#164](https://github.com/TheDave94/oriel-dashboard/issues/164)) ([b4595cc](https://github.com/TheDave94/oriel-dashboard/commit/b4595cc4871ef09b7c0dc1f7bee003403369e63b))
+
 ## [4.23.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.22.0...v4.23.0) (2026-06-29)
 
 
