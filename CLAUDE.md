@@ -255,7 +255,7 @@ Every custom card in `src/cards/` uses LitElement with `willUpdate(changedProps)
 
 **Scope.** Only the test layer needs credentials. `npm run build`, `npm run build-dev`, `npm run watch`, `npm run lint`, type-checks — none of these touch the HA API. Playwright (`tests/e2e/*.ts`, `tests/e2e-browser/*.spec.ts`) and the strategy-API test use HA_URL + HA_TOKEN to hit the live HA instance.
 
-**Live-HA e2e is local-manual, not CI.** `HA_URL`/`HA_TOKEN` are deliberately not in GitHub Actions repo secrets — public repo + full-admin token = unacceptable exposure surface. The `.github/workflows/e2e.yml` workflow is `workflow_dispatch`-only by design. Full rationale + revisit trigger in [DEFERRED.md](DEFERRED.md) → *Live-HA e2e stays local-manual / `workflow_dispatch`-only*.
+**Live-HA e2e is local-manual, not CI.** `HA_URL`/`HA_TOKEN` are deliberately not in GitHub Actions repo secrets — public repo + a token with full read access to a live home (all entity state, even though the user is non-admin — see *Token scope* below) = unacceptable exposure surface. The `.github/workflows/e2e.yml` workflow is `workflow_dispatch`-only by design. Full rationale + revisit trigger in [DEFERRED.md](DEFERRED.md) → *Live-HA e2e stays local-manual / `workflow_dispatch`-only*.
 
 **Where credentials live.** `.env.local` in this repo (gitignored). Values: `HA_URL`, `HA_TOKEN`, optionally `HA_DASHBOARD_URL_PATH` (path string, not a credential). Schema documented in `.env.example` (committed).
 
@@ -269,7 +269,7 @@ node -e "const t=process.env.HA_TOKEN||''; console.log('HA_TOKEN loaded: len='+t
 node -e "fetch(process.env.HA_URL+'/api/',{headers:{Authorization:'Bearer '+process.env.HA_TOKEN}}).then(r=>console.log('HA API status='+r.status))"
 ```
 
-**Token scope.** HA 2026.5.x does not support fine-grained access tokens — `HA_TOKEN` is full admin scope. The same long-lived token also lives in `~/.hermes/.env` and `/opt/repos/homeassistant-config/.env.local`. When HA upstream gains per-token scoping, this repo's copy can become read-only (Oriel's tests only need entity-state reads + dashboard-render verification; no writes).
+**Token scope.** HA 2026.x does not support fine-grained access tokens — a long-lived token inherits the permissions of the HA *user* that created it. `HA_TOKEN` belongs to **`oriel-ci`, a non-admin user** (`is_admin: false, is_owner: false`, verified 2026-07-01 via `hass.user` over an authenticated WS connection). So it can read everything Oriel's tests need — entity/device/area registries, states, and dashboard configs (`lovelace/config`, `lovelace/dashboards/list`) — but **admin-gated WS commands fail with `{code: "unauthorized"}`**, notably `lovelace/dashboards/create` / `delete`. Consequence for live-layout checks: you can't spin up a throwaway strategy dashboard with this token; measure the existing `oriel-dashboard` instead, or have an admin create the probe. Note a REST `/api/` 200 does NOT prove admin — any valid token returns 200. The same long-lived token also lives in `~/.hermes/.env` and `/opt/repos/homeassistant-config/.env.local`.
 
 **Rotation.** Central runbook lives at `/opt/autocoder/ROTATION_RUNBOOK.md`. For HA-token rotation, the runbook lists the three holder files. **Rotation triggers** beyond scheduled cadence: any time a CC transcript may have been shared externally, rotate `HA_TOKEN`.
 
