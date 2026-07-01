@@ -409,19 +409,38 @@ class OrielViewOverview extends HTMLElement {
 
     // Notification banner — prepend a `oriel-notification-card` to
     // the overview when notification_triggers are configured. The
-    // card auto-hides when no trigger is active, sticky-positions
-    // itself when something fires. Always emitted (cost is one tiny
-    // custom element that renders nothing when idle).
+    // card sticky-positions itself when something fires.
+    //
+    // The section carries a `visibility` condition that's only met
+    // while at least one trigger entity is in its active state. Without
+    // it, the empty grid section still reserved a masonry column and
+    // shoved the first overview section sideways even when nothing had
+    // fired (#164). HA re-evaluates section visibility reactively, so
+    // the banner still appears/disappears live. `column_span` makes it a
+    // full-width row between the badges and the area cards rather than a
+    // single-column block when active.
     if (
       Array.isArray(dashboardConfig.notification_triggers) &&
       dashboardConfig.notification_triggers.length > 0
     ) {
+      const triggers = dashboardConfig.notification_triggers;
+      const stateConds = triggers.map((t) => ({
+        condition: 'state',
+        entity: t.entity,
+        state: t.active_state ?? 'on',
+      }));
+      // `visibility` conditions are AND-ed, so a single trigger goes in
+      // bare while multiple triggers need an explicit `or` wrapper.
+      const visibility =
+        stateConds.length === 1 ? stateConds : [{ condition: 'or', conditions: stateConds }];
       overviewSections.unshift({
         type: 'grid',
+        column_span: 4,
+        visibility,
         cards: [
           {
             type: 'custom:oriel-notification-card',
-            triggers: dashboardConfig.notification_triggers,
+            triggers,
             grid_options: { columns: 'full', rows: 'auto' },
           } as LovelaceCardConfig,
         ],
