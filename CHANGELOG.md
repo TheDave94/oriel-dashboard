@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.24.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.23.1...v4.24.0) (2026-07-06)
+
+
+### Features
+
+* opt-in dense_section_placement across all sections views ([189916a](https://github.com/TheDave94/oriel-dashboard/commit/189916af24a9636066af01059e7187ae14ec7b9b))
+
 ## [4.23.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.23.0...v4.23.1) (2026-07-01)
 
 
