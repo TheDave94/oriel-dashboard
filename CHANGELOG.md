@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.25.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.24.0...v4.25.0) (2026-07-06)
+
+
+### Features
+
+* Security view activity log, no_seclog label, opt-in camera cards ([43e23a1](https://github.com/TheDave94/oriel-dashboard/commit/43e23a1f47f1c858c80348f0bb0f66e356d177c3))
+
 ## [4.24.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.23.1...v4.24.0) (2026-07-06)
 
 
