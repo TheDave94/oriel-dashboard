@@ -13,6 +13,18 @@ jobs:
   hacs:
     name: HACS Validation
     runs-on: ubuntu-latest
+    # Skip on fork PRs: hacs/action validates the PR HEAD's repo, so a fork
+    # PR makes it check the contributor's fork (e.g. `Olli710/oriel-dashboard`,
+    # PR #168) instead of this repo. Forks have no release with dist/ assets,
+    # so the structure check fails there 100% of the time with
+    #   "Repository <fork> not loaded properly in HACS"
+    # — a false failure that has nothing to do with the PR's contents. On
+    # same-repo PRs, pushes to main, the schedule, and manual dispatch the
+    # HEAD repo IS this repo, so validation runs as normal. (Ported from
+    # upstream simon42 #332.)
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       # HACS Validation calls into the live HACS pipeline, which is not
