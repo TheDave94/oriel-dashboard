@@ -199,7 +199,13 @@ jobs:
           # so it lives in core too) — the AirWatch reader + Lit card +
           # per-pollutant labels/icons + en/de i18n keys. ~2KB gzipped; 1KB
           # headroom kept.
-          check "oriel-core.*.js.gz" 70
+          # v4.25 — raised 70 → 72 KB to absorb the simon42 #336/#338 port
+          # wave: oriel-camera-card (play/stop live-stream wrapper, lives in
+          # core with the other cards), the Security-view activity log +
+          # cameras section, per-area section order, and their en/de i18n
+          # keys. Core was 84 bytes under the old limit before the camera
+          # card landed; ~1KB headroom kept.
+          check "oriel-core.*.js.gz" 72
           check "oriel-views.*.js.gz" 20
           check "oriel-editor.*.js.gz" 80
           check "oriel-lit.*.js.gz" 25

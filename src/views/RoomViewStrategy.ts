@@ -479,29 +479,23 @@ class OrielViewRoom extends HTMLElement {
           if (companions.battery) glanceEntities.push({ entity: companions.battery });
           if (companions.doorbell) glanceEntities.push({ entity: companions.doorbell });
 
+          // oriel-camera-card wraps the native picture-glance and adds a
+          // play/stop overlay — still image until the user starts the
+          // stream. Battery cams stay cheap by default, and snapshot-less
+          // cams (e.g. Aqara) become usable via one tap instead of the
+          // dropped vendor-specific 'live' override. Continuous streaming
+          // remains available via the camera_hero per-area option.
           cameraCards.push({
-            type: 'picture-glance',
-            camera_image: cameraId,
-            // Always 'auto' — battery-powered cams shouldn't stream
-            // continuously and there's no reliable way to detect which
-            // are wired vs battery from registry data alone. The
-            // previous Aqara-specific 'live' override is dropped; users
-            // who want continuous streaming can configure it via the
-            // camera_hero per-area option instead.
-            camera_view: 'auto',
-            fit_mode: 'cover',
-            title: stripAreaName(cameraId, area, hass),
+            type: 'custom:oriel-camera-card',
+            entity: cameraId,
+            name: stripAreaName(cameraId, area, hass),
             entities: glanceEntities,
           });
         } else {
           cameraCards.push({
-            type: 'picture-entity',
+            type: 'custom:oriel-camera-card',
             entity: cameraId,
-            camera_image: cameraId,
-            camera_view: 'auto',
             name: stripAreaName(cameraId, area, hass),
-            show_name: true,
-            show_state: false,
           });
         }
       }

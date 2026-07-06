@@ -140,6 +140,8 @@
   },
   "room": {
     "cameras": "Kameras",
+    "start_camera_stream": "Live-Stream starten",
+    "stop_camera_stream": "Live-Stream stoppen",
     "lighting": "Beleuchtung",
     "all_on": "Alle ein",
     "all_off": "Alle aus",
