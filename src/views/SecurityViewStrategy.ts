@@ -16,6 +16,93 @@ interface SecurityViewStrategyParams {
   config?: OrielConfig;
 }
 
+// -- Activity log (24h logbook à la HA's security panel) --------------
+
+// Entities carrying this label stay in the security sections but are
+// excluded from the activity logbook — e.g. interior door contacts whose
+// history is just noise there (same label convention as `no_dboard`).
+// Ported from upstream simon42 #336.
+const SECLOG_EXCLUDE_LABEL = 'no_seclog';
+
+function isExcludedFromSecurityLog(entityId: string): boolean {
+  return Registry.getEntity(entityId)?.labels?.includes(SECLOG_EXCLUDE_LABEL) === true;
+}
+
+/**
+ * 24h logbook section over the view's security entities + persons.
+ * Returns null when disabled, when the logbook integration isn't loaded,
+ * or when nothing would appear in it. Exported for tests.
+ */
+export function buildActivitySection(
+  hass: HomeAssistant,
+  dashboardConfig: OrielConfig,
+  securityEntityIds: string[],
+): LovelaceSectionConfig | null {
+  if (dashboardConfig.show_security_activity === false) return null;
+  if (!hass.config?.components?.includes('logbook')) return null;
+
+  const logbookEntityIds = [
+    ...securityEntityIds,
+    ...Registry.getVisibleEntityIdsForDomain('person'),
+  ].filter((id) => !isExcludedFromSecurityLog(id));
+  if (logbookEntityIds.length === 0) return null;
+
+  return {
+    type: 'grid',
+    cards: [
+      {
+        type: 'heading',
+        heading: localize('security.activity'),
+        heading_style: 'title',
+      },
+      {
+        type: 'logbook',
+        target: { entity_id: logbookEntityIds },
+        hours_to_show: 24,
+        grid_options: { columns: 12 },
+      },
+    ],
+  };
+}
+
+// -- Cameras shown in the security view --------------------------------
+
+/**
+ * Lean still-image camera cards (HA security panel style) — no name, no
+ * state, half width. The rich picture-glance construction stays exclusive
+ * to the camera view. Heading deep-links there when it's enabled.
+ * Exported for tests.
+ */
+export function buildCamerasSection(
+  cameraIds: string[],
+  cameraViewEnabled: boolean,
+): LovelaceSectionConfig | null {
+  if (cameraIds.length === 0) return null;
+  return {
+    type: 'grid',
+    cards: [
+      {
+        type: 'heading',
+        heading: localize('security.cameras'),
+        heading_style: 'subtitle',
+        icon: 'mdi:cctv',
+        ...(cameraViewEnabled
+          ? { tap_action: { action: 'navigate', navigation_path: 'cameras' } }
+          : {}),
+      },
+      ...cameraIds.map((id) => ({
+        type: 'picture-entity',
+        entity: id,
+        camera_image: id,
+        camera_view: 'auto',
+        show_state: false,
+        show_name: false,
+        grid_options: { columns: 6, rows: 2 },
+      })),
+    ],
+  };
+}
+
 class OrielViewSecurity extends HTMLElement {
   static async generate(
     config: SecurityViewStrategyParams,
@@ -347,10 +434,43 @@ class OrielViewSecurity extends HTMLElement {
       sections.push({ type: 'grid', cards });
     }
 
+    const dashboardConfig = config.config || {};
+
+    // Cameras (opt-in) — lean still-image cards, HA security-panel style.
+    const cameraIds =
+      dashboardConfig.show_cameras_in_security === true
+        ? Registry.getVisibleEntityIdsForDomain('camera').filter(
+            (id) => hass.states[id] !== undefined,
+          )
+        : [];
+    const camerasSection = buildCamerasSection(
+      cameraIds,
+      dashboardConfig.show_camera_view === true,
+    );
+    if (camerasSection) sections.push(camerasSection);
+
+    // Activity log — leads the view by default, optionally trails
+    // (security_activity_position: 'end'). Cameras join the logbook so
+    // motion/person events on them show up too.
+    const activitySection = buildActivitySection(hass, dashboardConfig, [
+      ...locks,
+      ...doors,
+      ...motorizedWindows,
+      ...garages,
+      ...windows,
+      ...smokeGas,
+      ...waterLeak,
+      ...cameraIds,
+    ]);
+    if (activitySection) {
+      if (dashboardConfig.security_activity_position === 'end') sections.push(activitySection);
+      else sections.unshift(activitySection);
+    }
+
     return {
       type: 'sections',
-      ...densePlacement(config.config),
-      sections: showAreaInSummaries(config.config || {})
+      ...densePlacement(dashboardConfig),
+      sections: showAreaInSummaries(dashboardConfig)
         ? applyAreaContextToSections(sections, hass)
         : sections,
     };

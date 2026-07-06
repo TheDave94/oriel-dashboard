@@ -111,7 +111,9 @@
     "smoke_gas_inactive": "Rauch-, Gas- & Hitzemelder - Kein Alarm",
     "water_leak_active": "Wassersensoren - Alarm",
     "water_leak_inactive": "Wassersensoren - Trocken",
-    "extra_entities": "Smart-Geräte & Sonstiges"
+    "extra_entities": "Smart-Geräte & Sonstiges",
+    "activity": "Aktivität",
+    "cameras": "Kameras"
   },
   "batteries": {
     "critical": "Kritisch",
@@ -345,6 +347,12 @@
     "show_security_summary": "Sicherheits-Zusammenfassung anzeigen",
     "security_extra_entities": "Zusätzliche Entitäten in Sicherheits-Ansicht",
     "security_extra_entities_desc": "Beliebige Entitäten (Smart-Geräte, eigene Sensoren etc.) auswählen, die unten in der Sicherheits-Ansicht als Kacheln erscheinen. Praktisch für Backofen, Herd, Bügeleisen — alles, was du vor dem Verlassen noch einmal prüfen möchtest.",
+    "show_security_activity": "Aktivitäts-Verlauf in Sicherheits-Ansicht anzeigen",
+    "show_security_activity_desc": "Ein 24h-Logbuch über alle Sicherheits-Entitäten und Personen am Anfang der Sicherheits-Ansicht (wie im Home Assistant Security-Panel). Benötigt die Logbuch-Integration. Entitäten mit dem Label \"no_seclog\" bleiben in der Ansicht sichtbar, erscheinen aber nicht im Verlauf (z. B. innenliegende Türkontakte).",
+    "security_activity_at_end": "Aktivitäts-Verlauf ans Ende verschieben",
+    "security_activity_at_end_desc": "Zeigt den Aktivitäts-Verlauf als letzten statt als ersten Abschnitt der Sicherheits-Ansicht.",
+    "show_cameras_in_security": "Kameras in Sicherheits-Ansicht anzeigen",
+    "show_cameras_in_security_desc": "Fügt der Sicherheits-Ansicht kompakte Standbild-Kamerakarten hinzu (wie im Home Assistant Security-Panel). Die Abschnitts-Überschrift verlinkt zur Kamera-Übersicht, wenn diese Ansicht aktiviert ist.",
     "show_climate_summary": "Klima-Zusammenfassung anzeigen",
     "show_climate_summary_desc": "Zeigt die Klima-Zusammenfassungskarte in der Übersicht an. Zählt aktive Thermostate und Klimageräte.",
     "show_battery_summary": "Batterie-Zusammenfassung anzeigen",

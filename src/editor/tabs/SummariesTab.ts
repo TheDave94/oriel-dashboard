@@ -18,6 +18,9 @@
 //     show_partially_open_covers      boolean
 //     group_covers_by_floors          boolean
 //   show_security_summary             boolean default true
+//     show_security_activity          boolean default true (security view)
+//     security_activity_at_end        boolean → security_activity_position
+//     show_cameras_in_security        boolean (security view)
 //   show_climate_summary              boolean
 //   show_battery_summary              boolean default true
 //     hide_mobile_app_batteries       boolean
@@ -49,6 +52,9 @@ interface SummariesData {
   show_partially_open_covers: boolean;
   group_covers_by_floors: boolean;
   show_security_summary: boolean;
+  show_security_activity: boolean;
+  security_activity_at_end: boolean;
+  show_cameras_in_security: boolean;
   show_climate_summary: boolean;
   show_battery_summary: boolean;
   hide_mobile_app_batteries: boolean;
@@ -75,6 +81,9 @@ function readData(c: OrielConfig): SummariesData {
     show_partially_open_covers: c.show_partially_open_covers === true,
     group_covers_by_floors: c.group_covers_by_floors === true,
     show_security_summary: c.show_security_summary !== false,
+    show_security_activity: c.show_security_activity !== false,
+    security_activity_at_end: c.security_activity_position === 'end',
+    show_cameras_in_security: c.show_cameras_in_security === true,
     show_climate_summary: c.show_climate_summary === true,
     show_battery_summary: c.show_battery_summary !== false,
     hide_mobile_app_batteries: c.hide_mobile_app_batteries === true,
@@ -126,6 +135,9 @@ const SCHEMA = [
   { name: 'show_partially_open_covers', selector: { boolean: {} } },
   { name: 'group_covers_by_floors', selector: { boolean: {} } },
   { name: 'show_security_summary', selector: { boolean: {} } },
+  { name: 'show_security_activity', selector: { boolean: {} } },
+  { name: 'security_activity_at_end', selector: { boolean: {} } },
+  { name: 'show_cameras_in_security', selector: { boolean: {} } },
   { name: 'show_climate_summary', selector: { boolean: {} } },
   { name: 'show_battery_summary', selector: { boolean: {} } },
   { name: 'hide_mobile_app_batteries', selector: { boolean: {} } },
@@ -172,7 +184,12 @@ function buildPatch(v: Partial<SummariesData>): Partial<OrielConfig> {
   p.show_light_summary = v.show_light_summary === false ? false : undefined;
   p.show_covers_summary = v.show_covers_summary === false ? false : undefined;
   p.show_security_summary = v.show_security_summary === false ? false : undefined;
+  p.show_security_activity = v.show_security_activity === false ? false : undefined;
   p.show_battery_summary = v.show_battery_summary === false ? false : undefined;
+
+  // security view — activity trails when checked; cameras default-false.
+  p.security_activity_position = v.security_activity_at_end === true ? 'end' : undefined;
+  p.show_cameras_in_security = v.show_cameras_in_security === true ? true : undefined;
 
   // default-false booleans → only persist true.
   p.group_lights_by_floors = v.group_lights_by_floors === true ? true : undefined;

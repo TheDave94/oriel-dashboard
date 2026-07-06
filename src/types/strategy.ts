@@ -742,6 +742,22 @@ export interface OrielConfig {
       };
   room_pin_entities?: string[];
   security_extra_entities?: string[];
+  /**
+   * 24h activity log in the Security view — a native `logbook` card over
+   * all security entities + persons, like HA's own security panel. Default
+   * on; auto-omitted when the logbook integration isn't loaded. Entities
+   * labeled `no_seclog` stay in the view but are excluded from the log
+   * (same label convention as `no_dboard`). Ported from upstream simon42
+   * #336.
+   */
+  show_security_activity?: boolean; // default: true
+  security_activity_position?: 'start' | 'end'; // default: 'start'
+  /**
+   * Lean still-image camera cards inside the Security view (HA security
+   * panel style). Uses the same visible-camera set as the camera view; the
+   * section heading deep-links to the camera view when that's enabled.
+   */
+  show_cameras_in_security?: boolean; // default: false
   light_favorite_entities?: string[]; // light.* glance row on overview (originally upstream simon42#176)
 
   // Area management

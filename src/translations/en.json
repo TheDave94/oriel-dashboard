@@ -111,7 +111,9 @@
     "smoke_gas_inactive": "Smoke, Gas & Heat Detectors - No Alarm",
     "water_leak_active": "Water Leak Sensors - Alarm",
     "water_leak_inactive": "Water Leak Sensors - Dry",
-    "extra_entities": "Smart Appliances & Other"
+    "extra_entities": "Smart Appliances & Other",
+    "activity": "Activity",
+    "cameras": "Cameras"
   },
   "batteries": {
     "critical": "Critical",
@@ -345,6 +347,12 @@
     "show_security_summary": "Show security summary",
     "security_extra_entities": "Extra entities in Security view",
     "security_extra_entities_desc": "Pick any extra entities (smart appliances, custom sensors, etc.) to show as tiles at the bottom of the Security view. Useful for ovens, cooktops, irons — anything you want a glance at before leaving the house.",
+    "show_security_activity": "Show activity log in Security view",
+    "show_security_activity_desc": "A 24h logbook over all security entities and persons at the top of the Security view (like the Home Assistant security panel). Requires the logbook integration. Entities labeled \"no_seclog\" stay visible in the view but are excluded from the log (e.g. interior door contacts).",
+    "security_activity_at_end": "Move activity log to the end",
+    "security_activity_at_end_desc": "Places the activity log as the last section of the Security view instead of the first.",
+    "show_cameras_in_security": "Show cameras in Security view",
+    "show_cameras_in_security_desc": "Adds lean still-image camera cards to the Security view (like the Home Assistant security panel). The section heading links to the camera overview when that view is enabled.",
     "show_climate_summary": "Show climate summary",
     "show_climate_summary_desc": "Shows the climate summary card on the overview. Counts active thermostats and climate devices.",
     "show_battery_summary": "Show battery summary",
