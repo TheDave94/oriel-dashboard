@@ -17,16 +17,23 @@ import type { AreaRegistryEntry } from '../../types/registries';
 import { localize } from '../../utils/localize';
 import { getOrderedFloorIds } from '../../utils/name-utils';
 
-const ROOM_SECTION_LABEL: Record<RoomSectionKey, string> = {
+export const ROOM_SECTION_LABEL: Record<RoomSectionKey, string> = {
   lights: 'room.lighting', locks: 'room.locks', climate: 'room.climate',
   covers: 'room.covers', curtains: 'room.curtains', windows: 'room.windows',
   media: 'room.media', scenes: 'room.scenes', misc: 'room.misc',
   automations: 'room.automations', scripts: 'room.scripts',
 };
 
-/** Effective full room-section order: configured (valid, deduped) + remaining defaults. */
-export function effectiveRoomSectionOrder(config: OrielConfig): RoomSectionKey[] {
-  const cfg = Array.isArray(config.room_section_order) ? config.room_section_order : [];
+/**
+ * Normalize a configured section order to a full effective order:
+ * configured keys (valid, deduped) first, then the remaining defaults.
+ * Shared by the global widget here and the per-area widget in
+ * RoomOverridesTab.
+ */
+export function normalizeRoomSectionOrder(
+  configured: RoomSectionKey[] | undefined,
+): RoomSectionKey[] {
+  const cfg = Array.isArray(configured) ? configured : [];
   const seen = new Set<RoomSectionKey>();
   const out: RoomSectionKey[] = [];
   for (const k of [...cfg, ...DEFAULT_ROOM_SECTION_ORDER]) {
@@ -36,6 +43,11 @@ export function effectiveRoomSectionOrder(config: OrielConfig): RoomSectionKey[]
     }
   }
   return out;
+}
+
+/** Effective full room-section order: configured (valid, deduped) + remaining defaults. */
+export function effectiveRoomSectionOrder(config: OrielConfig): RoomSectionKey[] {
+  return normalizeRoomSectionOrder(config.room_section_order);
 }
 
 export interface AreasTabContext {

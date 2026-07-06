@@ -792,10 +792,15 @@ class OrielViewRoom extends HTMLElement {
     // Append the reorderable entity-group sections in the configured
     // order (#293). Effective order = user keys (valid + deduped) then
     // any default keys they omitted — so a partial/unknown config never
-    // drops a section. Unset → DEFAULT_ROOM_SECTION_ORDER → canonical order.
-    const configuredOrder = Array.isArray(dashboardConfig.room_section_order)
-      ? dashboardConfig.room_section_order
-      : [];
+    // drops a section. Resolution: per-area override
+    // (areas_options.<area>.room_section_order) → global
+    // room_section_order → DEFAULT_ROOM_SECTION_ORDER (canonical order).
+    const areaSectionOrder = dashboardConfig.areas_options?.[area.area_id]?.room_section_order;
+    const configuredOrder = Array.isArray(areaSectionOrder)
+      ? areaSectionOrder
+      : Array.isArray(dashboardConfig.room_section_order)
+        ? dashboardConfig.room_section_order
+        : [];
     const seen = new Set<RoomSectionKey>();
     const effectiveOrder: RoomSectionKey[] = [];
     for (const key of [...configuredOrder, ...DEFAULT_ROOM_SECTION_ORDER]) {

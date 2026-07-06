@@ -583,6 +583,10 @@
     "room_camera_companion_battery": "Akkustand",
     "room_camera_companion_doorbell": "Türklingel",
     "camera_hero": "Kamera als Hero (zeigt die erste Kamera des Bereichs in voller Breite oben in der Raum-Ansicht)",
-    "camera_hero_summary": "Kamera-Hero"
+    "camera_hero_summary": "Kamera-Hero",
+    "area_section_order": "Abschnitts-Reihenfolge (nur dieser Raum)",
+    "area_section_order_desc": "Ordnet die Entitäts-Gruppen-Abschnitte nur dieser Raum-Ansicht neu. Unveränderte Räume behalten die globale Reihenfolge aus dem Bereiche-Tab.",
+    "area_section_order_reset": "Auf globale Reihenfolge zurücksetzen",
+    "area_section_order_summary": "eigene Abschnitts-Reihenfolge"
   }
 }

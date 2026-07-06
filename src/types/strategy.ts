@@ -818,6 +818,15 @@ export interface PresenceZoneEntry {
 export interface AreaOptions {
   groups_options?: Record<string, GroupOptions>;
   /**
+   * Per-area override of the global `room_section_order` — reorders this
+   * room view's entity-group sections without touching other rooms.
+   * Same semantics as the global key (partial/unknown lists never drop a
+   * section: listed keys first, then the remaining defaults). Unset →
+   * inherit the global order. (Upstream simon42 models this as
+   * `stacks_order`, ported in #338; Oriel keeps its own key name.)
+   */
+  room_section_order?: RoomSectionKey[];
+  /**
    * Opt this area into the room-mode tile by picking the entity. When
    * not set, the room view auto-detects: if the area has exactly one
    * `input_select.*` entity whose object_id contains "mode", that one

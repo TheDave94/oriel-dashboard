@@ -14,9 +14,15 @@
 
 import { html, nothing, type TemplateResult } from 'lit';
 import type { HomeAssistant } from '../../types/homeassistant';
-import type { OrielConfig } from '../../types/strategy';
+import type { OrielConfig, RoomSectionKey } from '../../types/strategy';
 import type { AreaRegistryEntry } from '../../types/registries';
 import { localize } from '../../utils/localize';
+import { swapAdjacentUp, swapAdjacentDown } from '../../utils/array-reorder';
+import {
+  ROOM_SECTION_LABEL,
+  normalizeRoomSectionOrder,
+  effectiveRoomSectionOrder,
+} from './AreasTab';
 import yaml from 'js-yaml';
 
 export interface RoomOverridesTabContext {
@@ -112,6 +118,7 @@ function renderAreaOverride(
   const areaOpts = (opts[area.area_id] ?? {}) as {
     room_view_overrides?: { sections?: unknown[]; append_default?: boolean };
     camera_hero?: boolean;
+    room_section_order?: RoomSectionKey[];
   };
   const rvo = areaOpts.room_view_overrides;
   const hasOverride = !!rvo && Array.isArray(rvo.sections) && rvo.sections.length > 0;
@@ -169,6 +176,46 @@ function renderAreaOverride(
     ctx.onChange(setCameraHero(opts, area.area_id, checked));
   };
 
+  // Per-area section order — overrides the global room_section_order for
+  // this room only. Unset = inherit global; a move that lands back on the
+  // global effective order deletes the key (keeps YAML sparse).
+  const hasAreaOrder = Array.isArray(areaOpts.room_section_order);
+  const globalOrder = effectiveRoomSectionOrder(ctx.config);
+  const areaOrder = hasAreaOrder
+    ? normalizeRoomSectionOrder(areaOpts.room_section_order)
+    : globalOrder;
+
+  const moveAreaSection = (idx: number, dir: 'up' | 'down'): void => {
+    const next = (dir === 'up' ? swapAdjacentUp : swapAdjacentDown)(areaOrder, idx);
+    if (next === areaOrder) return; // out-of-range — no-op
+    const arr = next as RoomSectionKey[];
+    const matchesGlobal =
+      arr.length === globalOrder.length && arr.every((k, i) => k === globalOrder[i]);
+    const nextOpts: NonNullable<OrielConfig['areas_options']> = { ...opts };
+    const nextArea = { ...areaOpts } as Record<string, unknown>;
+    if (matchesGlobal) delete nextArea.room_section_order;
+    else nextArea.room_section_order = arr;
+    if (Object.keys(nextArea).length === 0) {
+      delete nextOpts[area.area_id];
+    } else {
+      nextOpts[area.area_id] = nextArea as NonNullable<OrielConfig['areas_options']>[string];
+    }
+    ctx.onChange(nextOpts);
+  };
+
+  const resetAreaOrder = (): void => {
+    if (!hasAreaOrder) return;
+    const nextOpts: NonNullable<OrielConfig['areas_options']> = { ...opts };
+    const nextArea = { ...areaOpts } as Record<string, unknown>;
+    delete nextArea.room_section_order;
+    if (Object.keys(nextArea).length === 0) {
+      delete nextOpts[area.area_id];
+    } else {
+      nextOpts[area.area_id] = nextArea as NonNullable<OrielConfig['areas_options']>[string];
+    }
+    ctx.onChange(nextOpts);
+  };
+
   // Summary status — concatenate the override + camera-hero hints so the
   // user can scan the collapsed list and see what's configured per area.
   const summaryParts: string[] = [];
@@ -180,6 +227,11 @@ function renderAreaOverride(
   if (cameraHero) {
     summaryParts.push(
       localize('editor.camera_hero_summary') || 'camera hero',
+    );
+  }
+  if (hasAreaOrder) {
+    summaryParts.push(
+      localize('editor.area_section_order_summary') || 'custom section order',
     );
   }
   const summaryText =
@@ -242,6 +294,45 @@ function renderAreaOverride(
               </label>
             `
           : nothing}
+        <details style="margin-top: 8px;" ?open=${hasAreaOrder}>
+          <summary style="cursor: pointer; font-size: 12px;">
+            ${localize('editor.area_section_order') || 'Section order (this room only)'}
+            ${hasAreaOrder
+              ? html`<button
+                  type="button"
+                  style="margin-left: 8px; font-size: 11px;"
+                  @click=${(e: Event) => {
+                    e.preventDefault();
+                    resetAreaOrder();
+                  }}
+                >
+                  ${localize('editor.area_section_order_reset') || 'Reset to global order'}
+                </button>`
+              : nothing}
+          </summary>
+          <div class="description" style="font-size: 11px; margin: 4px 0 6px;">
+            ${localize('editor.area_section_order_desc') ||
+              'Reorders the entity-group sections of this room view only. Unchanged rooms keep the global order from the Areas tab.'}
+          </div>
+          <div class="area-list">
+            ${areaOrder.map((key, idx) => {
+              const label = localize(ROOM_SECTION_LABEL[key]);
+              return html`
+                <div class="custom-item-header" data-area-section=${key}>
+                  <strong>${label}</strong>
+                  <button class="section-move-btn" type="button"
+                    aria-label="${localize('editor.move_section_up') || 'Move up'}: ${label}"
+                    title="${localize('editor.move_section_up') || 'Move up'}"
+                    ?disabled=${idx === 0} @click=${() => moveAreaSection(idx, 'up')}>&#x2191;</button>
+                  <button class="section-move-btn" type="button"
+                    aria-label="${localize('editor.move_section_down') || 'Move down'}: ${label}"
+                    title="${localize('editor.move_section_down') || 'Move down'}"
+                    ?disabled=${idx === areaOrder.length - 1} @click=${() => moveAreaSection(idx, 'down')}>&#x2193;</button>
+                </div>
+              `;
+            })}
+          </div>
+        </details>
         <small class="description" style="font-size: 11px; display: block; margin-top: 4px;">
           ${localize('editor.room_overrides_help') ||
             'YAML must be a list of Lovelace section configs (e.g. type: grid + cards: [...]).'}
