@@ -1,6 +1,6 @@
 # Oriel Dashboard
 
-**English** · [Deutsch](README.de.md) *(coming soon — contributions welcome, see [TRANSLATING.md](TRANSLATING.md))*
+**English** · [Deutsch](README.de.md)
 
 A Lovelace strategy for Home Assistant. It generates your dashboard from your areas, devices, and entities, and lets you customise every part through a visual editor instead of editing YAML.
 
