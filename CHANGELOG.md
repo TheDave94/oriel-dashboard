@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.26.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.25.0...v4.26.0) (2026-07-06)
+
+
+### Features
+
+* per-area room_section_order override ([1b6fe2d](https://github.com/TheDave94/oriel-dashboard/commit/1b6fe2d0a73239a9ed4b00832d67bf1600a64430))
+
 ## [4.25.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.24.0...v4.25.0) (2026-07-06)
 
 
