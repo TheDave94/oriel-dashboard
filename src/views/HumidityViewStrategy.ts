@@ -8,6 +8,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
+import { densePlacement } from '../utils/view-builder';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
@@ -109,7 +110,7 @@ class OrielViewHumidity extends HTMLElement {
     );
     if (comfortableSection) sections.push(comfortableSection);
 
-    return { type: 'sections', sections };
+    return { type: 'sections', ...densePlacement(strategyConfig), sections };
   }
 }
 

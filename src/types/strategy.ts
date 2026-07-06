@@ -210,6 +210,16 @@ export interface OrielConfig {
   show_summary_views?: boolean; // default: false
   show_room_views?: boolean; // default: false
   group_by_floors?: boolean; // default: false
+  /**
+   * Opt-in dense masonry placement on every generated `sections` view
+   * (overview + all summary/room views). HA's sections view otherwise aligns
+   * each new row to the tallest section, leaving vertical gaps when sections
+   * differ in height (e.g. weather and energy stacking with a big gap). When
+   * true, sections pack into whatever column has room. Default false so
+   * existing dashboards keep their current layout. Applied via
+   * `densePlacement()` in utils/view-builder.
+   */
+  dense_section_placement?: boolean; // default: false
   show_covers_summary?: boolean; // default: true
   show_partially_open_covers?: boolean; // default: false
   group_covers_by_floors?: boolean; // default: false

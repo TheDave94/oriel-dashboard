@@ -3,6 +3,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
+import { densePlacement } from '../utils/view-builder';
 import type {
   LovelaceViewConfig,
   LovelaceCardConfig,
@@ -1041,7 +1042,13 @@ class OrielViewRoom extends HTMLElement {
       `Room ${area.area_id}: ${visibleEntities.length} visible entities, ${finalSections.length} sections, ${badges.length} badges${overrides ? ' (override)' : ''}`
     );
     timeEnd(`room-generate-${area.area_id}`);
-    return { type: 'sections', header: { badges_position: 'bottom' }, sections: finalSections, badges };
+    return {
+      type: 'sections',
+      ...densePlacement(dashboardConfig),
+      header: { badges_position: 'bottom' },
+      sections: finalSections,
+      badges,
+    };
   }
 }
 

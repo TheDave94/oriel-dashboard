@@ -675,17 +675,21 @@ class OrielViewOverview extends HTMLElement {
       });
     }
 
-    return createOverviewView(overviewSections, [
-      ...personBadges,
-      ...houseModeBadges,
-      ...powerBadges,
-      ...alertBadges,
-      ...nowPlayingBadges,
-      ...updatesBadges,
-      ...sunBadges,
-      ...customBadges,
-      ...pluginBadges,
-    ]);
+    return createOverviewView(
+      overviewSections,
+      [
+        ...personBadges,
+        ...houseModeBadges,
+        ...powerBadges,
+        ...alertBadges,
+        ...nowPlayingBadges,
+        ...updatesBadges,
+        ...sunBadges,
+        ...customBadges,
+        ...pluginBadges,
+      ],
+      dashboardConfig
+    );
   }
 }
 

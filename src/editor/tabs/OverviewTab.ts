@@ -30,6 +30,7 @@ type OverviewData = {
   show_search_card: boolean;
   search_card_variant: 'custom' | 'tip';
   show_person_badges: boolean;
+  dense_section_placement: boolean;
 };
 
 /** Selector defaults applied when reading from a sparse config. */
@@ -41,6 +42,7 @@ function readData(config: OrielConfig): OverviewData {
     show_search_card: config.show_search_card === true,
     search_card_variant: (config.search_card_variant === 'tip' ? 'tip' : 'custom') as OverviewData['search_card_variant'],
     show_person_badges: config.show_person_badges !== false,
+    dense_section_placement: config.dense_section_placement === true,
   };
 }
 
@@ -72,6 +74,7 @@ function computeSchema(data: OverviewData) {
     });
   }
   schema.push({ name: 'show_person_badges', selector: { boolean: {} } });
+  schema.push({ name: 'dense_section_placement', selector: { boolean: {} } });
   return schema;
 }
 
@@ -103,6 +106,9 @@ function buildPatch(value: Partial<OverviewData>): Partial<OrielConfig> {
 
   // show_person_badges default = true; only persist when false.
   patch.show_person_badges = value.show_person_badges === false ? false : undefined;
+
+  // dense_section_placement default = false; only persist when true.
+  patch.dense_section_placement = value.dense_section_placement === true ? true : undefined;
 
   return patch;
 }

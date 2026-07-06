@@ -317,6 +317,8 @@
     "show_search_card_missing": "Benötigt <strong>custom:search-card</strong> und <strong>card-tools</strong>. Bitte installieren Sie beide Komponenten — oder wechseln Sie unten zur Variante <em>Nativer Hinweis</em> (ohne zusätzliche Komponenten).",
     "show_person_badges": "Personen-Badges im Header anzeigen",
     "show_person_badges_desc": "Automatisch erzeugte Personen-Chips erscheinen standardmäßig im Übersicht-Header. Deaktivieren, wenn du eigene Personen-Badges über Eigene Badges einbindest.",
+    "dense_section_placement": "Dichte Abschnitts-Anordnung",
+    "dense_section_placement_desc": "Packt Abschnitte in die Spalte mit dem meisten Platz, statt jede Zeile am höchsten Abschnitt auszurichten. Schließt die vertikalen Lücken, die sonst entstehen, wenn Abschnitte unterschiedlich hoch sind (z. B. Wetter und Energie). Gilt für die Übersicht sowie jede Zusammenfassungs- und Raum-Ansicht.",
     "search_card_variant": "Such-Karten-Variante",
     "search_card_variant_custom": "custom:search-card (Eingabe direkt im Dashboard, benötigt HACS-Komponenten)",
     "search_card_variant_tip": "Nativer Hinweis (Cmd/Strg+E-Tipp, keine Abhängigkeiten)",

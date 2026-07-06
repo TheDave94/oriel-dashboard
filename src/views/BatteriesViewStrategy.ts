@@ -3,6 +3,7 @@
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
+import { densePlacement } from '../utils/view-builder';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
@@ -130,6 +131,7 @@ class OrielViewBatteries extends HTMLElement {
 
     return {
       type: 'sections',
+      ...densePlacement(strategyConfig),
       sections: showArea ? applyAreaContextToSections(sections, hass) : sections,
     };
   }
