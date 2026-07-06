@@ -199,7 +199,7 @@ jobs:
           # so it lives in core too) — the AirWatch reader + Lit card +
           # per-pollutant labels/icons + en/de i18n keys. ~2KB gzipped; 1KB
           # headroom kept.
-          # v4.25 — raised 70 → 72 KB to absorb the simon42 #336/#338 port
+          # v4.27 — raised 70 → 72 KB to absorb the simon42 #336/#338 port
           # wave: oriel-camera-card (play/stop live-stream wrapper, lives in
           # core with the other cards), the Security-view activity log +
           # cameras section, per-area section order, and their en/de i18n
