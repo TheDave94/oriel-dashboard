@@ -37,22 +37,22 @@ Paste the output below the `## Snapshot` heading and commit. The header above st
 
 ## Snapshot
 
-*Captured 2026-05-23 — 17 branches.*
+*Captured 2026-07-06 — 0 branches. The protected set is currently empty.*
 
-- `chore/auto-hide-audit` — #281 fix(areas): auto-hide section when no areas are visible + audit test
-- `chore/release-please-and-eslint` — #284 chore(ci): release-please + release-build + ESLint enforcement
-- `chore/translation-lint-ci` — #277 chore(ci): lint translation files (invalid JSON, dup keys, en/de parity)
-- `feat/auto-detect-humidifier-valve` — #279 feat(rooms): auto-detect humidifier, valve, and water_heater entities
-- `feat/custom-sections` — #283 feat: custom_sections — user-declared section blocks without forking
-- `feat/editor-coverage` — #282 feat(editor): wire up show_window_contacts_in_rooms + show_door_contacts_in_rooms
-- `feat/lights-sort-by-name` — #250 feat(lights): optional alphabetical sort + clarify Hue nesting (refs #168)
-- `feat/snapshot-tests` — #278 test: section-builder + entity-filter unit tests + snapshots (builds on #226)
-- `feat/target-section-editor` — #280 feat(editor): derive target_section dropdown from section meta map
-- `fix/area-controls-order` — #249 fix(areas): return area-controls in canonical order, not entity-iteration order (closes #201)
-- `grouped/battery-view-improvements` — #272 feat(batteries): area names, filter helpers, tightened binary_sensor logic + unavailable bucket
-- `grouped/covers-weather` — #275 feat: weather presentation options, weather sensor row, configurable weather entity, awning icons, covers grouped by floors
-- `grouped/live-overview-badges` — #271 feat(overview): five opt-in live header badges (power, unavailable count, now-playing, sun, updates)
-- `grouped/optional-overview-sections` — #270 feat: six new optional overview sections (plants, agenda, todos, persons, vacuums, maintenance)
-- `grouped/persons-overview-tweaks` — #276 feat: person badge controls + zone-aware presence + native search variant + Quick Lights row
-- `grouped/room-view-features` — #273 feat(rooms): power-as-badge, PM1/soil-moisture detection, cameras toggle, hide-unavailable, per-room visibility
-- `grouped/section-meta-security` — #274 feat: section visibility controls + Security view improvements (water leak, motorized windows, relay-opening filter, extra entities)
+No branch in this repo is presently the head of an open PR in
+`TheRealSimon42/simon42-dashboard-strategy` (verified live via the *How to
+refresh* query).
+
+All 17 branches from the previous (2026-05-23) snapshot left the protected set
+when their upstream PRs closed — Simon42 merged the work into simon42 itself
+(rebuilt on the new section-registry / squash-merged via upstream #310, with
+Co-Authored-By credit), 1–5 July 2026. The now-stale head branches were deleted
+from this repo (both `github` and Gitea `origin`) on 2026-07-06.
+
+> **Note on the delete guard.** Deleting those already-closed-PR branches tripped
+> `protect-upstream-pr-branches.yml` (it matches any deleted branch that ever had
+> an upstream PR head, open *or* closed, and can't tell a pre-existing close from
+> a cascade). It was a **false alarm**: every matched PR's `closed_at` predated the
+> deletion by 1–5 days, so no open PR was cascade-closed. The recovery commands it
+> printed were intentionally **not** run — running them would have reopened
+> legitimately-merged PRs and resurrected the branches.
