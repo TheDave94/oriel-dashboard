@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.27.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.26.0...v4.27.0) (2026-07-06)
+
+
+### Features
+
+* oriel-camera-card — on-demand live streams in room views ([af0a522](https://github.com/TheDave94/oriel-dashboard/commit/af0a522ba78ad968f566b8696f30f434c81952d6))
+
 ## [4.26.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.25.0...v4.26.0) (2026-07-06)
 
 
