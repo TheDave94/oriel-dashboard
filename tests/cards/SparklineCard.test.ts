@@ -17,7 +17,7 @@
 // and the last `.hass` assignment, then assert the card drives it.
 // ====================================================================
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import '../../src/cards/SparklineCard';
 
@@ -151,5 +151,53 @@ describe('oriel-sparkline-card — apexcharts delegation (F4)', () => {
 
     // Still a single delegate instance in the shadow (reused, not duplicated).
     expect(el.shadowRoot!.querySelectorAll('apexcharts-card').length).toBe(1);
+  });
+});
+
+describe('oriel-sparkline-card — render gating (shouldUpdate)', () => {
+  it('skips re-render on a hass push where the tracked entity did not change', async () => {
+    const el = mount();
+    el.setConfig({
+      type: 'custom:oriel-sparkline-card',
+      entity: 'sensor.living_room_temperature',
+    });
+    const hass1 = fakeHass();
+    el.hass = hass1;
+    await el.updateComplete;
+    // Let the initial async history fetch settle (it flips the _history
+    // @state, which legitimately triggers one render).
+    await new Promise((r) => setTimeout(r, 0));
+    await el.updateComplete;
+
+    const spy = vi.spyOn(
+      Object.getPrototypeOf(el) as { render(): unknown },
+      'render',
+    );
+
+    // Irrelevant entity changed; our entity's state object kept identity.
+    el.hass = {
+      ...hass1,
+      states: {
+        ...hass1.states,
+        'light.kitchen': { state: 'on', attributes: {} },
+      },
+    };
+    await el.updateComplete;
+    expect(spy).not.toHaveBeenCalled();
+
+    // Our entity's state object moved — must re-render.
+    el.hass = {
+      ...hass1,
+      states: {
+        ...hass1.states,
+        'sensor.living_room_temperature': {
+          state: '22.0',
+          attributes: { friendly_name: 'Living room', unit_of_measurement: '°C' },
+        },
+      },
+    };
+    await el.updateComplete;
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });

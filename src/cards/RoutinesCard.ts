@@ -10,7 +10,7 @@
 // Configurable: max items, filter by label, sort mode.
 // ====================================================================
 
-import { LitElement, html, css, type TemplateResult } from 'lit';
+import { LitElement, html, css, type PropertyValues, type TemplateResult } from 'lit';
 import { property } from 'lit/decorators.js';
 import type { HomeAssistant } from '../types/homeassistant';
 
@@ -26,9 +26,18 @@ interface RoutinesCardConfig {
   domains?: string[];
   /** Only include entities with one of these labels. Empty = all. */
   include_labels?: string[];
-  /** Exclude entities with one of these labels. Default ['no-dboard']. */
+  /** Exclude entities with one of these labels. Default ['no_dboard']. */
   exclude_labels?: string[];
 }
+
+/**
+ * Throttle for the full hass.states rescan. State-only scenes/scripts
+ * (e.g. YAML scenes without unique_id) never appear in hass.entities,
+ * so a registry-identity check alone can't detect them appearing —
+ * a bounded periodic rescan covers that gap without paying the
+ * O(all states) scan on every hass push.
+ */
+const RESCAN_INTERVAL_MS = 30_000;
 
 interface Routine {
   entity_id: string;
@@ -40,6 +49,13 @@ interface Routine {
 class OrielRoutinesCard extends LitElement {
   @property({ attribute: false }) accessor hass: HomeAssistant | undefined;
   private _config!: RoutinesCardConfig;
+  /** Displayed routines (sorted + sliced), recomputed only in shouldUpdate. */
+  private _routines: Routine[] = [];
+  /** ALL matched scene/script ids (pre-slice) — the change-watch set.
+   *  Must include non-displayed matches too: any of their state changes
+   *  can re-rank an entity into the visible top-N. */
+  private _watchedIds: string[] = [];
+  private _lastScanMs = 0;
 
   static styles = css`
     :host { display: block; }
@@ -107,6 +123,11 @@ class OrielRoutinesCard extends LitElement {
 
   public setConfig(config: RoutinesCardConfig): void {
     this._config = config ?? { type: 'custom:oriel-routines-card' };
+    // _config isn't reactive — force an update cycle so shouldUpdate's
+    // non-hass branch recollects with the new config (editor/preview
+    // re-calls setConfig on the same element).
+    this._lastScanMs = 0;
+    this.requestUpdate();
   }
 
   public getCardSize(): number {
@@ -122,34 +143,77 @@ class OrielRoutinesCard extends LitElement {
     return { columns: 'full', rows: 'auto', min_columns: 6 };
   }
 
-  private _collect(): Routine[] {
-    if (!this.hass) return [];
+  // Render gating — HA re-sets `hass` on EVERY state change system-wide,
+  // and the full states scan is O(all entities). Steady-state cost per
+  // push is O(watched scene/script ids). A full rescan only runs when:
+  //   - first hass arrives, or config changed (setConfig → requestUpdate),
+  //   - the entity-registry reference changed (scene/script added/removed
+  //     via UI — hass.entities is replaced on registry updates),
+  //   - a watched entity's state object changed (covers re-ranking, rename,
+  //     icon change, removal — all replace the state object),
+  //   - at most once per RESCAN_INTERVAL_MS, to catch state-only entities
+  //     that never touch hass.entities (see RESCAN_INTERVAL_MS docs).
+  protected shouldUpdate(changed: PropertyValues): boolean {
+    if (!changed.has('hass')) {
+      this._recollect();
+      return true;
+    }
+    const oldHass = changed.get('hass') as HomeAssistant | undefined;
+    if (!oldHass || !this.hass || oldHass.entities !== this.hass.entities) {
+      this._recollect();
+      return true;
+    }
+    for (const id of this._watchedIds) {
+      if (oldHass.states[id] !== this.hass.states[id]) {
+        this._recollect();
+        return true;
+      }
+    }
+    if (Date.now() - this._lastScanMs >= RESCAN_INTERVAL_MS) {
+      const before = this._routines;
+      this._recollect();
+      return !this._sameRoutines(before, this._routines);
+    }
+    return false;
+  }
+
+  private _sameRoutines(a: Routine[], b: Routine[]): boolean {
+    // Displayed ids in order are sufficient: name/icon changes replace
+    // the state object of a watched id, which re-renders before ever
+    // reaching the throttled-rescan path.
+    return a.length === b.length && a.every((r, i) => r.entity_id === b[i]!.entity_id);
+  }
+
+  private _recollect(): void {
+    this._lastScanMs = Date.now();
+    if (!this.hass || !this._config) {
+      this._routines = [];
+      this._watchedIds = [];
+      return;
+    }
     const cfg = this._config;
     const domains = new Set(cfg.domains ?? ['scene', 'script']);
     const include = cfg.include_labels && cfg.include_labels.length > 0
       ? new Set(cfg.include_labels.map((l) => l.toLowerCase()))
       : null;
-    const exclude = new Set((cfg.exclude_labels ?? ['no-dboard']).map((l) => l.toLowerCase()));
+    const exclude = new Set((cfg.exclude_labels ?? ['no_dboard']).map((l) => l.toLowerCase()));
 
     const out: Routine[] = [];
+    const watched: string[] = [];
     for (const [eid, state] of Object.entries(this.hass.states)) {
       const dot = eid.indexOf('.');
       if (dot < 0) continue;
       const domain = eid.substring(0, dot);
       if (!domains.has(domain)) continue;
 
-      // Label filter via entity registry. We don't have direct access
-      // to the registry here, so we look at the per-entity hidden_by
-      // / disabled_by checks via Registry if available. For now, do a
-      // best-effort label check on labels exposed via state attribute
-      // (HA puts label IDs on entries[].labels in the registry; not
-      // accessible from hass.states). Fall back to no-filter.
-      // The exclude default `no-dboard` matches HA convention; we
-      // expose the option but it's effectively a no-op unless the
-      // registry exposes labels here.
-      void include;
-      void exclude;
+      // Labels live ONLY in the entity registry (hass.entities), never in
+      // state attributes. State-only entities (no registry entry) have no
+      // labels: they pass the exclude filter but fail a non-empty include.
+      const labels = this.hass.entities?.[eid]?.labels ?? [];
+      if (labels.some((l) => exclude.has(l.toLowerCase()))) continue;
+      if (include && !labels.some((l) => include.has(l.toLowerCase()))) continue;
 
+      watched.push(eid);
       const attrs = state.attributes ?? {};
       const friendly = (attrs.friendly_name as string | undefined) ?? eid.substring(dot + 1).replace(/_/g, ' ');
       const icon =
@@ -167,7 +231,8 @@ class OrielRoutinesCard extends LitElement {
     }
 
     const max = cfg.max ?? 8;
-    return out.slice(0, max);
+    this._watchedIds = watched;
+    this._routines = out.slice(0, max);
   }
 
   private _trigger = (entityId: string): void => {
@@ -178,7 +243,7 @@ class OrielRoutinesCard extends LitElement {
   };
 
   protected render(): TemplateResult {
-    const routines = this._collect();
+    const routines = this._routines;
     const title = this._config.name ?? 'Routines';
 
     if (routines.length === 0) {

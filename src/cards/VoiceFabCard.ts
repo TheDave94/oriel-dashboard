@@ -1,17 +1,30 @@
 // ====================================================================
 // oriel-voice-fab — floating voice-command button (v3.2.4)
 // ====================================================================
-// Wraps HA's built-in `<ha-voice-command-button>` (or an Assist API
-// trigger if the underlying element isn't registered) and anchors it
-// to the viewport's bottom-right corner so it's reachable on every
-// emitted view.
+// Anchors a voice-assist trigger to the viewport's bottom-right corner
+// so it's reachable on every emitted view.
 //
-// The element itself is provided by HA core; this card is just a
-// styled wrapper that calls into the existing Assist pipeline via a
-// service call when tapped.
+// Primary path: HA's real `<ha-voice-command-button>` is laid
+// transparently over our FAB visual with `.hass` bound. Its click
+// handler lives on a button inside ITS shadow root, so a programmatic
+// host `.click()` can never reach it — but genuine pointer/keyboard
+// events on the overlay do, and the element then drives the whole
+// Assist pipeline (dialog chunk import, pipeline selection, WS
+// handshake) with HA's own code. We can't do that ourselves from a
+// custom card: HA opens the dialog via
+//   fireEvent('show-dialog', { dialogTag: 'ha-voice-command-dialog',
+//     dialogImport, dialogParams: { pipeline_id: 'last_used' } })
+// where dialogImport is a dynamic import INSIDE the HA bundle that a
+// custom card cannot replicate. Riding the real button is therefore
+// the only fully-robust trigger.
+//
+// Fallback (button element not registered): dispatch the same
+// bubbling composed `show-dialog` event with a dialogImport that
+// resolves via customElements.whenDefined — best-effort, works when
+// something else in the session has loaded the dialog chunk.
 // ====================================================================
 
-import { LitElement, html, css, nothing, type TemplateResult } from 'lit';
+import { LitElement, html, css, type TemplateResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 
 import type { HomeAssistant } from '../types/homeassistant';
@@ -61,6 +74,25 @@ class OrielVoiceFab extends LitElement {
     .fab ha-icon {
       --mdc-icon-size: 26px;
     }
+    /* The real ha-voice-command-button rides invisibly on top of the FAB
+       visual: full-size + transparent, so real pointer events land on the
+       button inside ITS shadow root while our icon/config styling stays
+       authoritative. --mdc-icon-button-size makes its internal button
+       fill the whole 56px hit area. */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      --mdc-icon-button-size: 56px;
+      --mdc-icon-size: 26px;
+    }
+    .fab:focus-within {
+      outline: 2px solid var(--primary-color);
+      outline-offset: 2px;
+    }
   `;
 
   public setConfig(config: VoiceFabConfig): void {
@@ -80,24 +112,22 @@ class OrielVoiceFab extends LitElement {
 
   private _onClick(): void {
     if (!this.hass) return;
-    // Prefer HA's voice command button if registered (it owns the
-    // entire conversation pipeline). Fallback: open the Assist
-    // dialog via service.
-    const VoiceButton = customElements.get('ha-voice-command-button');
-    if (VoiceButton) {
-      // Programmatically click the offscreen element (HA's button
-      // handles all the WS handshakes when it receives a click).
-      const btn = this.shadowRoot?.querySelector<HTMLElement>('ha-voice-command-button');
-      btn?.click();
-      return;
-    }
-    // Fallback: fire the Assist dialog show-dialog event. This is the
-    // same event HA's own top-bar mic button dispatches.
+    // Fallback path only (real button not registered): fire HA's actual
+    // dialog event — the dialog-manager mixin on the home-assistant root
+    // listens for the bubbling composed `show-dialog` name (there is no
+    // 'hass-show-dialog' listener in HA). dialogImport must resolve
+    // before the manager creates the element; from outside the HA bundle
+    // the closest we can get is customElements.whenDefined, which
+    // resolves as soon as any other code path loads the dialog chunk.
     this.dispatchEvent(
-      new CustomEvent('hass-show-dialog', {
+      new CustomEvent('show-dialog', {
         bubbles: true,
         composed: true,
-        detail: { dialogTag: 'ha-voice-command-dialog', dialogImport: () => Promise.resolve() },
+        detail: {
+          dialogTag: 'ha-voice-command-dialog',
+          dialogImport: () => customElements.whenDefined('ha-voice-command-dialog'),
+          dialogParams: { pipeline_id: 'last_used' },
+        },
       }),
     );
   }
@@ -105,13 +135,25 @@ class OrielVoiceFab extends LitElement {
   protected render(): TemplateResult {
     if (!this.hass) return html``;
     const icon = this._config?.icon ?? 'mdi:microphone';
-    const VoiceButton = customElements.get('ha-voice-command-button');
+    // Primary path: overlay the REAL ha-voice-command-button (with .hass —
+    // without it the element can't reach the Assist pipeline at all) on
+    // top of our styled FAB. See header comment for why we don't
+    // synthesize the click ourselves.
+    if (customElements.get('ha-voice-command-button')) {
+      return html`
+        <div class="fab">
+          <ha-icon icon=${icon}></ha-icon>
+          <ha-voice-command-button
+            class="overlay"
+            .hass=${this.hass}
+            aria-label="Voice assistant"
+          ></ha-voice-command-button>
+        </div>
+      `;
+    }
     return html`
       <button class="fab" @click=${this._onClick} aria-label="Voice assistant">
         <ha-icon icon=${icon}></ha-icon>
-        ${VoiceButton
-          ? html`<ha-voice-command-button style="display:none;"></ha-voice-command-button>`
-          : nothing}
       </button>
     `;
   }

@@ -15,7 +15,7 @@
 // marker is rendered, not attribute-reflected.
 // ====================================================================
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import '../../src/cards/PollenCard';
 import { setupLocalize } from '../../src/utils/localize';
@@ -215,6 +215,50 @@ describe('oriel-pollen-card — threshold provenance marker', () => {
       expect(marker?.getAttribute('title')).toBe(marker?.getAttribute('aria-label'));
       expect((marker?.getAttribute('title') ?? '').length).toBeGreaterThan(10);
     });
+  });
+});
+
+describe('oriel-pollen-card — render gating (shouldUpdate)', () => {
+  it('skips re-render on a hass push where no watched pollen sensor changed', async () => {
+    const el = mount();
+    el.setConfig({
+      source: 'analytics',
+      types: ['oak'],
+      presentation: 'consensus_tiles',
+      show_inactive: true,
+    });
+    const hass1 = fakeHass('oak', 'family');
+    el.hass = hass1;
+    await el.updateComplete;
+
+    const spy = vi.spyOn(
+      Object.getPrototypeOf(el) as { render(): unknown },
+      'render',
+    );
+
+    // New hass object with an IRRELEVANT entity changed; the pollen
+    // sensor's state object is identity-equal — must NOT re-render.
+    el.hass = {
+      ...hass1,
+      states: {
+        ...hass1.states,
+        'light.kitchen': { state: 'on', attributes: {} },
+      },
+    };
+    await el.updateComplete;
+    expect(spy).not.toHaveBeenCalled();
+
+    // The watched pollen sensor moves — must re-render.
+    el.hass = {
+      ...hass1,
+      states: {
+        ...hass1.states,
+        'sensor.pollenwatch_analytics_oak_consensus': consensusState('oak', 'family'),
+      },
+    };
+    await el.updateComplete;
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
 
