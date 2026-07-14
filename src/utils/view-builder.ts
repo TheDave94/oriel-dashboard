@@ -4,15 +4,24 @@
 
 import type { LovelaceViewConfig, LovelaceBadgeConfig, LovelaceSectionConfig } from '../types/lovelace';
 import { localize } from './localize';
+import { packSections } from './section-packing';
 
 /**
  * Opt-in dense masonry placement for a `sections` view.
  *
- * HA's sections view places each section into the shortest column but aligns
- * new rows to the tallest section in the row — so sections of differing height
- * (e.g. weather and energy, which are separate sections) leave large vertical
- * gaps. Setting `dense_section_placement: true` tells HA to pack sections into
- * whatever column has room, closing the gaps.
+ * HA's sections view is a row-major grid where every row track aligns to the
+ * tallest section placed in it — sections of differing height (e.g. the areas
+ * grid vs. the summaries block) leave large vertical gaps. Two things have to
+ * work together to close them (#182):
+ *
+ *  1. `dense_section_placement: true` on the view (`grid-auto-flow: row
+ *     dense`) lets HA backfill free grid cells out of source order — this
+ *     helper contributes the flag, and
+ *  2. per-section `row_span` values that split the grid into fine-grained
+ *     tracks so short sections can actually stack beside tall ones — without
+ *     them the dense flag has no free cells to fill and visibly does
+ *     nothing. Views produce those by passing their sections through
+ *     `packSections()` (utils/section-packing) and returning its result.
  *
  * Returns a spreadable fragment: the flag when the user enabled it, otherwise
  * nothing — so existing dashboards keep their current layout unless they opt in.
@@ -51,6 +60,6 @@ export function createOverviewView(
             badges_wrap: 'wrap',
           }
         : undefined,
-    sections,
+    sections: packSections(config, sections, 'overview'),
   };
 }

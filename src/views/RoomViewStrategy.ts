@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import { densePlacement } from '../utils/view-builder';
+import { packSections } from '../utils/section-packing';
 import type {
   LovelaceViewConfig,
   LovelaceCardConfig,
@@ -1045,7 +1046,7 @@ class OrielViewRoom extends HTMLElement {
       type: 'sections',
       ...densePlacement(dashboardConfig),
       header: { badges_position: 'bottom' },
-      sections: finalSections,
+      sections: packSections(dashboardConfig, finalSections, `room:${area.area_id}`),
       badges,
     };
   }

@@ -205,7 +205,13 @@ jobs:
           # cameras section, per-area section order, and their en/de i18n
           # keys. Core was 84 bytes under the old limit before the camera
           # card landed; ~1KB headroom kept.
-          check "oriel-core.*.js.gz" 72
+          # v4.27.1 — raised 72 → 75 KB to absorb the #182 section-packing
+          # fix: utils/section-packing (config-side card-size model +
+          # measured-height store) and oriel-section-metrics (the invisible
+          # section-height recorder) both live in core, since LazyCard and
+          # the other cards import from the same module graph. ~2KB
+          # gzipped; ~1KB headroom kept.
+          check "oriel-core.*.js.gz" 75
           check "oriel-views.*.js.gz" 20
           check "oriel-editor.*.js.gz" 80
           check "oriel-lit.*.js.gz" 25

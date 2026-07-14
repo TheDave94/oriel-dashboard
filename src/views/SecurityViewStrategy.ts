@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import { densePlacement } from '../utils/view-builder';
+import { packSections } from '../utils/section-packing';
 import type { LovelaceViewConfig, LovelaceCardConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
@@ -422,12 +423,13 @@ class OrielViewSecurity extends HTMLElement {
       else sections.unshift(activitySection);
     }
 
+    const finalSections = showAreaInSummaries(dashboardConfig)
+      ? applyAreaContextToSections(sections, hass)
+      : sections;
     return {
       type: 'sections',
       ...densePlacement(dashboardConfig),
-      sections: showAreaInSummaries(dashboardConfig)
-        ? applyAreaContextToSections(sections, hass)
-        : sections,
+      sections: packSections(dashboardConfig, finalSections, 'security'),
     };
   }
 }

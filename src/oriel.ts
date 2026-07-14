@@ -59,6 +59,7 @@ const modulesPromise = Promise.all([
   import('./cards/CoversGroupCard'),
   import('./cards/ZonePresenceCard'),
   import('./cards/LazyCard'),
+  import('./cards/SectionMetricsCard'),
   import('./cards/ScreensaverCard'),
   import('./cards/NotificationCard'),
   import('./cards/SparklineCard'),
