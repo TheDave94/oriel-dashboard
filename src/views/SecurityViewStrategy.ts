@@ -125,6 +125,34 @@ function securityTile(
   };
 }
 
+const UNKNOWN_STATES = new Set(['unavailable', 'unknown']);
+
+/**
+ * Splits entities into { attention, settled }: `settled` holds the one
+ * calm state ('locked' / 'closed' / 'off'); everything else with a
+ * known state lands in `attention` — including transitional states
+ * ('locking', 'closing', 'opening') and fault states ('jammed',
+ * 'open' on a lock). Exact-match pairs previously made anything in
+ * motion or jammed vanish from the view entirely — a jammed deadbolt
+ * is precisely what a security view must surface. Unavailable/unknown
+ * entities are skipped: they carry no security signal, and the
+ * unavailable alert badge owns that failure mode.
+ */
+function splitBySettledState(
+  ids: string[],
+  hass: HomeAssistant,
+  settledState: string,
+): { attention: string[]; settled: string[] } {
+  const attention: string[] = [];
+  const settled: string[] = [];
+  for (const id of ids) {
+    const state = hass.states[id]?.state;
+    if (!state || UNKNOWN_STATES.has(state)) continue;
+    (state === settledState ? settled : attention).push(id);
+  }
+  return { attention, settled };
+}
+
 class OrielViewSecurity extends HTMLElement {
   static async generate(
     config: SecurityViewStrategyParams,
@@ -184,8 +212,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Locks
     if (locks.length > 0) {
-      const unlocked = locks.filter((e) => hass.states[e]?.state === 'unlocked');
-      const locked = locks.filter((e) => hass.states[e]?.state === 'locked');
+      const { attention: unlocked, settled: locked } = splitBySettledState(locks, hass, 'locked');
       const cards: LovelaceCardConfig[] = [];
 
       if (unlocked.length > 0) {
@@ -216,8 +243,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Doors/Gates
     if (doors.length > 0) {
-      const open = doors.filter((e) => hass.states[e]?.state === 'open');
-      const closed = doors.filter((e) => hass.states[e]?.state === 'closed');
+      const { attention: open, settled: closed } = splitBySettledState(doors, hass, 'closed');
       const cards: LovelaceCardConfig[] = [];
 
       if (open.length > 0) {
@@ -252,8 +278,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Motorized windows (cover.* with device_class=window — e.g. Velux electric)
     if (motorizedWindows.length > 0) {
-      const open = motorizedWindows.filter((e) => hass.states[e]?.state === 'open');
-      const closed = motorizedWindows.filter((e) => hass.states[e]?.state === 'closed');
+      const { attention: open, settled: closed } = splitBySettledState(motorizedWindows, hass, 'closed');
       const cards: LovelaceCardConfig[] = [];
 
       if (open.length > 0) {
@@ -288,8 +313,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Garages
     if (garages.length > 0) {
-      const open = garages.filter((e) => hass.states[e]?.state === 'open');
-      const closed = garages.filter((e) => hass.states[e]?.state === 'closed');
+      const { attention: open, settled: closed } = splitBySettledState(garages, hass, 'closed');
       const cards: LovelaceCardConfig[] = [];
 
       if (open.length > 0) {
@@ -324,8 +348,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Windows/Openings
     if (windows.length > 0) {
-      const open = windows.filter((e) => hass.states[e]?.state === 'on');
-      const closed = windows.filter((e) => hass.states[e]?.state === 'off');
+      const { attention: open, settled: closed } = splitBySettledState(windows, hass, 'off');
       const cards: LovelaceCardConfig[] = [];
 
       if (open.length > 0) {
@@ -341,8 +364,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Smoke/Gas detectors
     if (smokeGas.length > 0) {
-      const active = smokeGas.filter((e) => hass.states[e]?.state === 'on');
-      const inactive = smokeGas.filter((e) => hass.states[e]?.state === 'off');
+      const { attention: active, settled: inactive } = splitBySettledState(smokeGas, hass, 'off');
       const cards: LovelaceCardConfig[] = [];
 
       if (active.length > 0) {
@@ -358,8 +380,7 @@ class OrielViewSecurity extends HTMLElement {
 
     // Water leak / moisture sensors
     if (waterLeak.length > 0) {
-      const active = waterLeak.filter((e) => hass.states[e]?.state === 'on');
-      const inactive = waterLeak.filter((e) => hass.states[e]?.state === 'off');
+      const { attention: active, settled: inactive } = splitBySettledState(waterLeak, hass, 'off');
       const cards: LovelaceCardConfig[] = [];
 
       if (active.length > 0) {

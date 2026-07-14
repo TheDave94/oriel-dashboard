@@ -52,7 +52,7 @@ const t = (label: string) => {
 let generateCallCount = 0;
 
 // Start loading all chunks IMMEDIATELY
-const modulesPromise = Promise.all([
+const loadModules = (): Promise<unknown[]> => Promise.all([
   import('./cards/SummaryCard'),
   import('./cards/AreaCard'),
   import('./cards/LightsGroupCard'),
@@ -81,7 +81,26 @@ const modulesPromise = Promise.all([
   import('./views/RoomViewStrategy'),
 ]);
 
-void modulesPromise.then(() => { t('all chunks loaded'); });
+// A rejected import (transient network blip, HACS update window) must
+// not poison the dashboard for the page's lifetime: a cached rejection
+// would make every subsequent generate() rethrow it forever. Keep the
+// promise replaceable and retry once per generate() until it succeeds.
+let modulesPromise = loadModules();
+
+async function ensureModules(): Promise<void> {
+  try {
+    await modulesPromise;
+  } catch (err) {
+    console.warn('[oriel] chunk load failed, retrying once', err);
+    modulesPromise = loadModules();
+    await modulesPromise;
+  }
+}
+
+void modulesPromise.then(
+  () => { t('all chunks loaded'); },
+  () => { /* surfaced by ensureModules() on the next generate() */ },
+);
 
 // Live view references (custom_views ref mode). Fetches another
 // dashboard's config via the `lovelace/config` WS command and returns
@@ -155,7 +174,7 @@ class Oriel extends HTMLElement {
     generateCallCount++;
     t(`generate() called (#${generateCallCount})`);
 
-    await modulesPromise;
+    await ensureModules();
     t('modules ready');
 
     // Namespace usage-tracker storage by HA user id (review §S-6).
@@ -166,7 +185,7 @@ class Oriel extends HTMLElement {
     );
 
     const { Registry } = await import('./Registry');
-    const { getVisibleAreasFromHass } = await import('./utils/name-utils');
+    const { getVisibleAreasFromHass, roomViewPath } = await import('./utils/name-utils');
     const { localize } = await import('./utils/localize');
     const { getDensityPresetSpec } = await import('./utils/density-presets');
     const { resolveUserConfig } = await import('./utils/user-overrides');
@@ -193,6 +212,10 @@ class Oriel extends HTMLElement {
     // doesn't re-add it.
     if (config.swipe_nav === true) {
       void import('./utils/swipe-nav').then(({ installSwipeNav }) => installSwipeNav());
+    } else {
+      // Turning the toggle off must take effect on the next generate,
+      // not the next page reload.
+      void import('./utils/swipe-nav').then(({ uninstallSwipeNav }) => uninstallSwipeNav());
     }
     // Idle-nav (v4.2.0) — installs / re-arms / uninstalls based on
     // the configured minutes. Module-level + idempotent (handles
@@ -314,7 +337,9 @@ class Oriel extends HTMLElement {
       })),
       ...visibleAreas.map((area, i) => densityOverlay({
         title: area.name,
-        path: area.area_id,
+        // roomViewPath keeps area slugs from shadowing utility views —
+        // area cards navigate via the same helper.
+        path: roomViewPath(area.area_id),
         icon: area.icon || 'mdi:floor-plan',
         subview: !showRoomViews,
         ...roomConfigs[i],
@@ -334,6 +359,14 @@ class Oriel extends HTMLElement {
       return unique;
     };
     const refCache = new Map<string, Promise<{ views?: Array<Record<string, unknown>> } | null>>();
+    // Prefetch every referenced dashboard concurrently: the per-ref 5s
+    // timeout otherwise compounds serially (K hung dashboards = K×5s
+    // before anything renders).
+    for (const cv of customViews) {
+      if (cv.title && cv.path && cv.ref_dashboard && cv.ref_view) {
+        void resolveReferencedView(hass, refCache, cv.ref_dashboard, cv.ref_view);
+      }
+    }
     for (const cv of customViews) {
       if (!cv.title || !cv.path) continue;
 
@@ -393,7 +426,9 @@ class Oriel extends HTMLElement {
         const fp = config.floorplan_view;
         views.push(densityOverlay({
           title: fp.title ?? 'Floorplan',
-          path: fp.path ?? 'floorplan',
+          // Same collision guard custom views get — a duplicate path
+          // silently shadows whichever view comes later.
+          path: ensureUniquePath(fp.path ?? 'floorplan'),
           icon: fp.icon ?? 'mdi:floor-plan',
           type: 'panel',
           cards: [

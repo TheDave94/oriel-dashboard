@@ -322,7 +322,9 @@ export function createWeatherSection(
   const airQualityCard = buildAirQualityCard(hass, airQuality);
   if (airQualityCard) cards.push(airQualityCard);
 
-  return { type: 'grid', cards };
+  // Auto-hide contract (AutoHideAudit.test.ts): empty sections return
+  // null, never an empty grid that eats a layout slot.
+  return cards.length > 0 ? { type: 'grid', cards } : null;
 }
 
 /**
@@ -375,7 +377,7 @@ export function createEnergySection(
   }
 
   if (presentation === 'none') {
-    return { type: 'grid', cards };
+    return cards.length > 0 ? { type: 'grid', cards } : null;
   }
 
   if (showDistributionCard) {
@@ -385,5 +387,5 @@ export function createEnergySection(
     });
   }
 
-  return { type: 'grid', cards };
+  return cards.length > 0 ? { type: 'grid', cards } : null;
 }

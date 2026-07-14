@@ -58,6 +58,35 @@ function getFriendlyName(entityId: string, hass: HomeAssistant): string | null {
  * Uses cached, regex-escaped patterns per area name to avoid recompilation
  * and prevent bugs with special characters in area names.
  */
+/**
+ * URL paths already claimed by generated views (overview + utility
+ * views + floorplan default). An area whose area_id equals one of
+ * these would produce two views with the same path — HA resolves the
+ * first, making the room view unreachable.
+ */
+const RESERVED_VIEW_PATHS = new Set([
+  'home',
+  'lights',
+  'covers',
+  'security',
+  'batteries',
+  'climate',
+  'humidity',
+  'cameras',
+  'maintenance',
+  'floorplan',
+]);
+
+/**
+ * The URL path of an area's room view. Single source of truth — the
+ * dashboard strategy (view `path`) and every navigation emitter (area
+ * cards, floor groups) MUST agree, so both call this. Collisions with
+ * reserved utility paths get a deterministic `room-` prefix.
+ */
+export function roomViewPath(areaId: string): string {
+  return RESERVED_VIEW_PATHS.has(areaId) ? `room-${areaId}` : areaId;
+}
+
 export function stripAreaName(entityId: string, area: AreaRegistryEntry, hass: HomeAssistant): string {
   const state = hass.states[entityId];
   if (!state) return entityId;

@@ -29,8 +29,15 @@ import { collectStaleSensors, staleThresholdMs } from '../utils/staleness';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
 import { localize } from '../utils/localize';
 
-/** Built-in section keys (collision check for custom_sections). */
-const BUILTIN_SECTION_KEYS = new Set<string>(['overview', 'custom_cards', 'areas', 'weather', 'energy']);
+/**
+ * Built-in section keys — order validation for sections_order and the
+ * collision check for custom_sections. Derived from
+ * DEFAULT_SECTIONS_ORDER so a newly added section can't silently fall
+ * out of the order whitelist again (six optional sections — agenda,
+ * todos, persons, vacuums, maintenance, presence — were unable to
+ * render at all while this was a hand-maintained 5-key list).
+ */
+const BUILTIN_SECTION_KEYS = new Set<string>(DEFAULT_SECTIONS_ORDER);
 
 /**
  * Normalizes a sections_order array: removes invalid/duplicate keys,
@@ -86,8 +93,10 @@ function inheritVisibilityFromCard(parsedConfig: unknown): unknown[] | undefined
  */
 function buildCustomSection(section: CustomSection): LovelaceSectionConfig | null {
   if (!Array.isArray(section.parsed_config) || section.parsed_config.length === 0) return null;
+  // `?.` matters: a blank YAML list item parses to null, and a crash
+  // here takes down the whole overview generate.
   const validCards = section.parsed_config.filter(
-    (c): c is LovelaceCardConfig => typeof (c as { type?: unknown }).type === 'string'
+    (c): c is LovelaceCardConfig => typeof (c as { type?: unknown } | null)?.type === 'string'
   );
   if (validCards.length === 0) return null;
   const cards: LovelaceCardConfig[] = [];
@@ -112,7 +121,13 @@ function renderCustomCards(cards: CustomCard[]): LovelaceCardConfig[] {
   for (const card of cards) {
     if (!card.parsed_config) continue;
     if (Array.isArray(card.parsed_config)) {
-      result.push(...card.parsed_config);
+      // Drop null/typeless entries (blank YAML list items) — downstream
+      // consumers (lazy wrap, HA renderer) read `.type` unconditionally.
+      result.push(
+        ...card.parsed_config.filter(
+          (c): c is LovelaceCardConfig => typeof (c as { type?: unknown } | null)?.type === 'string',
+        ),
+      );
     } else {
       if (card.title) {
         const headingCard: LovelaceCardConfig = {
@@ -281,9 +296,19 @@ class OrielViewOverview extends HTMLElement {
         hass,
         dashboardConfig.show_agenda_section === true,
         dashboardConfig.agenda_calendar_entities,
+        hiddenHeadings.has('agenda'),
       )],
-      ['todos', createTodosSection(hass, dashboardConfig.show_todos_section === true, dashboardConfig.todos_entities)],
-      ['persons', createPersonsSection(hass, dashboardConfig.show_persons_section === true)],
+      ['todos', createTodosSection(
+        hass,
+        dashboardConfig.show_todos_section === true,
+        dashboardConfig.todos_entities,
+        hiddenHeadings.has('todos'),
+      )],
+      ['persons', createPersonsSection(
+        hass,
+        dashboardConfig.show_persons_section === true,
+        hiddenHeadings.has('persons'),
+      )],
       ['vacuums', createVacuumsSection(
         hass,
         dashboardConfig.show_vacuums_section === true,
@@ -337,10 +362,21 @@ class OrielViewOverview extends HTMLElement {
     const sectionVisible = getSectionVisibilityChecker(dashboardConfig, hass);
 
     const overviewSections: LovelaceSectionConfig[] = [];
+    const orphanedCustomCards: LovelaceCardConfig[] = [];
     for (const key of sectionsOrder) {
       if (!sectionVisible(key)) continue;
       const result = sectionMap.get(key);
-      if (!result) continue;
+      if (!result) {
+        // Section didn't build (toggle off, no matching entities) but the
+        // user assigned custom cards to it — surface them in the custom
+        // section instead of silently dropping them. Rule-hidden sections
+        // (sectionVisible above) keep their cards hidden: that's intent.
+        if (key !== 'custom_cards') {
+          const assigned = customCardsBySection.get(key);
+          if (assigned && assigned.length > 0) orphanedCustomCards.push(...renderCustomCards(assigned));
+        }
+        continue;
+      }
       if (Array.isArray(result)) {
         overviewSections.push(...result);
       } else {
@@ -359,6 +395,18 @@ class OrielViewOverview extends HTMLElement {
             }
           }
         }
+      }
+    }
+
+    if (orphanedCustomCards.length > 0) {
+      const renderedCustomSection =
+        customCardsSection && overviewSections.includes(customCardsSection)
+          ? customCardsSection
+          : null;
+      if (renderedCustomSection?.cards) {
+        renderedCustomSection.cards.push(...orphanedCustomCards);
+      } else {
+        overviewSections.push({ type: 'grid', cards: orphanedCustomCards });
       }
     }
 

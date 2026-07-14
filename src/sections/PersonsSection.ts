@@ -88,12 +88,15 @@ export function createPersonsSection(
       // tile for the battery instead — keeps the layout consistent and
       // avoids custom HTML.
       cards.push(tile as LovelaceCardConfig);
+      // Color follows the level — an unconditional red read as
+      // "critical battery" at 100%.
+      const level = parseFloat(hass.states[battery]?.state ?? '');
       cards.push({
         type: 'tile',
         entity: battery,
         vertical: false,
         state_content: ['state'],
-        color: 'red',
+        color: !isNaN(level) && level < 20 ? 'red' : !isNaN(level) && level <= 50 ? 'amber' : 'green',
       });
     } else {
       cards.push(tile as LovelaceCardConfig);

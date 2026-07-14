@@ -322,11 +322,14 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
 
     // Layout logic: adapt to number of cards
     if (summariesColumns === 4) {
-      // 4 columns: all cards in a single row
-      cards.push({
-        type: 'horizontal-stack',
-        cards: summaryCards,
-      });
+      // 4 columns: rows of four — a single stack squeezed 5+ cards
+      // (climate enabled) into one over-tight row.
+      for (let i = 0; i < summaryCards.length; i += 4) {
+        cards.push({
+          type: 'horizontal-stack',
+          cards: summaryCards.slice(i, i + 4),
+        });
+      }
     } else {
       // 2 columns: split into rows of 2
       for (let i = 0; i < summaryCards.length; i += 2) {

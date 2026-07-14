@@ -91,9 +91,11 @@ function hasInputSelectHouseMode(hass: HomeAssistant): boolean {
 const HINTS: AdaptiveHint[] = [
   {
     id: 'try-family-persona',
-    title: 'Multiple HA users detected',
+    // Honest phrasing: the frontend can't count HA users without an
+    // admin WS call, so this must not assert "detected" as a fact.
+    title: 'Household with several users?',
     description:
-      'You have more than one HA user. The Family persona sets up per-role overrides so each person gets their own dashboard.',
+      'If more than one person uses this Home Assistant, the Family persona sets up per-role overrides so each gets their own dashboard.',
     icon: 'mdi:account-multiple',
     ctaLabel: 'Apply Family persona',
     test: (hass, config) =>
@@ -173,7 +175,10 @@ const HINTS: AdaptiveHint[] = [
       'You have many entities. Enable lazy-mount so sections below the fold defer subscribing until you scroll there — improves first-render performance.',
     icon: 'mdi:download-multiple',
     test: (hass, config) =>
-      Object.keys(hass.states).length >= 500 && config.lazy_sections !== true,
+      // Only fire when the user explicitly disabled it — the strategy
+      // default is already on, so the old `!== true` check nagged every
+      // large install about a feature it was already using.
+      Object.keys(hass.states).length >= 500 && config.lazy_sections === false,
     apply: (current, _hass) => ({
       ...current,
       lazy_sections: true,

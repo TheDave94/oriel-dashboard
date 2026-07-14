@@ -63,10 +63,6 @@ function countEntitiesByDomain(hass: HomeAssistant, domain: string): number {
   return n;
 }
 
-function hasEntity(hass: HomeAssistant, entityId: string): boolean {
-  return !!hass.states[entityId];
-}
-
 function hasMultipleHaUsers(hass: HomeAssistant): boolean {
   // Best-effort: hass.user.is_admin is the only signal exposed
   // synchronously; we treat admin sessions as a hint there might be
@@ -256,12 +252,6 @@ export const PERSONAS: Persona[] = [
       group_by_floors: true,
       lazy_sections: true,
       lazy_sections_threshold: 3,
-      ...(hasEntity(
-        ({ states: {} } as unknown as HomeAssistant), // placeholder; real check happens elsewhere
-        'input_select.house_mode',
-      )
-        ? {}
-        : {}),
     }),
   },
   {

@@ -51,11 +51,19 @@ function navigate(direction: 'prev' | 'next'): void {
       ? (currentIndex + 1) % views.length
       : (currentIndex - 1 + views.length) % views.length;
   const target = views[nextIndex]?.path ?? '';
-  // HA's pattern: pushState + dispatch `location-changed`.
-  const newPath = parts.slice(0, -1).concat(target).join('/');
-  window.history.pushState(null, '', '/' + newPath);
+  // HA's pattern: pushState + dispatch `location-changed`. Anchor to
+  // parts[0] (the dashboard slug) — swapping the last segment dropped
+  // the dashboard on 1-segment root URLs (`/oriel-dashboard` → `/lights`,
+  // a nonexistent panel). Same rule as idle-nav's homePathFor.
+  const newPath = `/${parts[0] ?? ''}/${target}`.replace('//', '/');
+  window.history.pushState(null, '', newPath);
   window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
 }
+
+let handlers: {
+  onDown: (ev: PointerEvent) => void;
+  onUp: (ev: PointerEvent) => void;
+} | null = null;
 
 export function installSwipeNav(): void {
   if (installed || typeof document === 'undefined') return;
@@ -82,11 +90,18 @@ export function installSwipeNav(): void {
     navigate(dx > 0 ? 'prev' : 'next');
   };
   // Pointer capture lives on document so swipes work over any element.
+  handlers = { onDown, onUp };
   document.addEventListener('pointerdown', onDown, { passive: true });
   document.addEventListener('pointerup', onUp, { passive: true });
 }
 
-/** Uninstall — called from tests, but mostly here for symmetry. */
+/** Actually detaches the listeners — a flag-only "uninstall" left swipes
+ *  active and stacked a duplicate handler pair on the next install. */
 export function uninstallSwipeNav(): void {
   installed = false;
+  if (handlers && typeof document !== 'undefined') {
+    document.removeEventListener('pointerdown', handlers.onDown);
+    document.removeEventListener('pointerup', handlers.onUp);
+  }
+  handlers = null;
 }
