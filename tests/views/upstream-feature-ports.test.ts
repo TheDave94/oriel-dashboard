@@ -122,3 +122,37 @@ describe('#301/#330 — room section keys', () => {
     expect(miscTiles).toHaveLength(1);
   });
 });
+
+describe('#370 — room_visibility cascades to overview area cards', () => {
+  it('hides the area card when the room view is rule-hidden', async () => {
+    const hass = makeHass({
+      areas: [
+        { area_id: 'office', name: 'Office' },
+        { area_id: 'guest', name: 'Guest Room' },
+      ],
+      entities: [
+        { entity_id: 'light.desk', area_id: 'office', state: 'on' },
+        { entity_id: 'light.guest', area_id: 'guest', state: 'off' },
+        { entity_id: 'input_boolean.guest_mode', state: 'off' },
+      ],
+    });
+    const strategy = customElements.get('ll-strategy-view-oriel-overview') as any;
+    const view = await strategy.generate(
+      {
+        dashboardConfig: {
+          room_visibility: {
+            guest: { entity: 'input_boolean.guest_mode', state: 'on' },
+          },
+          lazy_sections: false,
+        },
+      },
+      hass,
+    );
+    const areaCards = (view.sections as any[])
+      .flatMap((s) => s.cards ?? [])
+      .filter((c: any) => c.type === 'area' || c.type === 'custom:oriel-area-card');
+    const areaIds = areaCards.map((c: any) => c.area ?? c.area_card_config?.area);
+    expect(areaIds).toContain('office');
+    expect(areaIds).not.toContain('guest');
+  });
+});

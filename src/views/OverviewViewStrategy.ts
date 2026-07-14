@@ -182,8 +182,18 @@ class OrielViewOverview extends HTMLElement {
     // Initialize Registry (idempotent — skips if already done by another view)
     Registry.initialize(hass, dashboardConfig);
 
-    // Visible areas (filtered + sorted by config)
-    const visibleAreas = getVisibleAreas(Registry.areas, dashboardConfig.areas_display, dashboardConfig.use_default_area_sort);
+    // Visible areas (filtered + sorted by config). room_visibility rules
+    // cascade to the entry points (#370 upstream): the dashboard strategy
+    // hides the room VIEW, so leaving the area card would produce a
+    // dead-link tap — upstream's live testing showed users don't notice a
+    // hidden room until its card misbehaves.
+    const { getRoomVisibilityChecker } = await import('../utils/visibility');
+    const roomVisible = getRoomVisibilityChecker(dashboardConfig, hass);
+    const visibleAreas = getVisibleAreas(
+      Registry.areas,
+      dashboardConfig.areas_display,
+      dashboardConfig.use_default_area_sort,
+    ).filter((area) => roomVisible(area.area_id));
 
     // Collect data for overview
     const persons = collectPersons(hass, dashboardConfig);

@@ -235,9 +235,9 @@ class Oriel extends HTMLElement {
     const allVisibleAreas = getVisibleAreasFromHass(hass, config.areas_display, config.use_default_area_sort);
 
     // Per-room conditional visibility: filter the area list used to build
-    // room views / nav tabs. The overview's area cards section is NOT
-    // filtered — it uses Registry.areas via OverviewViewStrategy and the
-    // user can already hide individual area cards via areas_display.hidden.
+    // room views / nav tabs. OverviewViewStrategy applies the SAME checker
+    // to its area cards (#370 cascade) — a rule-hidden room must not leave
+    // a dead-link entry point on the overview.
     //
     // Visibility rules support the legacy { entity, state } shape PLUS
     // the composable v2.3.4 shape (role / time_after / time_before /
