@@ -62,7 +62,23 @@ function matches(
   entityId: string,
   hass: HomeAssistant,
 ): boolean {
-  if (Registry.isEntityExcluded(entityId)) return false;
+  // Battery companions must survive the category filter: camera battery
+  // sensors are almost always entity_category 'diagnostic' (Reolink,
+  // Ring, …), and the full exclusion check would silently defeat the
+  // 'battery' bucket for exactly those integrations. Same rule the
+  // battery view applies (entity-filter.ts). Label/config/hidden
+  // exclusions still hold for every kind.
+  if (kind === 'battery') {
+    if (
+      Registry.isExcludedByLabel(entityId) ||
+      Registry.isHiddenByConfig(entityId) ||
+      Registry.getEntity(entityId)?.hidden
+    ) {
+      return false;
+    }
+  } else if (Registry.isEntityExcluded(entityId)) {
+    return false;
+  }
   const state = hass.states[entityId];
   if (!state) return false;
   switch (kind) {

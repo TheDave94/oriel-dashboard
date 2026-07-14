@@ -56,8 +56,15 @@ function nowMinutes(): number {
 
 function parseMinutes(hhmm: string | undefined): number | null {
   if (!hhmm) return null;
-  const m = HHMM.exec(hhmm);
-  if (!m) return null;
+  // Accept single-digit hours ('9:00') by zero-padding before the
+  // strict match — a malformed bound silently becoming "unbounded"
+  // made 09:00–17:00 windows show from midnight.
+  const padded = /^\d:/.test(hhmm) ? `0${hhmm}` : hhmm;
+  const m = HHMM.exec(padded);
+  if (!m) {
+    console.warn(`[oriel] visibility rule: invalid time "${hhmm}" (expected HH:MM) — bound ignored`);
+    return null;
+  }
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
@@ -98,12 +105,12 @@ export function evaluateVisibility(
 ): boolean {
   if (!rule || typeof rule !== 'object') return true;
 
-  // OR (`any: [...]`)
+  // OR (`any: [...]`) — ANDs with the sibling predicates below, same as
+  // `all:`. (An early `return true` here used to skip role/time/mode
+  // siblings entirely, turning "admin AND (a OR b)" into just "a OR b".)
   if (Array.isArray(rule.any) && rule.any.length > 0) {
-    for (const r of rule.any) {
-      if (evaluateVisibility(r, hass)) return true;
-    }
-    return false;
+    if (!rule.any.some((r) => evaluateVisibility(r, hass))) return false;
+    // fall through to single-rule predicates (which AND with .any)
   }
 
   // AND (`all: [...]`)
@@ -118,7 +125,10 @@ export function evaluateVisibility(
 
   if (rule.entity) {
     const state = hass.states[rule.entity]?.state;
-    if (state !== rule.state) return false;
+    // A rule that names an entity but no state means "while it's on" —
+    // that's what the editor placeholder suggests, and comparing
+    // against undefined would otherwise hide the section forever.
+    if (state !== (rule.state || 'on')) return false;
   }
 
   if (rule.role) {

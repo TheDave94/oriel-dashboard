@@ -183,7 +183,11 @@ class OrielViewRoom extends HTMLElement {
 
       // Sensors for badges
       if (domain === 'sensor') {
-        if (entityId.includes('battery') || deviceClass === 'battery') {
+        // Name-only matches must also be %-based: 'battery' appears in
+        // power/current/runtime sensor names (home storage, UPS) whose
+        // numeric values would otherwise fake a low-battery badge — and
+        // the `continue` would swallow them for every later bucket.
+        if (deviceClass === 'battery' || (entityId.includes('battery') && unit === '%')) {
           const val = parseFloat(state.state);
           if (!isNaN(val) && val < 20) sensorEntities.battery.push(entityId);
           continue;
@@ -204,16 +208,18 @@ class OrielViewRoom extends HTMLElement {
           sensorEntities.absolute_humidity.push(entityId);
           continue;
         }
-        if (deviceClass === 'pm1' || entityId.includes('pm_1') || /(^|_)pm1($|_)/.test(entityId)) {
-          sensorEntities.pm1.push(entityId);
-          continue;
-        }
+        // pm25/pm10 must match before pm1: 'pm_10' contains 'pm_1', so a
+        // pm1-first substring check hijacked every PM10 sensor.
         if (deviceClass === 'pm25' || entityId.includes('pm_2_5') || entityId.includes('pm25')) {
           sensorEntities.pm25.push(entityId);
           continue;
         }
         if (deviceClass === 'pm10' || entityId.includes('pm_10') || entityId.includes('pm10')) {
           sensorEntities.pm10.push(entityId);
+          continue;
+        }
+        if (deviceClass === 'pm1' || /(^|[._])pm_?1($|[._])/.test(entityId)) {
+          sensorEntities.pm1.push(entityId);
           continue;
         }
         if (deviceClass === 'carbon_dioxide' || entityId.includes('co2')) {
@@ -250,7 +256,9 @@ class OrielViewRoom extends HTMLElement {
           sensorEntities.smoke.push(entityId);
           continue;
         }
-        if (deviceClass === 'gas') {
+        // CO detectors ride the gas bucket — a triggered CO alarm was
+        // completely absent from room views before.
+        if (deviceClass === 'gas' || deviceClass === 'carbon_monoxide') {
           sensorEntities.gas.push(entityId);
           continue;
         }
@@ -361,6 +369,12 @@ class OrielViewRoom extends HTMLElement {
       }
       if (badgeOpts.additional?.length) {
         for (const entityId of badgeOpts.additional) {
+          // Dedup against the primary temp/humidity badges too — those
+          // never enter filteredCandidates, so adding the area's
+          // assigned sensor here rendered it twice.
+          if (entityId === area.temperature_entity_id || entityId === area.humidity_entity_id) {
+            continue;
+          }
           if (hass.states[entityId] && !filteredCandidates.some((b) => b.entity === entityId)) {
             filteredCandidates.push({ entity: entityId, color: getColorForEntity(entityId, hass) });
           }
@@ -819,7 +833,10 @@ class OrielViewRoom extends HTMLElement {
     const pinsForArea = roomPinEntities.filter((entityId) => {
       const entity = Registry.getEntity(entityId);
       if (!entity) return false;
-      if (entity.area_id === area.area_id) return true;
+      // HA semantics (and Registry._buildEntityMaps): an explicit
+      // entity-level area wins over the device's area — falling back to
+      // the device unconditionally rendered the pin in two rooms.
+      if (entity.area_id) return entity.area_id === area.area_id;
       if (entity.device_id) {
         const device = Registry.getDevice(entity.device_id);
         if (device?.area_id === area.area_id) return true;
@@ -954,7 +971,9 @@ class OrielViewRoom extends HTMLElement {
       let zoneEntities: unknown[];
       if (Array.isArray(curatedPresence) && curatedPresence.length > 0) {
         zoneEntities = curatedPresence.filter((e) => {
-          const id = typeof e === 'string' ? e : (e as { entity?: unknown }).entity;
+          // `?.` — a blank YAML list item parses to null and must not
+          // crash the whole room view.
+          const id = typeof e === 'string' ? e : (e as { entity?: unknown } | null)?.entity;
           // Existence guard — match the auto-detect branch (present-only): drop
           // curated entries whose entity no longer exists (renamed/removed).
           return typeof id === 'string' && id.length > 0 && hass.states[id] !== undefined;

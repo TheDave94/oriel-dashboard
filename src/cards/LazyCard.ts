@@ -96,7 +96,15 @@ class OrielLazyCard extends LitElement {
     return true;
   }
 
-  protected firstUpdated(): void {
+  /**
+   * (Re)arms the IntersectionObserver. Called from BOTH firstUpdated and
+   * connectedCallback: disconnectedCallback tears the observer down, so
+   * a card detached and reattached before its first intersection
+   * (edit-mode reparenting, section reorder) would otherwise stay an
+   * empty placeholder forever — firstUpdated never runs twice.
+   */
+  private _setupObserver(): void {
+    if (this._mounted || this._observer || !this._config || !this.isConnected) return;
     const rootMargin = this._config.root_margin ?? '200px';
     this._observer = new IntersectionObserver(
       (entries) => {
@@ -112,6 +120,15 @@ class OrielLazyCard extends LitElement {
       { rootMargin },
     );
     this._observer.observe(this);
+  }
+
+  protected firstUpdated(): void {
+    this._setupObserver();
+  }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    if (this.hasUpdated) this._setupObserver();
   }
 
   public disconnectedCallback(): void {

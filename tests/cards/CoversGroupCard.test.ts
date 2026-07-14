@@ -2,10 +2,12 @@
 // CoversGroupCard — unit tests
 // ====================================================================
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import '../../src/cards/CoversGroupCard';
 import { bubbleHashFor } from '../../src/utils/bubble-integration';
+import { Registry } from '../../src/Registry';
+import { makeHass } from '../fixtures/hass';
 
 type CoversGroupCardEl = HTMLElement & {
   setConfig(cfg: Record<string, unknown>): void;
@@ -28,6 +30,27 @@ class HuiTileCardShim extends HTMLElement {
 }
 if (!customElements.get('hui-tile-card')) {
   customElements.define('hui-tile-card', HuiTileCardShim);
+}
+
+// <hui-heading-card> shim — the card's updated() pass configures heading
+// cards, which need a setConfig method.
+class HuiHeadingCardShim extends HTMLElement {
+  public lastConfig: Record<string, unknown> | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public hass: any;
+  setConfig(cfg: Record<string, unknown>): void {
+    this.lastConfig = cfg;
+  }
+}
+if (!customElements.get('hui-heading-card')) {
+  customElements.define('hui-heading-card', HuiHeadingCardShim);
+}
+
+interface CoversCardInternals {
+  hass: unknown;
+  updateComplete: Promise<boolean>;
+  _tileCards: Map<string, HTMLElement>;
+  _floorHeadingCards: Map<string, HuiHeadingCardShim>;
 }
 
 describe('oriel-covers-group-card', () => {
@@ -119,6 +142,86 @@ describe('oriel-covers-group-card', () => {
         | (typeof HTMLElement & { getStubConfig?: () => { group_type: string } })
         | undefined;
       expect(ctor!.getStubConfig?.().group_type).toBe('open');
+    });
+  });
+
+  describe('tile pooling and hass propagation (review wave)', () => {
+    let el: CoversGroupCardEl;
+    let internals: CoversCardInternals;
+
+    beforeEach(() => {
+      Registry.resetForTesting();
+      el = mount();
+      internals = el as unknown as CoversCardInternals;
+      document.body.appendChild(el);
+    });
+
+    afterEach(() => {
+      el.remove();
+    });
+
+    function makeCoverHass(friendlyName: string): ReturnType<typeof makeHass> {
+      return makeHass({
+        entities: [
+          {
+            entity_id: 'cover.kitchen',
+            state: 'open',
+            attributes: {
+              friendly_name: friendlyName,
+              device_class: 'shutter',
+              current_position: 100,
+            },
+          },
+        ],
+      });
+    }
+
+    it('reuses pooled tiles on state-only hass pushes, rebuilds them on registry changes (rename reflected)', async () => {
+      el.setConfig({ group_type: 'open' });
+      const hass1 = makeCoverHass('Kitchen Blind');
+      Registry.initialize(hass1, {});
+      internals.hass = hass1;
+      await internals.updateComplete;
+
+      const tile1 = el.shadowRoot?.querySelector('hui-tile-card') as HuiTileCardShim;
+      expect(tile1).toBeTruthy();
+      expect(tile1.lastConfig?.name).toBe('Kitchen');
+
+      // State-only push (same hass.entities identity) → tile is REUSED.
+      internals.hass = { ...hass1, states: { ...hass1.states } };
+      await internals.updateComplete;
+      expect(el.shadowRoot?.querySelector('hui-tile-card')).toBe(tile1);
+
+      // Registry change with a renamed entity → pool invalidated,
+      // fresh tile carries the new name.
+      const hass2 = makeCoverHass('Bedroom Blind');
+      Registry.initialize(hass2, {});
+      internals.hass = hass2;
+      await internals.updateComplete;
+
+      const tile2 = el.shadowRoot?.querySelector('hui-tile-card') as HuiTileCardShim;
+      expect(tile2).toBeTruthy();
+      expect(tile2).not.toBe(tile1);
+      expect(tile2.lastConfig?.name).toBe('Bedroom');
+    });
+
+    it('floor mode: forwards hass to pooled floor heading cards on every push', async () => {
+      const hass1 = makeCoverHass('Kitchen Blind');
+      Registry.initialize(hass1, {});
+      el.setConfig({ group_type: 'open', group_by_floors: true });
+      internals.hass = hass1;
+      await internals.updateComplete;
+
+      const floorHeading = internals._floorHeadingCards.get('_none');
+      expect(floorHeading).toBeTruthy();
+      expect(floorHeading?.hass).toBe(hass1);
+
+      // Render key unchanged (updated() dedups) — the heading still
+      // needs the fresh hass for its state-based behaviour.
+      const hass2 = { ...hass1, states: { ...hass1.states } };
+      internals.hass = hass2;
+      await internals.updateComplete;
+      expect(floorHeading?.hass).toBe(hass2);
     });
   });
 });

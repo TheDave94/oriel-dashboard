@@ -7,9 +7,10 @@
 //   - severity_chips             — single chip row, compact
 //   - raw_grid                   — sensor-card per pollen with raw value
 //
-// willUpdate keeps render work O(N pollens) per state push; the
-// per-pollen entity set is cached and only invalidated when the hass
-// registry reference changes (matches SummaryCard's pattern).
+// shouldUpdate skips renders entirely when no watched pollen sensor
+// changed; the per-pollen entity set is cached and only invalidated
+// when the hass registry reference changes (matches SummaryCard's
+// pattern).
 // ====================================================================
 
 import { LitElement, html, css, nothing, type PropertyValues, type TemplateResult } from 'lit';
@@ -201,29 +202,22 @@ class OrielPollenCard extends LitElement {
     this._relevantIds = null;
   }
 
-  protected willUpdate(changedProps: PropertyValues): void {
-    if (!changedProps.has('hass') || !this.hass) return;
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    if (!changedProps.has('hass') || !this.hass) return true;
     const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
-    if (!oldHass || oldHass.entities !== this.hass.entities) {
+    // Recompute the watched-id cache on first hass, registry change, or
+    // after setConfig nulled it (matches SummaryCard's invalidation rule).
+    if (!oldHass || oldHass.entities !== this.hass.entities || !this._relevantIds) {
       this._relevantIds = new Set(
         this._config.types.map((t) => pollenSensorId(this._config.source, t)),
       );
+      return true;
     }
-    if (!oldHass) return;
-    // Skip re-render if no relevant pollen sensor moved.
-    if (!this._relevantIds) return;
-    let changed = false;
+    // hass-only push: re-render only when a relevant pollen sensor moved.
     for (const id of this._relevantIds) {
-      if (oldHass.states[id] !== this.hass.states[id]) {
-        changed = true;
-        break;
-      }
+      if (oldHass.states[id] !== this.hass.states[id]) return true;
     }
-    if (!changed) {
-      // Suppress the upcoming render: Lit treats willUpdate as advisory,
-      // so we can't "cancel" it, but skipping work here keeps render()
-      // costs low. Real cost saver is the early-out in render() itself.
-    }
+    return false;
   }
 
   render(): TemplateResult {

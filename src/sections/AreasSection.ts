@@ -12,7 +12,7 @@ import type { AreaRegistryEntry } from '../types/registries';
 import type { FloorsDisplay } from '../types/strategy';
 import { Registry } from '../Registry';
 import { localize } from '../utils/localize';
-import { getOrderedFloorIds } from '../utils/name-utils';
+import { getOrderedFloorIds, roomViewPath } from '../utils/name-utils';
 
 // Area control domains to check (same as HA, with optional 'switch')
 const CONTROL_DOMAINS = [
@@ -109,7 +109,10 @@ function getAreaAlertClasses(
     else if (includeWindowAlerts && WINDOW_ALERT_DEVICE_CLASSES.has(deviceClass)) found.add(deviceClass);
   }
 
-  return [...found];
+  // Canonical order, not entity-iteration order — same reasoning as the
+  // controls sort above (simon42#201): identical alert mixes must render
+  // identical badge order on every area card.
+  return [...ALERT_DEVICE_CLASSES, ...WINDOW_ALERT_DEVICE_CLASSES].filter((c) => found.has(c));
 }
 
 /**
@@ -145,7 +148,7 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
     alert_classes: alertClasses && alertClasses.length > 0 ? alertClasses : undefined,
     features: controls.length > 0 ? [{ type: 'area-controls', controls }] : [],
     features_position: 'inline',
-    navigation_path: area.area_id,
+    navigation_path: roomViewPath(area.area_id),
     vertical: false,
     grid_options: { columns: 'full' },
   };
@@ -168,7 +171,7 @@ function buildAreaCard(area: AreaRegistryEntry, hass: HomeAssistant): LovelaceCa
         type: 'custom:oriel-area-card',
         area_card_config: inner,
         scenes,
-        navigation_path: area.area_id,
+        navigation_path: roomViewPath(area.area_id),
       };
     }
   }

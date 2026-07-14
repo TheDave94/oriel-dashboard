@@ -55,7 +55,7 @@ import { renderCustomBadgesTab } from './tabs/CustomBadgesTab';
 import { renderCustomViewsTab } from './tabs/CustomViewsTab';
 import { renderPerUserTab } from './tabs/PerUserTab';
 import { renderNotificationsTab } from './tabs/NotificationsTab';
-import { renderModeOrderTab } from './tabs/ModeOrderTab';
+import { renderModeOrderTab, DEFAULT_HOUSE_MODE_ENTITY } from './tabs/ModeOrderTab';
 import { renderFloorplanTab } from './tabs/FloorplanTab';
 import { renderRoomOverridesTab } from './tabs/RoomOverridesTab';
 import { renderHealthTab } from './tabs/HealthTab';
@@ -163,6 +163,16 @@ class OrielEditor extends LitElement {
    */
   private _areaEntitiesCacheKey: unknown = null;
 
+  /**
+   * Cached result of `_getAllEntitiesForSelect()`, keyed by the
+   * identity of the `hass.states` + `hass.entities` snapshots it was
+   * built against. The list is rebuilt on every keystroke of the
+   * entity-picker search otherwise — O(states × entities) per render.
+   */
+  private _entitySelectCache: EntitySelectOption[] | null = null;
+  private _entitySelectCacheStatesKey: unknown = null;
+  private _entitySelectCacheEntitiesKey: unknown = null;
+
   // Drag state (not reactive — no render needed)
   private _draggedElement: HTMLElement | null = null;
   private _sectionDraggedElement: HTMLElement | null = null;
@@ -181,6 +191,13 @@ class OrielEditor extends LitElement {
     if (hass.entities !== this._areaEntitiesCacheKey) {
       this._areaEntitiesCache.clear();
       this._areaEntitiesCacheKey = hass.entities;
+      // Re-trigger the loader for every currently-expanded area —
+      // the only other loader call site is _toggleAreaExpand, so
+      // without this the already-open panels would show the
+      // "Loading entities…" placeholder forever.
+      for (const areaId of this._expandedAreas) {
+        void this._loadAreaEntities(areaId);
+      }
       this.requestUpdate();
     }
     if (!oldHass) this.requestUpdate();
@@ -204,8 +221,19 @@ class OrielEditor extends LitElement {
   private _getAllEntitiesForSelect(): EntitySelectOption[] {
     if (!this._hass) return [];
 
-    const entities = Object.values(this._hass.entities);
-    const devices = Object.values(this._hass.devices);
+    const hass = this._hass;
+
+    // Reuse the cached list while the snapshots it was built from are
+    // still current — repeated search keystrokes hit this per render.
+    if (
+      this._entitySelectCache &&
+      this._entitySelectCacheStatesKey === hass.states &&
+      this._entitySelectCacheEntitiesKey === hass.entities
+    ) {
+      return this._entitySelectCache;
+    }
+
+    const devices = Object.values(hass.devices);
 
     // Build device-to-area lookup
     const deviceAreaMap = new Map<string, string>();
@@ -215,11 +243,10 @@ class OrielEditor extends LitElement {
       }
     });
 
-    const hass = this._hass;
-    return Object.keys(hass.states)
+    const result = Object.keys(hass.states)
       .map((entityId) => {
         const stateObj = hass.states[entityId];
-        const entity = entities.find((e) => e.entity_id === entityId);
+        const entity = hass.entities[entityId];
 
         let areaId = entity?.area_id;
         if (!areaId && entity?.device_id) {
@@ -234,6 +261,11 @@ class OrielEditor extends LitElement {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+
+    this._entitySelectCache = result;
+    this._entitySelectCacheStatesKey = hass.states;
+    this._entitySelectCacheEntitiesKey = hass.entities;
+    return result;
   }
 
   private _getAlarmEntities(): AlarmEntityOption[] {
@@ -1403,7 +1435,18 @@ class OrielEditor extends LitElement {
       onChange: (next) => {
         const newConfig: OrielConfig = { ...this._config };
         if (Object.keys(next).length === 0) delete newConfig.sections_order_by_mode;
-        else newConfig.sections_order_by_mode = next;
+        else {
+          newConfig.sections_order_by_mode = next;
+          // The strategy only applies the mode map when
+          // house_mode_entity is EXPLICITLY set (OverviewViewStrategy
+          // checks `modeMap && houseModeEnt`). The tab detects modes
+          // from the fallback entity, so authored orders would
+          // silently never take effect — persist the fallback
+          // explicitly when it exists.
+          if (!newConfig.house_mode_entity && this._hass?.states[DEFAULT_HOUSE_MODE_ENTITY]) {
+            newConfig.house_mode_entity = DEFAULT_HOUSE_MODE_ENTITY;
+          }
+        }
         this._config = newConfig;
         this._fireConfigChanged(newConfig);
       },
@@ -1964,7 +2007,19 @@ class OrielEditor extends LitElement {
     const rule = { ...(current[sectionKey] || {}) };
     const trimmed = value.trim();
     if (trimmed) {
-      rule[field] = trimmed;
+      if (field === 'role') {
+        // The field accepts a comma list ("admin, resident") but
+        // userMatches() never splits strings — persist a plain string
+        // for a single role, an array for several.
+        const roles = trimmed
+          .split(',')
+          .map((r) => r.trim())
+          .filter((r) => r.length > 0);
+        if (roles.length === 0) delete rule[field];
+        else rule[field] = roles.length === 1 ? roles[0] : roles;
+      } else {
+        rule[field] = trimmed;
+      }
     } else {
       delete rule[field];
     }
@@ -2537,8 +2592,16 @@ class OrielEditor extends LitElement {
   private _roomVisibilityChanged(areaId: string, field: 'entity' | 'state', value: string): void {
     const updated: OrielConfig = { ...this._config };
     const current = { ...(updated.room_visibility || {}) };
-    const rule = { ...(current[areaId] || { entity: '', state: '' }) };
-    rule[field] = value.trim();
+    const rule = { ...(current[areaId] || {}) };
+    const trimmed = value.trim();
+    // Only persist fields that carry a value — an empty `state: ''`
+    // would make evaluateVisibility require state === '' (never
+    // matches), permanently hiding the room.
+    if (trimmed) {
+      rule[field] = trimmed;
+    } else {
+      delete rule[field];
+    }
     if (!rule.entity && !rule.state) {
       delete current[areaId];
     } else {
@@ -2699,13 +2762,7 @@ class OrielEditor extends LitElement {
     }
 
     // Sort areas by configured order
-    const sortedAreas = [...allAreas].sort((a, b) => {
-      const orderA = areaOrder.indexOf(a.area_id);
-      const orderB = areaOrder.indexOf(b.area_id);
-      const effectiveA = orderA !== -1 ? orderA : 9999 + allAreas.indexOf(a);
-      const effectiveB = orderB !== -1 ? orderB : 9999 + allAreas.indexOf(b);
-      return effectiveA - effectiveB;
-    });
+    const sortedAreas = sortAreasByConfiguredOrder(allAreas, areaOrder);
 
     return sortedAreas.map((area) => {
       const isHidden = hiddenAreas.includes(area.area_id);
@@ -2779,6 +2836,10 @@ class OrielEditor extends LitElement {
       { key: 'fan', label: localize('editor.domain_fan'), icon: 'mdi:fan' },
       { key: 'switches', label: localize('editor.domain_switches'), icon: 'mdi:light-switch' },
       { key: 'locks', label: localize('editor.domain_locks'), icon: 'mdi:lock' },
+      { key: 'humidifier', label: localize('editor.domain_humidifier'), icon: 'mdi:air-humidifier' },
+      { key: 'valve', label: localize('editor.domain_valve'), icon: 'mdi:valve' },
+      { key: 'water_heater', label: localize('editor.domain_water_heater'), icon: 'mdi:water-boiler' },
+      { key: 'cameras', label: localize('editor.domain_cameras'), icon: 'mdi:cctv' },
     ];
 
     const hasEntities = domainGroups.some((g) => (groupedEntities[g.key]?.length ?? 0) > 0);
@@ -3649,9 +3710,14 @@ class OrielEditor extends LitElement {
       if (!hiddenAreas.includes(areaId)) {
         hiddenAreas.push(areaId);
       }
-      // Collapse area when hidden
-      this._expandedAreas.delete(areaId);
-      this._expandedGroups.delete(areaId);
+      // Collapse area when hidden — copy-and-reassign so the @state
+      // fields get a new identity and Lit schedules a render
+      const newExpandedAreas = new Set(this._expandedAreas);
+      newExpandedAreas.delete(areaId);
+      this._expandedAreas = newExpandedAreas;
+      const newExpandedGroups = new Map(this._expandedGroups);
+      newExpandedGroups.delete(areaId);
+      this._expandedGroups = newExpandedGroups;
       this._areaEntitiesCache.delete(areaId);
     }
 
@@ -4030,9 +4096,16 @@ class OrielEditor extends LitElement {
 
   private _getAreaOrder(): string[] {
     if (!this._hass) return [];
-    const configOrder = this._config.areas_display?.order;
-    if (configOrder && configOrder.length > 0) return [...configOrder];
-    return Object.keys(this._hass.areas || {});
+    // Baseline must be the exact order the Areas tab renders
+    // (name-sorted, with saved-order entries first in their
+    // positions). A raw `areas_display.order` / registry-order
+    // fallback diverges as soon as the saved order is partial —
+    // indexOf() then returns -1 and the drop silently no-ops.
+    const allAreas = Object.values(this._hass.areas || {}).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+    const areaOrder = this._config.areas_display?.order || [];
+    return sortAreasByConfiguredOrder(allAreas, areaOrder).map((a) => a.area_id);
   }
 
   private _updateAreaOrder(newOrder: string[]): void {
@@ -4139,7 +4212,10 @@ class OrielEditor extends LitElement {
       this._livePreviewRunner.schedule(config, this._hass);
     }
 
-    // Strip internal fields before saving
+    // Strip internal fields from the emitted/saved config ONLY — never
+    // from `this._config`. The in-memory editing state must keep
+    // `_yaml_error` so the error banners can render; stripping it from
+    // `this._config` made invalid YAML fail silently (data-drop).
     const cleanConfig: OrielConfig = { ...config };
     if (cleanConfig.custom_views) {
       cleanConfig.custom_views = cleanConfig.custom_views.map((cv) => {
@@ -4155,6 +4231,13 @@ class OrielEditor extends LitElement {
         return clean;
       });
     }
+    if (cleanConfig.custom_sections) {
+      cleanConfig.custom_sections = cleanConfig.custom_sections.map((cs) => {
+        const clean = { ...cs };
+        delete clean._yaml_error;
+        return clean;
+      });
+    }
     if (cleanConfig.custom_badges) {
       cleanConfig.custom_badges = cleanConfig.custom_badges.map((cb) => {
         const clean = { ...cb };
@@ -4163,7 +4246,7 @@ class OrielEditor extends LitElement {
       });
     }
 
-    this._config = cleanConfig;
+    this._config = config;
 
     const event = new CustomEvent('config-changed', {
       detail: { config: cleanConfig },
@@ -4182,6 +4265,25 @@ class OrielEditor extends LitElement {
 // ====================================================================
 // HELPER FUNCTIONS (local to this module)
 // ====================================================================
+
+/**
+ * Display order for the Areas tab: entries present in the saved
+ * `areas_display.order` come first (in saved order), the rest keep
+ * their position in `allAreas` (name-sorted by the tab). Shared by
+ * the renderer and the drag-drop baseline so they can never diverge.
+ */
+function sortAreasByConfiguredOrder(
+  allAreas: AreaRegistryEntry[],
+  areaOrder: string[]
+): AreaRegistryEntry[] {
+  return [...allAreas].sort((a, b) => {
+    const orderA = areaOrder.indexOf(a.area_id);
+    const orderB = areaOrder.indexOf(b.area_id);
+    const effectiveA = orderA !== -1 ? orderA : 9999 + allAreas.indexOf(a);
+    const effectiveB = orderB !== -1 ? orderB : 9999 + allAreas.indexOf(b);
+    return effectiveA - effectiveB;
+  });
+}
 
 async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant): Promise<RoomEntities> {
   const devices = Object.values(hass.devices || {});
@@ -4265,6 +4367,14 @@ async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant): Prom
       roomEntities.switches.push(entity.entity_id);
     } else if (domain === 'lock') {
       roomEntities.locks.push(entity.entity_id);
+    } else if (domain === 'humidifier') {
+      roomEntities.humidifier.push(entity.entity_id);
+    } else if (domain === 'valve') {
+      roomEntities.valve.push(entity.entity_id);
+    } else if (domain === 'water_heater') {
+      roomEntities.water_heater.push(entity.entity_id);
+    } else if (domain === 'camera') {
+      roomEntities.cameras.push(entity.entity_id);
     }
   }
 

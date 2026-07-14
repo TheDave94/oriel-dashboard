@@ -286,6 +286,8 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       type: 'custom:oriel-summary-card',
       summary_type: 'security',
       areas_options: config.areas_options || {},
+      // The Security view renders these; the tile must count them too.
+      security_extra_entities: config.security_extra_entities,
       density,
     });
   }
@@ -298,6 +300,9 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
       hide_mobile_app_batteries: config.hide_mobile_app_batteries,
       hide_battery_notes_entities: config.hide_battery_notes_entities,
       battery_critical_threshold: config.battery_critical_threshold,
+      // Keep the tile's critical count aligned with the Batteries view's
+      // bucketing of unavailable/unknown sensors (default 'good').
+      unavailable_batteries_bucket: config.unavailable_batteries_bucket,
       density,
     });
   }
@@ -322,11 +327,14 @@ export function createOverviewSection(data: OverviewSectionParams): LovelaceSect
 
     // Layout logic: adapt to number of cards
     if (summariesColumns === 4) {
-      // 4 columns: all cards in a single row
-      cards.push({
-        type: 'horizontal-stack',
-        cards: summaryCards,
-      });
+      // 4 columns: rows of four — a single stack squeezed 5+ cards
+      // (climate enabled) into one over-tight row.
+      for (let i = 0; i < summaryCards.length; i += 4) {
+        cards.push({
+          type: 'horizontal-stack',
+          cards: summaryCards.slice(i, i + 4),
+        });
+      }
     } else {
       // 2 columns: split into rows of 2
       for (let i = 0; i < summaryCards.length; i += 2) {

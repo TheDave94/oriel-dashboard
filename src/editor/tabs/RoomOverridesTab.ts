@@ -23,6 +23,7 @@ import {
   normalizeRoomSectionOrder,
   effectiveRoomSectionOrder,
 } from './AreasTab';
+import { setYamlError } from './yaml-error-display';
 import yaml from 'js-yaml';
 
 export interface RoomOverridesTabContext {
@@ -133,15 +134,15 @@ function renderAreaOverride(
     try {
       const result = yaml.load(text);
       if (!Array.isArray(result)) {
-        textarea.dataset.error = 'YAML must be a list of sections';
+        setYamlError(textarea, 'YAML must be a list of sections');
         return;
       }
       parsed = result;
     } catch (e) {
-      textarea.dataset.error = String(e).slice(0, 200);
+      setYamlError(textarea, String(e).slice(0, 200));
       return;
     }
-    delete textarea.dataset.error;
+    setYamlError(textarea, null);
     const nextOpts: NonNullable<OrielConfig['areas_options']> = { ...opts };
     const nextArea = { ...areaOpts } as Record<string, unknown>;
     if (parsed.length === 0) {
@@ -260,6 +261,7 @@ function renderAreaOverride(
           .value=${sectionsYaml}
           @change=${(e: Event) => updateSections(e.target as HTMLTextAreaElement)}
         ></textarea>
+        <div class="yaml-error" style="display: none; color: var(--error-color); font-size: 11px; margin-top: 4px;"></div>
         ${hasOverride
           ? html`
               <label

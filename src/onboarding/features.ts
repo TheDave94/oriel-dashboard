@@ -116,10 +116,13 @@ export const FEATURE_REGISTRY: FeatureEntry[] = [
       'Sections below the fold defer subscribing to entity state until you scroll to them. Helps installs with many entities.',
     category: 'layout',
     configKeys: ['lazy_sections', 'lazy_sections_threshold'],
-    defaultEnabled: false,
+    // Strategy default is ON (`!== false` in OverviewViewStrategy) —
+    // the panel must mirror that, and turning it off must write an
+    // explicit false (deleting the key would re-enable it).
+    defaultEnabled: true,
     detect: () => ({ installed: true }),
-    isEnabled: (c) => c.lazy_sections === true,
-    toggle: (enabled) => ({ lazy_sections: enabled ? true : undefined }),
+    isEnabled: (c) => c.lazy_sections !== false,
+    toggle: (enabled) => ({ lazy_sections: enabled ? undefined : false }),
   },
   {
     id: 'sections-order-by-mode',

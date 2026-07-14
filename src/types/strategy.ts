@@ -26,6 +26,15 @@ export type SectionKey =
   | 'maintenance'
   | 'presence';
 
+/**
+ * Every orderable overview section, in default order. This list is the
+ * single source of truth for `normalizeSectionsOrder` (which drops keys
+ * not listed here and appends listed keys the user omitted) — a section
+ * key missing from it can NEVER render, no matter what its builder
+ * produces. `overview_top` and `summaries` are custom-card targets
+ * inside the overview section, not orderable sections, so they are
+ * deliberately absent.
+ */
 export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'overview',
   'custom_cards',
@@ -33,6 +42,12 @@ export const DEFAULT_SECTIONS_ORDER: SectionKey[] = [
   'weather',
   'energy',
   'plants',
+  'agenda',
+  'todos',
+  'persons',
+  'vacuums',
+  'maintenance',
+  'presence',
 ];
 
 // Reorderable entity-group sections WITHIN a room view (#293). Specials
@@ -681,7 +696,7 @@ export interface OrielConfig {
    * The overview's area cards section is NOT affected — only the per-area
    * room views and nav tabs.
    */
-  room_visibility?: Record<string, { entity: string; state: string }>;
+  room_visibility?: Record<string, { entity?: string; state?: string }>;
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER

@@ -110,9 +110,15 @@ export function resolveUserConfig(
         usersByRole.admin.override as Record<string, unknown>,
       ) as OrielConfig;
     }
+    // Case-insensitive on BOTH sides: HA labels are user-typed ('Guest')
+    // and so are the YAML keys — visibility.ts's role matcher lowercases
+    // both, and the two matchers must agree.
+    const byRoleLower = new Map(
+      Object.entries(usersByRole).map(([k, v]) => [k.toLowerCase(), v]),
+    );
     const labels = (user.labels ?? []).map((l) => l.toLowerCase());
     for (const label of labels) {
-      const entry = usersByRole[label];
+      const entry = byRoleLower.get(label);
       if (entry?.override) {
         resolved = deepMerge(
           resolved as Record<string, unknown>,

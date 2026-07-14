@@ -127,6 +127,7 @@ class Registry {
   private static _builtFromDevices: unknown = null;
   private static _builtFromAreas: unknown = null;
   private static _builtFromFloors: unknown = null;
+  private static _builtFromAreasOptions: string | null = null;
 
   /**
    * Count of full rebuilds that actually fired (not idempotent early-
@@ -152,6 +153,7 @@ class Registry {
     Registry._builtFromDevices = null;
     Registry._builtFromAreas = null;
     Registry._builtFromFloors = null;
+    Registry._builtFromAreasOptions = null;
     Registry._rebuildCount = 0;
   }
 
@@ -167,24 +169,38 @@ class Registry {
    * registry updates).
    */
   static initialize(hass: HomeAssistant, config: OrielConfig): void {
+    // A caller passing an empty config has no opinion (view strategies
+    // fall back to `config.config || {}` when embedded standalone) —
+    // don't let it evict the dashboard's real config.
+    const hasConfig = config && Object.keys(config).length > 0;
+    // Only areas_options feeds the pre-built maps (via
+    // _hiddenFromConfig); every other config key is read live through
+    // Registry.config. Fingerprint it so an editor save that hides an
+    // entity rebuilds even though no hass registry changed.
+    const configFingerprint = hasConfig
+      ? JSON.stringify(config.areas_options ?? null)
+      : Registry._builtFromAreasOptions;
+
     if (
       Registry._initialized &&
       Registry._builtFromEntities === hass.entities &&
       Registry._builtFromDevices === hass.devices &&
       Registry._builtFromAreas === hass.areas &&
-      Registry._builtFromFloors === hass.floors
+      Registry._builtFromFloors === hass.floors &&
+      Registry._builtFromAreasOptions === configFingerprint
     ) {
+      // Maps are current — but keep the live references fresh: hass is
+      // replaced on every state change, and consumers read states,
+      // floors, and config toggles through these getters.
+      Registry._hass = hass;
+      if (hasConfig) Registry._config = config;
       return;
     }
 
     timeStart('registry-init');
     Registry._rebuildCount += 1;
     Registry._hass = hass;
-    Registry._config = config;
-    Registry._builtFromEntities = hass.entities;
-    Registry._builtFromDevices = hass.devices;
-    Registry._builtFromAreas = hass.areas;
-    Registry._builtFromFloors = hass.floors;
+    if (hasConfig || !Registry._initialized) Registry._config = config;
 
     // Initialize localization from hass language settings
     setupLocalize(hass);
@@ -208,6 +224,16 @@ class Registry {
     Registry._buildEntityMaps();
     timeEnd('registry-buildEntityMaps');
 
+    // Markers committed only AFTER a successful build: stamping them up
+    // front would make a mid-build exception look like a completed
+    // rebuild to the guard, silently serving half-built maps forever.
+    Registry._builtFromEntities = hass.entities;
+    Registry._builtFromDevices = hass.devices;
+    Registry._builtFromAreas = hass.areas;
+    Registry._builtFromFloors = hass.floors;
+    Registry._builtFromAreasOptions = hasConfig
+      ? JSON.stringify(config.areas_options ?? null)
+      : Registry._builtFromAreasOptions;
     Registry._initialized = true;
     debugLog(
       `Registry initialized: ${Registry._fetchedEntities.length} entities, ${Registry._fetchedDevices.length} devices, ${Registry._fetchedAreas.length} areas`
@@ -362,19 +388,22 @@ class Registry {
     // no_dboard label exclusion
     Registry._excludeSet = new Set();
     for (const e of Registry._fetchedEntities) {
-      if (e.labels.includes('no_dboard')) {
+      if (e.labels?.includes('no_dboard')) {
         Registry._excludeSet.add(e.entity_id);
       }
     }
 
-    // Hidden from config (areas_options.{areaId}.groups_options.{domain}.hidden)
+    // Hidden from config (areas_options.{areaId}.groups_options.{domain}.hidden).
+    // Null-tolerant throughout: hand-edited YAML with bare keys
+    // (`areas_options:\n  kitchen:`) parses to null values, and a throw
+    // here kills the whole dashboard generate.
     Registry._hiddenFromConfig = new Set();
     const areasOptions = Registry._config.areas_options;
     if (areasOptions) {
       for (const areaOpts of Object.values(areasOptions)) {
-        if (areaOpts.groups_options) {
+        if (areaOpts?.groups_options) {
           for (const groupOpts of Object.values(areaOpts.groups_options)) {
-            if (groupOpts.hidden && Array.isArray(groupOpts.hidden)) {
+            if (groupOpts?.hidden && Array.isArray(groupOpts.hidden)) {
               for (const id of groupOpts.hidden) {
                 Registry._hiddenFromConfig.add(id);
               }
@@ -589,47 +618,6 @@ class Registry {
     return false;
   }
 
-  // =====================================================================
-  // Per-group hidden entities
-  // =====================================================================
-
-  /**
-   * Get set of entity IDs hidden for a specific group key across all areas.
-   *
-   * Used by summary cards that need per-domain/group filtering from
-   * areas_options.*.groups_options.{groupKey}.hidden.
-   */
-  static getHiddenForGroup(groupKey: string): Set<string> {
-    const hidden = new Set<string>();
-    const areasOptions = Registry._config.areas_options;
-    if (!areasOptions) return hidden;
-
-    for (const areaOpts of Object.values(areasOptions)) {
-      const groupOpts = areaOpts.groups_options?.[groupKey];
-      if (groupOpts?.hidden && Array.isArray(groupOpts.hidden)) {
-        for (const id of groupOpts.hidden) {
-          hidden.add(id);
-        }
-      }
-    }
-    return hidden;
-  }
-
-  /**
-   * Get set of entity IDs hidden for a specific group in a specific area.
-   *
-   * Used by room views for area-scoped entity filtering.
-   */
-  static getHiddenForAreaGroup(areaId: string, groupKey: string): Set<string> {
-    const hidden = new Set<string>();
-    const groupOpts = Registry._config.areas_options?.[areaId]?.groups_options?.[groupKey];
-    if (groupOpts?.hidden && Array.isArray(groupOpts.hidden)) {
-      for (const id of groupOpts.hidden) {
-        hidden.add(id);
-      }
-    }
-    return hidden;
-  }
 }
 
 export { Registry };

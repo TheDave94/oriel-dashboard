@@ -15,6 +15,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import type { HomeAssistant } from '../../types/homeassistant';
 import type { OrielConfig } from '../../types/strategy';
 import { localize } from '../../utils/localize';
+import { setYamlError } from './yaml-error-display';
 import yaml from 'js-yaml';
 
 export interface FloorplanTabContext {
@@ -58,11 +59,10 @@ export function renderFloorplanTab(ctx: FloorplanTabContext): TemplateResult {
       parsed = (yaml.load(text) as Record<string, unknown>) ?? {};
     } catch (e) {
       // Surface parse error inline; don't write bad YAML to config
-      textarea.dataset.error = String(e).slice(0, 200);
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      setYamlError(textarea, String(e).slice(0, 200));
       return;
     }
-    delete textarea.dataset.error;
+    setYamlError(textarea, null);
     const next: NonNullable<OrielConfig['floorplan_view']> = fp
       ? { ...fp }
       : { config: {} as Record<string, unknown> };
@@ -151,6 +151,7 @@ export function renderFloorplanTab(ctx: FloorplanTabContext): TemplateResult {
                 .value=${configYaml}
                 @change=${(e: Event) => updateConfigYaml(e.target as HTMLTextAreaElement)}
               ></textarea>
+              <div class="yaml-error" style="display: none; color: var(--error-color); font-size: 11px; margin-top: 4px;"></div>
               <small class="description" style="font-size: 11px;">
                 ${localize('editor.floorplan_config_help') ||
                   'Anything floorplan-card accepts. See ha-floorplan docs for the full schema.'}

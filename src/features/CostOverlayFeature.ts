@@ -7,11 +7,12 @@
 //   - a tariff value (€/kWh), from `tariff_entity` (live) or
 //     `tariff_value` (config)
 //
-// Auto-hides when power is zero / unavailable. Cost recalculates on
-// every hass update — cheap (one multiplication + format).
+// Auto-hides when power is zero / unavailable. Cost recalculates only
+// when the watched power/tariff entities change (shouldUpdate guard —
+// hass is re-set on every state change system-wide).
 // ====================================================================
 
-import { LitElement, html, css, nothing, type TemplateResult } from 'lit';
+import { LitElement, html, css, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant, HassEntity } from '../types/homeassistant';
 
@@ -67,6 +68,19 @@ class OrielCostOverlayFeature extends LitElement {
 
   public static getStubConfig(): CostOverlayConfig {
     return { type: 'custom:oriel-cost-overlay-feature', tariff_value: 0.30 };
+  }
+
+  protected shouldUpdate(changed: PropertyValues): boolean {
+    if (changed.has('_config') || changed.has('context')) return true;
+    const oldHass = changed.get('hass') as HomeAssistant | undefined;
+    if (!oldHass || !this._config) return true;
+    // hass-only push: only the resolved power entity + the (optional)
+    // tariff entity feed render output.
+    const powerId = this._config.power_entity ?? this.context?.entity_id;
+    if (powerId && oldHass.states[powerId] !== this.hass?.states[powerId]) return true;
+    const tariffId = this._config.tariff_entity;
+    if (tariffId && oldHass.states[tariffId] !== this.hass?.states[tariffId]) return true;
+    return false;
   }
 
   /** Resolve power in kW from config + tile context. Returns null when missing. */

@@ -148,6 +148,18 @@ class OrielSparklineCard extends LitElement {
     if (this._refreshTimer !== undefined) window.clearInterval(this._refreshTimer);
   }
 
+  protected shouldUpdate(changed: PropertyValues): boolean {
+    // History refreshes (initial fetch + hourly timer) must always render.
+    if (changed.has('_history')) return true;
+    const oldHass = changed.get('hass') as HomeAssistant | undefined;
+    // First hass (or a non-hass-triggered update) passes through — the
+    // first render also arms the fetch via updated().
+    if (!oldHass || !this._config) return true;
+    // hass-only push: the full SVG rebuild is O(points), so skip unless
+    // our entity's state object actually moved.
+    return oldHass.states[this._config.entity] !== this.hass?.states[this._config.entity];
+  }
+
   protected updated(changed: PropertyValues): void {
     // First time hass arrives — kick the fetch.
     if (changed.has('hass') && this.hass && !this._lastFetchHass) {

@@ -25,13 +25,15 @@ export interface ModeOrderTabContext {
   onChange: (next: Record<string, string[]>) => void;
 }
 
-const ALL_SECTION_KEYS: SectionKey[] = [
-  'overview', 'custom_cards', 'areas', 'weather', 'energy',
-  'plants', 'agenda', 'todos', 'persons', 'vacuums', 'maintenance', 'presence',
-];
+// Derived from the strategy's own whitelist so the tab can never offer
+// a key the strategy would drop (or miss one it accepts).
+const ALL_SECTION_KEYS: SectionKey[] = [...DEFAULT_SECTIONS_ORDER];
+
+/** Fallback entity the tab detects modes from when house_mode_entity is unset. */
+export const DEFAULT_HOUSE_MODE_ENTITY = 'input_select.house_mode';
 
 function detectModes(ctx: ModeOrderTabContext): string[] {
-  const entityId = ctx.config.house_mode_entity || 'input_select.house_mode';
+  const entityId = ctx.config.house_mode_entity || DEFAULT_HOUSE_MODE_ENTITY;
   const state = ctx.hass.states[entityId];
   const options = state?.attributes?.options as string[] | undefined;
   if (Array.isArray(options) && options.length > 0) {
@@ -45,7 +47,7 @@ function detectModes(ctx: ModeOrderTabContext): string[] {
 export function renderModeOrderTab(ctx: ModeOrderTabContext): TemplateResult {
   const modes = detectModes(ctx);
   const current = (ctx.config.sections_order_by_mode || {}) as Record<string, string[]>;
-  const entityId = ctx.config.house_mode_entity || 'input_select.house_mode';
+  const entityId = ctx.config.house_mode_entity || DEFAULT_HOUSE_MODE_ENTITY;
   const entityExists = !!ctx.hass.states[entityId];
 
   const updateMode = (mode: string, order: string[]) => {
