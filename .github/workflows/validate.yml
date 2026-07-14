@@ -211,7 +211,13 @@ jobs:
           # section-height recorder) both live in core, since LazyCard and
           # the other cards import from the same module graph. ~2KB
           # gzipped; ~1KB headroom kept.
-          check "oriel-core.*.js.gz" 75
+          # v4.28 — raised 75 → 78 KB to absorb the review-wave card fixes
+          # (reactive guards + pool invalidation in the group cards,
+          # SummaryCard count alignment, RoutinesCard label filtering) and
+          # the maintenance-view wave's shared utils (category-inclusive
+          # update query, version gate) that live in core. ~2KB gzipped;
+          # ~2KB headroom kept.
+          check "oriel-core.*.js.gz" 78
           check "oriel-views.*.js.gz" 20
           check "oriel-editor.*.js.gz" 80
           check "oriel-lit.*.js.gz" 25

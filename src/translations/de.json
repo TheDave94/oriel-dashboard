@@ -35,7 +35,8 @@
     "batteries": "Batterien",
     "climate": "Klima",
     "cameras": "Kameras",
-    "humidity": "Luftfeuchtigkeit"
+    "humidity": "Luftfeuchtigkeit",
+    "maintenance": "Wartung"
   },
   "sections": {
     "overview": "Übersicht",
@@ -137,6 +138,12 @@
     "humid": "Feucht",
     "sensor_one": "Sensor",
     "sensor_many": "Sensoren"
+  },
+  "maintenance": {
+    "updates": "Anstehende Updates",
+    "critical_batteries": "Kritische Batterien",
+    "unavailable_devices": "Nicht verfügbare Geräte",
+    "activity": "Aktivität"
   },
   "room": {
     "cameras": "Kameras",
@@ -381,6 +388,8 @@
     "show_camera_view_desc": "Fügt eine Kamera-Ansicht hinzu, die alle Kameras auf einem Bildschirm nach Bereich gruppiert. Standardmäßig aus. Kameras erscheinen unabhängig davon weiterhin in ihren Raum-Ansichten.",
     "show_humidity_summary": "Luftfeuchtigkeits-Übersicht anzeigen",
     "show_humidity_summary_desc": "Fügt eine Luftfeuchtigkeits-Ansicht hinzu, die Sensoren in Trocken / Komfortabel / Feucht gruppiert. Standardmäßig aus — aktiviere sie, wenn du Feuchtigkeitssensoren hast. Leere Gruppen werden automatisch ausgeblendet.",
+    "show_maintenance_view": "Wartungs-Ansicht anzeigen",
+    "show_maintenance_view_desc": "Fügt eine Wartungs-Ansicht hinzu (/maintenance): anstehende Updates, kritische Batterien, Geräte mit ausschließlich nicht verfügbaren Entitäten, dazu Home Assistants eingebaute Reparaturen- und Update-Karten (ab HA 2026.3, nur für Admins) sowie ein 24h-Aktivitätsprotokoll. Standardmäßig aus.",
     "humidity_low_threshold": "Trocken unter",
     "humidity_low_threshold_desc": "Messwerte unter diesem Prozentwert werden als „Trocken“ gruppiert.",
     "humidity_high_threshold": "Feucht über",

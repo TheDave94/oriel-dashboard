@@ -35,7 +35,8 @@
     "batteries": "Batteries",
     "climate": "Climate",
     "cameras": "Cameras",
-    "humidity": "Humidity"
+    "humidity": "Humidity",
+    "maintenance": "Maintenance"
   },
   "sections": {
     "overview": "Overview",
@@ -137,6 +138,12 @@
     "humid": "Humid",
     "sensor_one": "sensor",
     "sensor_many": "sensors"
+  },
+  "maintenance": {
+    "updates": "Pending Updates",
+    "critical_batteries": "Critical Batteries",
+    "unavailable_devices": "Unavailable Devices",
+    "activity": "Activity"
   },
   "room": {
     "cameras": "Cameras",
@@ -381,6 +388,8 @@
     "show_camera_view_desc": "Adds a Cameras view collecting every camera onto one screen, grouped by area. Off by default. Cameras still appear in their room views regardless of this setting.",
     "show_humidity_summary": "Show humidity summary",
     "show_humidity_summary_desc": "Adds a Humidity overview view grouping humidity sensors into Dry / Comfortable / Humid buckets. Off by default — enable it if you have humidity sensors. Buckets with no sensors are auto-hidden.",
+    "show_maintenance_view": "Show maintenance view",
+    "show_maintenance_view_desc": "Adds a Maintenance view (/maintenance): pending updates, critical batteries, devices whose entities are all unavailable, plus Home Assistant's built-in repairs and updates cards (HA 2026.3+, admins only) and a 24h activity log. Off by default.",
     "humidity_low_threshold": "Dry below",
     "humidity_low_threshold_desc": "Humidity readings below this percentage are grouped as \"Dry\".",
     "humidity_high_threshold": "Humid above",

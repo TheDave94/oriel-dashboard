@@ -286,7 +286,22 @@ export interface OrielConfig {
   show_humidity_summary?: boolean; // default: false
   humidity_low_threshold?: number; // default: 30 (below = Dry)
   humidity_high_threshold?: number; // default: 60 (above = Humid)
-  show_locks_in_rooms?: boolean;
+  /**
+   * Adds a Maintenance view (/maintenance): pending updates
+   * (category-inclusive), critical batteries, devices whose visible
+   * entities are all unavailable, plus HA's built-in repairs / updates /
+   * discovered-devices cards on HA >= 2026.3. Default false — opt-in
+   * like the climate/camera/humidity views. Ported from upstream
+   * simon42 #344 (without the video-tips subsystem).
+   */
+  show_maintenance_view?: boolean;
+  /**
+   * 24h activity logbook at the end of the Maintenance view, scoped to
+   * exactly the entities the view reported. Default true; auto-hides
+   * without the logbook integration or when nothing is reported.
+   */
+  show_maintenance_activity?: boolean;
+  show_locks_in_rooms?: boolean; // default: false
   /** Vacuums & mowers get their own room section instead of riding in
    *  Misc (#330 upstream). Default false — matches HA's own areas
    *  strategy, which groups them under "others". */
