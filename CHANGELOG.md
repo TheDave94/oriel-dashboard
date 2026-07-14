@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.29.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.28.0...v4.29.0) (2026-07-14)
+
+
+### Features
+
+* maintenance view — updates, critical batteries, unavailable devices, repairs ([#194](https://github.com/TheDave94/oriel-dashboard/issues/194)) ([93669b9](https://github.com/TheDave94/oriel-dashboard/commit/93669b9f61399256254238da98f2671f37291f9b))
+
 ## [4.28.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.4...v4.28.0) (2026-07-14)
 
 
