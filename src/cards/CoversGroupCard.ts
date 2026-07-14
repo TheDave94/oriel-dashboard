@@ -180,6 +180,10 @@ class OrielCoversGroupCard extends LitElement {
     if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._cachedFilteredIds = null;
       this._cachedAreaForEntity = null;
+      // Registry changes can rename entities / reassign areas — both baked
+      // into tile configs at creation time. Rare event, so a full pool
+      // rebuild here is cheap; state changes never reach this branch.
+      this._invalidateTilePool();
     }
 
     // Build cache if needed
@@ -197,6 +201,23 @@ class OrielCoversGroupCard extends LitElement {
     for (const card of this._tileCards.values()) {
       card.hass = hass;
     }
+    // Floor heading badges carry state-based behaviour — keep them fresh
+    // even when floor membership doesn't change.
+    for (const card of this._floorHeadingCards.values()) {
+      card.hass = hass;
+    }
+  }
+
+  /** Drop all pooled tiles so they rebuild with fresh configs. */
+  private _invalidateTilePool(): void {
+    if (this._tileCards.size === 0) return;
+    for (const card of this._tileCards.values()) {
+      if (card.parentNode) card.parentNode.removeChild(card);
+    }
+    this._tileCards.clear();
+    // Force the next updated() pass to reconcile even if the rendered
+    // covers key is unchanged (its dedup key would otherwise skip it).
+    this._lastCoversList = '';
   }
 
   private _getFilteredCoverEntities(hass: HomeAssistant): string[] {

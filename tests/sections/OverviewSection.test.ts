@@ -374,4 +374,23 @@ describe('createOverviewSection — emit-time guards (Part 2 A/B)', () => {
       expect(present.some((c) => c.type === 'heading' && c.heading === overviewHeading)).toBe(true);
     });
   });
+
+  describe('summary card config passthrough (review wave)', () => {
+    function summaryCardsFor(config: Record<string, unknown>): Array<Record<string, unknown>> {
+      const stacks = cardsFor(config).filter((c) => c.type === 'horizontal-stack');
+      return stacks.flatMap((s) => (s as { cards: Array<Record<string, unknown>> }).cards);
+    }
+
+    it('forwards unavailable_batteries_bucket to the batteries summary card', () => {
+      const summaries = summaryCardsFor({ unavailable_batteries_bucket: 'critical' });
+      const battery = summaries.find((c) => c.summary_type === 'batteries');
+      expect(battery?.unavailable_batteries_bucket).toBe('critical');
+    });
+
+    it('forwards security_extra_entities to the security summary card', () => {
+      const summaries = summaryCardsFor({ security_extra_entities: ['switch.oven'] });
+      const security = summaries.find((c) => c.summary_type === 'security');
+      expect(security?.security_extra_entities).toEqual(['switch.oven']);
+    });
+  });
 });

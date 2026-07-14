@@ -227,6 +227,11 @@ class OrielLightsGroupCard extends LitElement {
     if (!oldHass || oldHass.entities !== this.hass.entities) {
       this._cachedSourceIds = null;
       this._cachedAreaForEntity = null;
+      // Registry changes can rename entities / change supported features /
+      // reassign areas — all baked into tile configs at creation time.
+      // Rare event, so a full pool rebuild here is cheap; state changes
+      // never reach this branch (hass.entities is identity-stable).
+      this._invalidateTilePool();
     }
 
     // Build cache if needed
@@ -244,6 +249,27 @@ class OrielLightsGroupCard extends LitElement {
     for (const card of this._tileCards.values()) {
       card.hass = hass;
     }
+    // Floor heading badges carry state-based visibility conditions —
+    // they go stale without fresh hass even when membership is unchanged.
+    for (const card of this._floorHeadingCards.values()) {
+      card.hass = hass;
+    }
+  }
+
+  /** Drop all pooled tiles/containers so they rebuild with fresh configs. */
+  private _invalidateTilePool(): void {
+    if (this._tileCards.size === 0 && this._groupContainers.size === 0) return;
+    for (const card of this._tileCards.values()) {
+      card.parentNode?.removeChild(card);
+    }
+    for (const container of this._groupContainers.values()) {
+      container.parentNode?.removeChild(container);
+    }
+    this._tileCards.clear();
+    this._groupContainers.clear();
+    // Force the next updated() pass to reconcile even if the rendered
+    // light list is unchanged (its dedup key would otherwise skip it).
+    this._lastLightsList = '';
   }
 
   private _getState(entityId: string): HassEntity | undefined {
@@ -631,6 +657,40 @@ class OrielLightsGroupCard extends LitElement {
     this._reconcileHierarchy(childContainerElement, childIds, nodes);
   }
 
+  /**
+   * Collect every entity id the current render pass actually displays —
+   * top-level tiles plus all nested children. With nested_groups, the
+   * hierarchy renders group members that are NOT in the relevant-lights
+   * list (hidden or opposite-state members shown under their parent), so
+   * pool cleanup must key off this set, never off the flat lights list.
+   */
+  private _collectRenderedIds(topLevelIds: string[], nodes: Map<string, LightHierarchyNode>, into: Set<string>): void {
+    const stack = [...topLevelIds];
+    while (stack.length > 0) {
+      const entityId = stack.pop() as string;
+      if (into.has(entityId)) continue;
+      into.add(entityId);
+      const childIds = nodes.get(entityId)?.childIds;
+      if (childIds && childIds.length > 0) stack.push(...childIds);
+    }
+  }
+
+  /** Remove pooled tiles/containers not rendered in the current pass. */
+  private _cleanupStalePoolEntries(renderedIds: Set<string>): void {
+    for (const [id, card] of this._tileCards) {
+      if (!renderedIds.has(id)) {
+        if (card.parentNode) card.parentNode.removeChild(card);
+        this._tileCards.delete(id);
+      }
+    }
+    for (const [id, container] of this._groupContainers) {
+      if (!renderedIds.has(id)) {
+        if (container.parentNode) container.parentNode.removeChild(container);
+        this._groupContainers.delete(id);
+      }
+    }
+  }
+
   private _reconcileHierarchy(container: HTMLElement, nodeIds: string[], nodes: Map<string, LightHierarchyNode>): void {
     let previousNode: ChildNode | null = null;
 
@@ -725,7 +785,7 @@ class OrielLightsGroupCard extends LitElement {
       }
 
       // Reconcile per-floor sections
-      const allActiveIds = new Set(lights);
+      const renderedIds = new Set<string>();
       for (const group of floorGroups) {
         const key = group.floorId || '_none';
         const floorHeadingSlot = this.shadowRoot?.getElementById(`floor-heading-${key}`);
@@ -736,26 +796,18 @@ class OrielLightsGroupCard extends LitElement {
           headingCard.setConfig(this._buildHeadingConfig(group.lights, group.floorName, group.floorIcon));
         }
 
+        const hierarchy = this._buildHierarchy(group.lights);
+        this._collectRenderedIds(hierarchy.topLevelIds, hierarchy.nodes, renderedIds);
         const grid = this.shadowRoot?.getElementById(`floor-grid-${key}`);
         if (grid) {
-          const hierarchy = this._buildHierarchy(group.lights);
           this._reconcileHierarchy(grid, hierarchy.topLevelIds, hierarchy.nodes);
         }
       }
 
-      // Clean up stale pool entries
-      for (const [id, card] of this._tileCards) {
-        if (!allActiveIds.has(id)) {
-          if (card.parentNode) card.parentNode.removeChild(card);
-          this._tileCards.delete(id);
-        }
-      }
-      for (const [id, container] of this._groupContainers) {
-        if (!allActiveIds.has(id)) {
-          if (container.parentNode) container.parentNode.removeChild(container);
-          this._groupContainers.delete(id);
-        }
-      }
+      // Clean up stale pool entries — after reconciliation, keyed off the
+      // rendered set (incl. nested children not in `lights`), so freshly
+      // inserted nested tiles are never torn down again.
+      this._cleanupStalePoolEntries(renderedIds);
       return;
     }
 
@@ -775,24 +827,15 @@ class OrielLightsGroupCard extends LitElement {
     if (!grid) return;
 
     const hierarchy = this._buildHierarchy(lights);
-
-    // Clean up stale pool entries
-    const activeIds = new Set(lights);
-    for (const [id, card] of this._tileCards) {
-      if (!activeIds.has(id)) {
-        if (card.parentNode) card.parentNode.removeChild(card);
-        this._tileCards.delete(id);
-      }
-    }
-
-    for (const [id, container] of this._groupContainers) {
-      if (!activeIds.has(id)) {
-        if (container.parentNode) container.parentNode.removeChild(container);
-        this._groupContainers.delete(id);
-      }
-    }
+    const renderedIds = new Set<string>();
+    this._collectRenderedIds(hierarchy.topLevelIds, hierarchy.nodes, renderedIds);
 
     this._reconcileHierarchy(grid, hierarchy.topLevelIds, hierarchy.nodes);
+
+    // Cleanup after reconciliation, keyed off the rendered set — cleaning
+    // against the flat `lights` list first would destroy pooled tiles for
+    // nested children (hidden / opposite-state group members) every pass.
+    this._cleanupStalePoolEntries(renderedIds);
   }
 
   getCardSize(): number {

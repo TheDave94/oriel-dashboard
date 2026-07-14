@@ -25,6 +25,17 @@ interface SummaryCardConfig {
   hide_battery_notes_entities?: boolean;
   battery_critical_threshold?: number;
   /**
+   * Where battery entities with unavailable/unknown/non-numeric state
+   * land. Must match BatteriesViewStrategy's bucketing so the tile count
+   * agrees with the view's Critical section. Default: 'good'.
+   */
+  unavailable_batteries_bucket?: 'critical' | 'good';
+  /**
+   * Extra entities the Security view renders (security_extra_entities).
+   * State 'on' counts as needing attention, mirroring the view.
+   */
+  security_extra_entities?: string[];
+  /**
    * Density of the tile. 'comfortable' (default) is the original layout —
    * stacked icon + label, generous padding. 'compact' is a horizontal
    * single-row layout that halves the tile's vertical footprint, useful
@@ -61,6 +72,10 @@ interface DisplayConfig {
 
 const COVER_DEVICE_CLASSES = new Set(['awning', 'blind', 'curtain', 'shade', 'shutter', 'window']);
 
+// Must stay in sync with BatteriesViewStrategy's UNAVAILABLE_STATES so the
+// tile count matches the view's bucketing of non-reporting sensors.
+const UNAVAILABLE_BATTERY_STATES = new Set(['unavailable', 'unknown', 'none', 'restarting']);
+
 const SECURITY_COVER_CLASSES = new Set(['door', 'garage', 'gate', 'window']);
 // Must stay in sync with the device classes the Security view surfaces
 // (SecurityViewStrategy): contacts + smoke/gas/heat + moisture.
@@ -89,6 +104,7 @@ class OrielSummaryCard extends LitElement {
   private _relevantEntityIds: Set<string> | null = null;
   private _deltaRefreshTimer?: number;
   private _yesterdayFetched = false;
+  private _actionBoundCard: HTMLElement | null = null;
 
   static styles = css`
     :host {
@@ -214,6 +230,14 @@ class OrielSummaryCard extends LitElement {
     } else {
       this.removeAttribute('density');
     }
+    // Recount immediately so an editor-preview config change reflects
+    // without waiting for the next hass push. `_config` is a plain field
+    // (not reactive), so an explicit requestUpdate covers render-only
+    // changes (density/state_content) when the count is unchanged.
+    if (this.hass && Registry.initialized) {
+      this._count = this._calculateCount();
+    }
+    this.requestUpdate();
   }
 
   protected willUpdate(changedProps: PropertyValues): void {
@@ -246,6 +270,17 @@ class OrielSummaryCard extends LitElement {
         () => void this._fetchYesterdayCount(),
         60 * 60 * 1000,
       );
+    }
+  }
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    // disconnectedCallback cleared the hourly refresh timer; reset the
+    // fetched flag so the next hass update re-fetches the baseline and
+    // re-arms the timer — otherwise a detach/reattach permanently kills
+    // the show_delta cycle.
+    if (this._deltaRefreshTimer === undefined) {
+      this._yesterdayFetched = false;
     }
   }
 
@@ -285,12 +320,14 @@ class OrielSummaryCard extends LitElement {
         `?end_time=${encodeURIComponent(oneHourLater)}` +
         `&filter_entity_id=${encodeURIComponent(ids.join(','))}` +
         `&minimal_response&no_attributes`;
-      const result = await callApi<Array<Array<{ state: string }>>>('GET', path);
+      // With minimal_response, the first item per series still carries
+      // its entity_id — needed for per-domain battery semantics below.
+      const result = await callApi<Array<Array<{ state: string; entity_id?: string }>>>('GET', path);
       let count = 0;
       for (const series of result || []) {
         const first = series?.[0];
         if (!first) continue;
-        if (this._isStateActive(first.state)) count++;
+        if (this._isStateActive(first.state, first.entity_id)) count++;
       }
       this._yesterdayCount = count;
     } catch {
@@ -298,15 +335,34 @@ class OrielSummaryCard extends LitElement {
     }
   }
 
-  /** Whether a state value is "active" for the current summary_type. */
-  private _isStateActive(state: string): boolean {
+  /**
+   * Whether a state value is "active" for the current summary_type.
+   * Must stay aligned with `_calculateCount` — the yesterday/trend
+   * baseline and the live count share these semantics.
+   */
+  private _isStateActive(state: string, entityId?: string): boolean {
     const type = this._config.summary_type;
     if (type === 'lights') return state === 'on';
     if (type === 'covers') return state === 'open' || state === 'opening';
     if (type === 'security') return state === 'on' || state === 'open' || state === 'unlocked';
     if (type === 'batteries') {
-      const n = Number(state);
-      return Number.isFinite(n) && n <= (this._config.battery_critical_threshold ?? 20);
+      // binary_sensor battery entities report low as 'on'; non-reporting
+      // ones follow the configured bucket, like the view.
+      if (entityId?.startsWith('binary_sensor.')) {
+        if (UNAVAILABLE_BATTERY_STATES.has(state)) {
+          return this._config.unavailable_batteries_bucket === 'critical';
+        }
+        return state === 'on';
+      }
+      // Non-% sensors (voltage) are skipped by the live count too.
+      const unit = entityId
+        ? (this.hass?.states[entityId]?.attributes?.unit_of_measurement as string | undefined)
+        : undefined;
+      if (unit && unit !== '%') return false;
+      const n = parseFloat(state);
+      // Non-numeric (unavailable/unknown/…) follows the configured bucket.
+      if (isNaN(n)) return this._config.unavailable_batteries_bucket === 'critical';
+      return n < (this._config.battery_critical_threshold ?? 20);
     }
     if (type === 'climate')
       return state !== 'off' && state !== 'unavailable' && state !== 'unknown';
@@ -379,6 +435,12 @@ class OrielSummaryCard extends LitElement {
           }
           result.push(id);
         }
+        // User-picked extra entities — the Security view renders these
+        // (existence-gated only, no visibility filter), so the tile must
+        // watch and count them too.
+        for (const id of this._config.security_extra_entities || []) {
+          if (typeof id === 'string' && hass.states[id] !== undefined) result.push(id);
+        }
         break;
       }
 
@@ -425,29 +487,47 @@ class OrielSummaryCard extends LitElement {
         }
         return count;
 
-      case 'security':
+      case 'security': {
+        const extras = new Set(this._config.security_extra_entities || []);
         for (const id of this._relevantEntityIds) {
           const state = hass.states[id];
           if (!state) continue;
-          if (id.startsWith('lock.') && state.state === 'unlocked') count++;
-          else if (id.startsWith('cover.') && state.state === 'open') count++;
-          else if (id.startsWith('binary_sensor.') && state.state === 'on') count++;
+          if (id.startsWith('lock.')) {
+            if (state.state === 'unlocked') count++;
+          } else if (id.startsWith('cover.')) {
+            if (state.state === 'open') count++;
+          } else if (id.startsWith('binary_sensor.')) {
+            if (state.state === 'on') count++;
+          } else if (extras.has(id) && state.state === 'on') {
+            // Extra entities of any other domain: 'on' = attention,
+            // mirroring the Security view's semantics.
+            count++;
+          }
         }
         return count;
+      }
 
       case 'batteries': {
         const critThreshold = this._config.battery_critical_threshold ?? 20;
+        // Unavailable/unknown/non-numeric follows the same bucket the
+        // Batteries view uses (unavailable_batteries_bucket, default
+        // 'good') — otherwise the tile reports criticals the view's
+        // Critical section doesn't show.
+        const unavailableCritical = this._config.unavailable_batteries_bucket === 'critical';
         for (const id of this._relevantEntityIds) {
           const state = hass.states[id];
           if (!state) continue;
           if (id.startsWith('binary_sensor.')) {
-            if (state.state === 'on') count++;
+            if (UNAVAILABLE_BATTERY_STATES.has(state.state)) {
+              if (unavailableCritical) count++;
+            } else if (state.state === 'on') count++;
           } else {
             const unit = state.attributes?.unit_of_measurement;
             if (unit && unit !== '%') continue;
             const value = parseFloat(state.state);
-            const isUnavailable = state.state === 'unavailable' || state.state === 'unknown';
-            if (isUnavailable || (!isNaN(value) && value < critThreshold)) count++;
+            if (isNaN(value)) {
+              if (unavailableCritical) count++;
+            } else if (value < critThreshold) count++;
           }
         }
         return count;
@@ -531,16 +611,18 @@ class OrielSummaryCard extends LitElement {
     );
   }
 
-  protected updated(changed: PropertyValues): void {
-    if (!this.hass) return;
+  protected updated(): void {
     // Bind HA's global <action-handler> custom element to the
     // ha-card once, so tap/hold/double-tap all dispatch a single
     // @action event with `detail.action` set. Same pattern as
     // ZonePresenceCard — raw @click would lose keyboard + hold
-    // behaviour.
-    if (!changed.has('hass') && !changed.has('_config')) return;
+    // behaviour. Lit reuses the same <ha-card> element across renders,
+    // so tracking the bound element is the correct "once" — the old
+    // `changed.has('_config')` guard was dead (`_config` is a plain
+    // field, never in changedProperties).
     const card = this.shadowRoot?.querySelector<HTMLElement>('ha-card');
-    if (!card) return;
+    if (!card || card === this._actionBoundCard) return;
+    this._actionBoundCard = card;
     bindActionHandler(card, { hasHold: true, hasDoubleClick: true });
   }
 

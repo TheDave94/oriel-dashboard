@@ -43,6 +43,7 @@ exports[`createOverviewSection > matches the snapshot for a default config 1`] =
         {
           "areas_options": {},
           "density": undefined,
+          "security_extra_entities": undefined,
           "summary_type": "security",
           "type": "custom:oriel-summary-card",
         },
@@ -54,6 +55,7 @@ exports[`createOverviewSection > matches the snapshot for a default config 1`] =
           "hide_mobile_app_batteries": undefined,
           "summary_type": "batteries",
           "type": "custom:oriel-summary-card",
+          "unavailable_batteries_bucket": undefined,
         },
       ],
       "type": "horizontal-stack",
@@ -92,6 +94,7 @@ exports[`createOverviewSection > matches the snapshot when show_clock_card is di
         {
           "areas_options": {},
           "density": undefined,
+          "security_extra_entities": undefined,
           "summary_type": "security",
           "type": "custom:oriel-summary-card",
         },
@@ -103,6 +106,7 @@ exports[`createOverviewSection > matches the snapshot when show_clock_card is di
           "hide_mobile_app_batteries": undefined,
           "summary_type": "batteries",
           "type": "custom:oriel-summary-card",
+          "unavailable_batteries_bucket": undefined,
         },
       ],
       "type": "horizontal-stack",
