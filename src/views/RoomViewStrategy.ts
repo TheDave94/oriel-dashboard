@@ -133,7 +133,10 @@ class OrielViewRoom extends HTMLElement {
         roomEntities.media_player.push(entityId);
         continue;
       }
-      if (domain === 'vacuum') {
+      if (domain === 'vacuum' || domain === 'lawn_mower') {
+        // Mowers share the vacuum group everywhere (overview section,
+        // groups_options.vacuum) — without this branch they'd be
+        // invisible in room views entirely (upstream simon42 #330).
         roomEntities.vacuum.push(entityId);
         continue;
       }
@@ -674,14 +677,16 @@ class OrielViewRoom extends HTMLElement {
       state_content: 'last_changed',
     }));
 
-    // Misc (vacuum, fan, switches)
+    // Misc (vacuum/mower, fan, switches)
     const miscCards: LovelaceCardConfig[] = [];
     for (const e of roomEntities.vacuum)
       miscCards.push({
         type: 'tile',
         entity: e,
         name: tileName(e, area, hass, dashboardConfig),
-        features: [{ type: 'vacuum-commands' }],
+        features: [
+          { type: e.startsWith('lawn_mower.') ? 'lawn-mower-commands' : 'vacuum-commands' },
+        ],
         features_position: 'inline',
         vertical: false,
         state_content: 'last_changed',

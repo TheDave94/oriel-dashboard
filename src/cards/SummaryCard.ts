@@ -62,7 +62,9 @@ interface DisplayConfig {
 const COVER_DEVICE_CLASSES = new Set(['awning', 'blind', 'curtain', 'shade', 'shutter', 'window']);
 
 const SECURITY_COVER_CLASSES = new Set(['door', 'garage', 'gate', 'window']);
-const SECURITY_BINARY_SENSOR_CLASSES = new Set(['door', 'window', 'garage_door', 'opening', 'smoke', 'gas', 'moisture']);
+// Must stay in sync with the device classes the Security view surfaces
+// (SecurityViewStrategy): contacts + smoke/gas/heat + moisture.
+const SECURITY_BINARY_SENSOR_CLASSES = new Set(['door', 'window', 'garage_door', 'opening', 'smoke', 'gas', 'heat', 'moisture']);
 
 // Maps user-facing palette names from config to HA's CSS variables.
 // HA's frontend provides `--<name>-color` tokens (mushroom-derived
@@ -666,10 +668,9 @@ class OrielSummaryCard extends LitElement {
 
 customElements.define('oriel-summary-card', OrielSummaryCard);
 
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: 'oriel-summary-card',
-  name: 'Oriel Summary Card',
-  description: 'Reactive summary tile that counts entities (lights / covers / security / batteries / climate)',
-  preview: true,
-} as { type: string; name: string; description: string });
+// Deliberately NOT registered in window.customCards: the card
+// hard-depends on Registry.initialized (set only by the strategy's
+// generate()) and renders nothing when added standalone via the card
+// picker — listing it there just manufactured "blank card" reports
+// (upstream simon42 #147). The element registration above keeps every
+// strategy-emitted and hand-written YAML usage working.

@@ -617,7 +617,9 @@ class OrielViewOverview extends HTMLElement {
     if (dashboardConfig.show_updates_badge === true) {
       let count = 0;
       let firstId: string | undefined;
-      for (const id of Registry.getVisibleEntityIdsForDomain('update')) {
+      // Category-inclusive (matches the maintenance section): firmware
+      // updates are often config/diagnostic entities.
+      for (const id of Registry.getUpdateEntityIds()) {
         const st = Reflect.get(hass.states as Record<string, unknown>, id) as { state?: string } | undefined;
         if (st?.state === 'on') {
           count++;

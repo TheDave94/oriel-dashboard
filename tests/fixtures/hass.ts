@@ -23,6 +23,7 @@ interface EntityFixture {
   disabled_by?: string | null;
   platform?: string;
   labels?: string[];
+  entity_category?: 'config' | 'diagnostic' | null;
   /**
    * When true, create only a `hass.states` entry and NO entity-registry entry —
    * simulates legacy YAML / MQTT entities configured without a `unique_id`,
@@ -86,6 +87,7 @@ export function makeHass(spec: HassFixtureSpec = {}): HomeAssistant {
       disabled_by: e.disabled_by ?? null,
       platform: e.platform,
       labels: e.labels ?? [],
+      entity_category: e.entity_category ?? null,
       // Real HA derives the boolean `hidden` from a non-null
       // `hidden_by` on the entity registry entry. Mirror that here so
       // Registry.isEntityExcluded sees the right shape in tests.
