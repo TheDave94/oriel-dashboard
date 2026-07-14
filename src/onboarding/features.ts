@@ -86,13 +86,7 @@ function hasCustomElement(tag: string): boolean {
  * user list to admin sessions). Non-admins always see `[]` here, so we
  * fall back to "at least 1 user (you)" for them.
  */
-function userCount(hass: HomeAssistant): number {
-  const users = (hass as unknown as { user?: { is_admin?: boolean } }).user;
-  if (!users) return 1;
-  // hass doesn't expose the user list to non-admins. The strategy still
-  // works per-user — this count is only for the wizard hint.
-  return users.is_admin === true ? 2 : 1;
-}
+
 
 // -- Registry ---------------------------------------------------------
 
@@ -201,10 +195,11 @@ export const FEATURE_REGISTRY: FeatureEntry[] = [
     category: 'users',
     configKeys: ['users', 'users_by_role'],
     defaultEnabled: false,
-    detect: (hass) => {
-      const n = userCount(hass);
-      return { installed: n > 1, detail: `${n} user${n === 1 ? '' : 's'} visible` };
-    },
+    // Always "installed": the frontend cannot count HA users without an
+    // admin WS call, and the old admin-session heuristic fabricated a
+    // "2 users visible" claim on every solo-admin install while telling
+    // non-admins in real multi-user homes the feature was unavailable.
+    detect: () => ({ installed: true }),
     isEnabled: (c) =>
       (!!c.users && Object.keys(c.users as object).length > 0) ||
       (!!c.users_by_role && Object.keys(c.users_by_role as object).length > 0),

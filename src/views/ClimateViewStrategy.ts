@@ -54,7 +54,12 @@ class OrielViewClimate extends HTMLElement {
 
       if (hvacState === 'off' || hvacState === 'unavailable' || hvacState === 'unknown') {
         off.push(id);
-      } else if (hvacAction === 'heating' || (!hvacAction && hvacState === 'heat')) {
+      } else if (
+        // preheating/defrosting are actively-heating heat-pump states —
+        // bucketing them as Idle made a running unit read as doing nothing.
+        hvacAction === 'heating' || hvacAction === 'preheating' || hvacAction === 'defrosting' ||
+        (!hvacAction && hvacState === 'heat')
+      ) {
         heating.push(id);
       } else if (hvacAction === 'cooling' || (!hvacAction && hvacState === 'cool')) {
         cooling.push(id);

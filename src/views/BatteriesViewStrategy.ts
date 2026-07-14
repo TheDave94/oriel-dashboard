@@ -111,6 +111,9 @@ class OrielViewBatteries extends HTMLElement {
     const sortByLevel = (a: string, b: string): number => {
       const valA = parseFloat(hass.states[a]?.state ?? '');
       const valB = parseFloat(hass.states[b]?.state ?? '');
+      // Both non-numeric → equal, keeping the comparator antisymmetric
+      // (a broken comparator makes sort order engine-dependent).
+      if (isNaN(valA) && isNaN(valB)) return 0;
       if (isNaN(valA)) return -1;
       if (isNaN(valB)) return 1;
       return valA - valB;

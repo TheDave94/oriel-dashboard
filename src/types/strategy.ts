@@ -114,6 +114,12 @@ export type HeadingKey =
   | 'maintenance'
   | 'presence';
 
+/**
+ * Heading keys that actually control a rendered heading card. 'presence'
+ * stays in the HeadingKey union for YAML tolerance but is absent here:
+ * the presence section renders a single card with its own internal
+ * title, so there is no heading to hide.
+ */
 export const ALL_HEADING_KEYS: HeadingKey[] = [
   'overview',
   'summaries',
@@ -129,7 +135,6 @@ export const ALL_HEADING_KEYS: HeadingKey[] = [
   'persons',
   'vacuums',
   'maintenance',
-  'presence',
 ];
 
 // -- Background customization (simon42#188) ---------------------------
@@ -1300,6 +1305,7 @@ export interface SensorEntities {
   window: string[];
   door: string[];
   smoke: string[];
+  leak: string[];
   gas: string[];
 }
 

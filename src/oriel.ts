@@ -417,12 +417,14 @@ class Oriel extends HTMLElement {
       }
 
       if (cv.parsed_config) {
-        views.push({
+        // densityOverlay applies here too — ref-mode custom views got it
+        // while inline YAML views silently rendered at default density.
+        views.push(densityOverlay({
           ...cv.parsed_config,
           title: cv.title,
           path: ensureUniquePath(cv.path),
           icon: cv.icon || 'mdi:card-text-outline',
-        });
+        }));
       }
     }
 
