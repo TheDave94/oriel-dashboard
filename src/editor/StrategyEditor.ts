@@ -3616,6 +3616,12 @@ class OrielEditor extends LitElement {
         const parsed = yaml.load(yamlString);
         if (Array.isArray(parsed)) {
           updated.parsed_config = parsed as Record<string, any>[];
+        } else if (parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>).cards)) {
+          // Complete section config (what HA's raw section editor shows) —
+          // kept whole so section-level fields (column_span, visibility)
+          // pass through 1:1 (#351 upstream). Known edge: a top-level
+          // grid CARD also carries `cards:` and reads as a section.
+          updated.parsed_config = parsed as Record<string, any>;
         } else if (parsed && typeof parsed === 'object') {
           // single card → wrap into array for caller convenience
           updated.parsed_config = [parsed as Record<string, any>];

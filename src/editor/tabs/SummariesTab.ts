@@ -57,6 +57,7 @@ interface SummariesData {
   show_cameras_in_security: boolean;
   show_climate_summary: boolean;
   show_battery_summary: boolean;
+  show_battery_view: boolean;
   hide_mobile_app_batteries: boolean;
   show_area_in_summaries: boolean;
   hide_battery_notes_entities: boolean;
@@ -86,6 +87,7 @@ function readData(c: OrielConfig): SummariesData {
     show_cameras_in_security: c.show_cameras_in_security === true,
     show_climate_summary: c.show_climate_summary === true,
     show_battery_summary: c.show_battery_summary !== false,
+    show_battery_view: (c.show_battery_view ?? c.show_battery_summary) !== false,
     hide_mobile_app_batteries: c.hide_mobile_app_batteries === true,
     // General flag; honor the legacy battery-only flag as a read-migrated alias (#131).
     show_area_in_summaries: c.show_area_in_summaries === true || c.show_area_in_battery_view === true,
@@ -140,6 +142,7 @@ const SCHEMA = [
   { name: 'show_cameras_in_security', selector: { boolean: {} } },
   { name: 'show_climate_summary', selector: { boolean: {} } },
   { name: 'show_battery_summary', selector: { boolean: {} } },
+  { name: 'show_battery_view', selector: { boolean: {} } },
   { name: 'hide_mobile_app_batteries', selector: { boolean: {} } },
   { name: 'hide_battery_notes_entities', selector: { boolean: {} } },
   {
@@ -186,6 +189,9 @@ function buildPatch(v: Partial<SummariesData>): Partial<OrielConfig> {
   p.show_security_summary = v.show_security_summary === false ? false : undefined;
   p.show_security_activity = v.show_security_activity === false ? false : undefined;
   p.show_battery_summary = v.show_battery_summary === false ? false : undefined;
+  // Persist only when it diverges from the tile toggle it defaults to.
+  p.show_battery_view =
+    v.show_battery_view === (v.show_battery_summary !== false) ? undefined : v.show_battery_view;
 
   // security view — activity trails when checked; cameras default-false.
   p.security_activity_position = v.security_activity_at_end === true ? 'end' : undefined;

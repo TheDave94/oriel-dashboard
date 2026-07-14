@@ -20,8 +20,9 @@ import { getOrderedFloorIds } from '../../utils/name-utils';
 export const ROOM_SECTION_LABEL: Record<RoomSectionKey, string> = {
   lights: 'room.lighting', locks: 'room.locks', climate: 'room.climate',
   covers: 'room.covers', curtains: 'room.curtains', windows: 'room.windows',
-  media: 'room.media', scenes: 'room.scenes', misc: 'room.misc',
+  media: 'room.media', scenes: 'room.scenes', vacuums: 'room.vacuums', misc: 'room.misc',
   automations: 'room.automations', scripts: 'room.scripts',
+  pins: 'room.room_pins',
 };
 
 /**
@@ -206,6 +207,14 @@ export function renderAreasTab(ctx: AreasTabContext): TemplateResult {
         (checked) => ctx.onToggleChange('show_locks_in_rooms', checked, false),
       )}
       <div class="description">${localize('editor.show_locks_in_rooms_desc')}</div>
+
+      ${ctx.renderCheckbox(
+        'show-vacuums-in-rooms',
+        localize('editor.show_vacuums_in_rooms'),
+        c.show_vacuums_section_in_rooms === true,
+        (checked) => ctx.onToggleChange('show_vacuums_section_in_rooms', checked, false),
+      )}
+      <div class="description">${localize('editor.show_vacuums_in_rooms_desc')}</div>
 
       ${ctx.renderCheckbox(
         'show-automations-in-rooms',

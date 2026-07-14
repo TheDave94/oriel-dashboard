@@ -13,7 +13,7 @@ import type {
 } from '../types/lovelace';
 import type { AreaRegistryEntry } from '../types/registries';
 import type { RoomEntities, SensorEntities, RoomSectionKey, CustomCard } from '../types/strategy';
-import { DEFAULT_ROOM_SECTION_ORDER } from '../types/strategy';
+import { DEFAULT_ROOM_SECTION_ORDER, VALID_ROOM_SECTION_KEYS } from '../types/strategy';
 import { stripAreaName, tileName, sortByLastChanged } from '../utils/name-utils';
 import { Registry } from '../Registry';
 import { timeStart, timeEnd, debugLog } from '../utils/debug';
@@ -691,20 +691,30 @@ class OrielViewRoom extends HTMLElement {
       state_content: 'last_changed',
     }));
 
+    const vacuumTile = (e: string): LovelaceCardConfig => ({
+      type: 'tile',
+      entity: e,
+      name: tileName(e, area, hass, dashboardConfig),
+      features: [
+        { type: e.startsWith('lawn_mower.') ? 'lawn-mower-commands' : 'vacuum-commands' },
+      ],
+      features_position: 'inline',
+      vertical: false,
+      state_content: 'last_changed',
+    });
+    // Vacuums & mowers: own orderable section when opted in (#330
+    // upstream), otherwise they ride in Misc — HA's own areas strategy
+    // groups them under "others", so that stays the default.
+    const vacuumsOwnSection = dashboardConfig.show_vacuums_section_in_rooms === true;
+    if (vacuumsOwnSection) {
+      domainSection('vacuums', roomEntities.vacuum, localize('room.vacuums'), 'mdi:robot-vacuum', vacuumTile);
+    }
+
     // Misc (vacuum/mower, fan, switches)
     const miscCards: LovelaceCardConfig[] = [];
-    for (const e of roomEntities.vacuum)
-      miscCards.push({
-        type: 'tile',
-        entity: e,
-        name: tileName(e, area, hass, dashboardConfig),
-        features: [
-          { type: e.startsWith('lawn_mower.') ? 'lawn-mower-commands' : 'vacuum-commands' },
-        ],
-        features_position: 'inline',
-        vertical: false,
-        state_content: 'last_changed',
-      });
+    if (!vacuumsOwnSection) {
+      for (const e of roomEntities.vacuum) miscCards.push(vacuumTile(e));
+    }
     for (const e of roomEntities.fan) {
       const state = hass.states[e];
       const hasSpeed = state && fanSupportsSpeed(state);
@@ -803,31 +813,6 @@ class OrielViewRoom extends HTMLElement {
       vertical: false,
     }));
 
-    // Append the reorderable entity-group sections in the configured
-    // order (#293). Effective order = user keys (valid + deduped) then
-    // any default keys they omitted — so a partial/unknown config never
-    // drops a section. Resolution: per-area override
-    // (areas_options.<area>.room_section_order) → global
-    // room_section_order → DEFAULT_ROOM_SECTION_ORDER (canonical order).
-    const areaSectionOrder = dashboardConfig.areas_options?.[area.area_id]?.room_section_order;
-    const configuredOrder = Array.isArray(areaSectionOrder)
-      ? areaSectionOrder
-      : Array.isArray(dashboardConfig.room_section_order)
-        ? dashboardConfig.room_section_order
-        : [];
-    const seen = new Set<RoomSectionKey>();
-    const effectiveOrder: RoomSectionKey[] = [];
-    for (const key of [...configuredOrder, ...DEFAULT_ROOM_SECTION_ORDER]) {
-      if (DEFAULT_ROOM_SECTION_ORDER.includes(key as RoomSectionKey) && !seen.has(key as RoomSectionKey)) {
-        seen.add(key as RoomSectionKey);
-        effectiveOrder.push(key as RoomSectionKey);
-      }
-    }
-    for (const key of effectiveOrder) {
-      const section = groupSections.get(key);
-      if (section) sections.push(section);
-    }
-
     // Room Pins
     const roomPinEntities: string[] = dashboardConfig.room_pin_entities || [];
     const pinsForArea = roomPinEntities.filter((entityId) => {
@@ -870,15 +855,42 @@ class OrielViewRoom extends HTMLElement {
           }),
         ],
       };
-      // Pin position: 'top' matches the documentation ("Spezielle Entitäten,
-      // die ... ganz oben erscheinen") and the maintainer's video. Existing
-      // dashboards rendered them at the bottom, so the explicit 'bottom'
-      // setting is provided as an opt-in for users who relied on that.
-      const pinsPosition = dashboardConfig.room_pins_position === 'bottom' ? 'bottom' : 'top';
-      if (pinsPosition === 'top') {
-        sections.unshift(pinsSection);
-      } else {
-        sections.push(pinsSection);
+      groupSections.set('pins', pinsSection);
+    }
+
+
+    // Append the reorderable entity-group sections in the configured
+    // order (#293). Effective order = user keys (valid + deduped) then
+    // any default keys they omitted — so a partial/unknown config never
+    // drops a section. Resolution: per-area override
+    // (areas_options.<area>.room_section_order) → global
+    // room_section_order → DEFAULT_ROOM_SECTION_ORDER (canonical order).
+    const areaSectionOrder = dashboardConfig.areas_options?.[area.area_id]?.room_section_order;
+    const configuredOrder = Array.isArray(areaSectionOrder)
+      ? areaSectionOrder
+      : Array.isArray(dashboardConfig.room_section_order)
+        ? dashboardConfig.room_section_order
+        : [];
+    const seen = new Set<RoomSectionKey>();
+    const effectiveOrder: RoomSectionKey[] = [];
+    for (const key of [...configuredOrder, ...DEFAULT_ROOM_SECTION_ORDER]) {
+      if (VALID_ROOM_SECTION_KEYS.includes(key as RoomSectionKey) && !seen.has(key as RoomSectionKey)) {
+        seen.add(key as RoomSectionKey);
+        effectiveOrder.push(key as RoomSectionKey);
+      }
+    }
+    for (const key of effectiveOrder) {
+      const section = groupSections.get(key);
+      if (section) sections.push(section);
+    }
+    // Pins placement: an explicit 'pins' entry in room_section_order wins
+    // (handled by the loop above); otherwise the legacy
+    // room_pins_position toggle applies — top by default.
+    if (!seen.has('pins')) {
+      const pinsSection = groupSections.get('pins');
+      if (pinsSection) {
+        if (dashboardConfig.room_pins_position === 'bottom') sections.push(pinsSection);
+        else sections.unshift(pinsSection);
       }
     }
 

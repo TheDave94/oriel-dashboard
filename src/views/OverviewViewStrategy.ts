@@ -92,10 +92,32 @@ function inheritVisibilityFromCard(parsedConfig: unknown): unknown[] | undefined
  * to that shape). Malformed entries are dropped.
  */
 function buildCustomSection(section: CustomSection): LovelaceSectionConfig | null {
-  if (!Array.isArray(section.parsed_config) || section.parsed_config.length === 0) return null;
+  const parsed = section.parsed_config;
+
+  // Full-section form (#351 upstream): an object carrying `cards:` is a
+  // complete Lovelace section — 1:1 passthrough of section-level fields
+  // (column_span, visibility, future HA options). heading/icon inputs
+  // are ignored here: the pasted section already IS the layout.
+  if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
+    const sectionConfig = parsed as Record<string, unknown>;
+    if (!Array.isArray(sectionConfig.cards)) return null;
+    const validCards = (sectionConfig.cards as unknown[]).filter(
+      (c): c is LovelaceCardConfig => typeof (c as { type?: unknown } | null)?.type === 'string',
+    );
+    if (validCards.length === 0) return null;
+    return {
+      type: 'grid',
+      ...sectionConfig,
+      cards: validCards,
+    } as LovelaceSectionConfig;
+  }
+
+  // Legacy cards-only form: a card list; heading/icon fields synthesize
+  // the heading card.
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
   // `?.` matters: a blank YAML list item parses to null, and a crash
   // here takes down the whole overview generate.
-  const validCards = section.parsed_config.filter(
+  const validCards = parsed.filter(
     (c): c is LovelaceCardConfig => typeof (c as { type?: unknown } | null)?.type === 'string'
   );
   if (validCards.length === 0) return null;
@@ -160,8 +182,18 @@ class OrielViewOverview extends HTMLElement {
     // Initialize Registry (idempotent — skips if already done by another view)
     Registry.initialize(hass, dashboardConfig);
 
-    // Visible areas (filtered + sorted by config)
-    const visibleAreas = getVisibleAreas(Registry.areas, dashboardConfig.areas_display, dashboardConfig.use_default_area_sort);
+    // Visible areas (filtered + sorted by config). room_visibility rules
+    // cascade to the entry points (#370 upstream): the dashboard strategy
+    // hides the room VIEW, so leaving the area card would produce a
+    // dead-link tap — upstream's live testing showed users don't notice a
+    // hidden room until its card misbehaves.
+    const { getRoomVisibilityChecker } = await import('../utils/visibility');
+    const roomVisible = getRoomVisibilityChecker(dashboardConfig, hass);
+    const visibleAreas = getVisibleAreas(
+      Registry.areas,
+      dashboardConfig.areas_display,
+      dashboardConfig.use_default_area_sort,
+    ).filter((area) => roomVisible(area.area_id));
 
     // Collect data for overview
     const persons = collectPersons(hass, dashboardConfig);
