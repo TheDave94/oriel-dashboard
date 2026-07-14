@@ -58,6 +58,18 @@ export interface PerUserTabContext {
 }
 
 export function renderPerUserTab(ctx: PerUserTabContext): TemplateResult {
+  // Baseline a checkbox compares against: the EFFECTIVE global value
+  // from the dashboard config, falling back to the flag's hardcoded
+  // default only when the global is unset. Comparing against the
+  // hardcoded default misreports the checkbox whenever the global
+  // differs — and makes the override unwritable (choosing the flag
+  // default deletes the key even though it differs from the global).
+  const effectiveDefault = (flag: OverrideFlag): boolean => {
+    const globalRaw = (ctx.config as Record<string, unknown>)[flag.configKey];
+    if (flag.configKey === 'panel_mode') return globalRaw === 'wall';
+    return typeof globalRaw === 'boolean' ? globalRaw : flag.defaultValue;
+  };
+
   const usersCfg =
     (ctx.config.users as Record<string, { override?: Record<string, unknown> }> | undefined) ?? {};
   const rolesCfg =
@@ -108,6 +120,7 @@ export function renderPerUserTab(ctx: PerUserTabContext): TemplateResult {
           label,
           isConfigured: configuredUserIds.has(userId),
           override,
+          effectiveDefault,
           onToggleFlag: (configKey, enabled, defaultValue) => {
             const next = { ...usersCfg };
             const userEntry = { ...(next[userId] ?? { override: {} }) };
@@ -149,6 +162,7 @@ export function renderPerUserTab(ctx: PerUserTabContext): TemplateResult {
           label: roleKey,
           isConfigured: true,
           override,
+          effectiveDefault,
           onToggleFlag: (configKey, enabled, defaultValue) => {
             const next = { ...rolesCfg };
             const entry = { ...(next[roleKey] ?? { override: {} }) };
@@ -185,6 +199,8 @@ interface RowParams {
   label: string;
   isConfigured: boolean;
   override: Record<string, unknown>;
+  /** Effective global value for a flag (config value, else flag default). */
+  effectiveDefault: (flag: OverrideFlag) => boolean;
   onToggleFlag: (configKey: string, enabled: boolean, defaultValue: boolean) => void;
   onRemove: () => void;
 }
@@ -209,12 +225,15 @@ function renderUserOrRoleRow(p: RowParams): TemplateResult {
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;">
         ${OVERRIDE_FLAGS.map((flag) => {
           const currentRaw = p.override[flag.configKey];
+          const inherited = p.effectiveDefault(flag);
           const current =
             flag.configKey === 'panel_mode'
-              ? currentRaw === 'wall'
+              ? currentRaw === undefined
+                ? inherited
+                : currentRaw === 'wall'
               : typeof currentRaw === 'boolean'
                 ? currentRaw
-                : flag.defaultValue;
+                : inherited;
           return html`
             <label
               style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer;"
@@ -227,7 +246,7 @@ function renderUserOrRoleRow(p: RowParams): TemplateResult {
                   p.onToggleFlag(
                     flag.configKey,
                     (e.target as HTMLInputElement).checked,
-                    flag.defaultValue,
+                    inherited,
                   )}
               />
               ${flag.label}

@@ -696,7 +696,7 @@ export interface OrielConfig {
    * The overview's area cards section is NOT affected — only the per-area
    * room views and nav tabs.
    */
-  room_visibility?: Record<string, { entity: string; state: string }>;
+  room_visibility?: Record<string, { entity?: string; state?: string }>;
 
   // Layout
   sections_order?: SectionKey[]; // default: DEFAULT_SECTIONS_ORDER
