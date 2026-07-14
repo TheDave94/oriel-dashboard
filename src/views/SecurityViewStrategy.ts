@@ -103,6 +103,27 @@ export function buildCamerasSection(
   };
 }
 
+/**
+ * Single constructor for every entity tile in the security view. Tiles with
+ * a control feature always ride it inline (matching the room views); tiles
+ * without one are plain state tiles. Keeping one builder prevents the
+ * per-group literals from drifting apart (#181: locks had lost the
+ * `features_position: 'inline'` that every cover tile carried).
+ */
+function securityTile(
+  entityId: string,
+  feature?: string,
+  stateContent: string | string[] = 'last_changed',
+): LovelaceCardConfig {
+  return {
+    type: 'tile',
+    ...phoneFullWidth(),
+    entity: entityId,
+    ...(feature ? { features: [{ type: feature }], features_position: 'inline' } : {}),
+    state_content: stateContent,
+  };
+}
+
 class OrielViewSecurity extends HTMLElement {
   static async generate(
     config: SecurityViewStrategyParams,
@@ -183,25 +204,11 @@ class OrielViewSecurity extends HTMLElement {
             },
           ],
         });
-        cards.push(
-          ...unlocked.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'lock-commands' }],
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...unlocked.map((e) => securityTile(e, 'lock-commands')));
       }
       if (locked.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.locks_locked'), heading_style: 'subtitle', icon: 'mdi:lock' });
-        cards.push(
-          ...locked.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'lock-commands' }],
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...locked.map((e) => securityTile(e, 'lock-commands')));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -233,27 +240,11 @@ class OrielViewSecurity extends HTMLElement {
             },
           ],
         });
-        cards.push(
-          ...open.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'cover-open-close' }],
-            features_position: 'inline',
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...open.map((e) => securityTile(e, 'cover-open-close')));
       }
       if (closed.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.doors_closed'), heading_style: 'subtitle', icon: 'mdi:door-closed' });
-        cards.push(
-          ...closed.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'cover-open-close' }],
-            features_position: 'inline',
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...closed.map((e) => securityTile(e, 'cover-open-close')));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -285,27 +276,11 @@ class OrielViewSecurity extends HTMLElement {
             },
           ],
         });
-        cards.push(
-          ...open.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'cover-open-close' }],
-            features_position: 'inline',
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...open.map((e) => securityTile(e, 'cover-open-close')));
       }
       if (closed.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.motorized_windows_closed'), heading_style: 'subtitle', icon: 'mdi:window-closed-variant' });
-        cards.push(
-          ...closed.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'cover-open-close' }],
-            features_position: 'inline',
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...closed.map((e) => securityTile(e, 'cover-open-close')));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -337,27 +312,11 @@ class OrielViewSecurity extends HTMLElement {
             },
           ],
         });
-        cards.push(
-          ...open.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'cover-open-close' }],
-            features_position: 'inline',
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...open.map((e) => securityTile(e, 'cover-open-close')));
       }
       if (closed.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.garages_closed'), heading_style: 'subtitle', icon: 'mdi:garage' });
-        cards.push(
-          ...closed.map((e) => ({
-            type: 'tile', ...phoneFullWidth(),
-            entity: e,
-            features: [{ type: 'cover-open-close' }],
-            features_position: 'inline',
-            state_content: 'last_changed',
-          }))
-        );
+        cards.push(...closed.map((e) => securityTile(e, 'cover-open-close')));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -370,11 +329,11 @@ class OrielViewSecurity extends HTMLElement {
 
       if (open.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.windows_open'), heading_style: 'subtitle', icon: 'mdi:window-open' });
-        cards.push(...open.map((e) => ({ type: 'tile', ...phoneFullWidth(), entity: e, state_content: 'last_changed' })));
+        cards.push(...open.map((e) => securityTile(e)));
       }
       if (closed.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.windows_closed'), heading_style: 'subtitle', icon: 'mdi:window-closed' });
-        cards.push(...closed.map((e) => ({ type: 'tile', ...phoneFullWidth(), entity: e, state_content: 'last_changed' })));
+        cards.push(...closed.map((e) => securityTile(e)));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -387,11 +346,11 @@ class OrielViewSecurity extends HTMLElement {
 
       if (active.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.smoke_gas_active'), heading_style: 'subtitle', icon: 'mdi:smoke-detector-alert' });
-        cards.push(...active.map((e) => ({ type: 'tile', ...phoneFullWidth(), entity: e, state_content: 'last_changed' })));
+        cards.push(...active.map((e) => securityTile(e)));
       }
       if (inactive.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.smoke_gas_inactive'), heading_style: 'subtitle', icon: 'mdi:smoke-detector' });
-        cards.push(...inactive.map((e) => ({ type: 'tile', ...phoneFullWidth(), entity: e, state_content: 'last_changed' })));
+        cards.push(...inactive.map((e) => securityTile(e)));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -404,11 +363,11 @@ class OrielViewSecurity extends HTMLElement {
 
       if (active.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.water_leak_active'), heading_style: 'subtitle', icon: 'mdi:water-alert' });
-        cards.push(...active.map((e) => ({ type: 'tile', ...phoneFullWidth(), entity: e, state_content: 'last_changed' })));
+        cards.push(...active.map((e) => securityTile(e)));
       }
       if (inactive.length > 0) {
         cards.push({ type: 'heading', heading: localize('security.water_leak_inactive'), heading_style: 'subtitle', icon: 'mdi:water-check' });
-        cards.push(...inactive.map((e) => ({ type: 'tile', ...phoneFullWidth(), entity: e, state_content: 'last_changed' })));
+        cards.push(...inactive.map((e) => securityTile(e)));
       }
       if (cards.length > 0) sections.push({ type: 'grid', cards });
     }
@@ -425,11 +384,7 @@ class OrielViewSecurity extends HTMLElement {
           heading_style: 'subtitle',
           icon: 'mdi:home-alert',
         },
-        ...extraEntities.map((e) => ({
-          type: 'tile', ...phoneFullWidth(),
-          entity: e,
-          state_content: ['state', 'last_changed'],
-        })),
+        ...extraEntities.map((e) => securityTile(e, undefined, ['state', 'last_changed'])),
       ];
       sections.push({ type: 'grid', cards });
     }
