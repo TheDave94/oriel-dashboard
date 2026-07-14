@@ -25,10 +25,9 @@ export interface ModeOrderTabContext {
   onChange: (next: Record<string, string[]>) => void;
 }
 
-const ALL_SECTION_KEYS: SectionKey[] = [
-  'overview', 'custom_cards', 'areas', 'weather', 'energy',
-  'plants', 'agenda', 'todos', 'persons', 'vacuums', 'maintenance', 'presence',
-];
+// Derived from the strategy's own whitelist so the tab can never offer
+// a key the strategy would drop (or miss one it accepts).
+const ALL_SECTION_KEYS: SectionKey[] = [...DEFAULT_SECTIONS_ORDER];
 
 /** Fallback entity the tab detects modes from when house_mode_entity is unset. */
 export const DEFAULT_HOUSE_MODE_ENTITY = 'input_select.house_mode';
