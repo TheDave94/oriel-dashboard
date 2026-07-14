@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.27.4](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.3...v4.27.4) (2026-07-14)
+
+
+### Bug Fixes
+
+* full-codebase review wave — 30+ confirmed findings across strategy, cards, editor, and utils ([#190](https://github.com/TheDave94/oriel-dashboard/issues/190)) ([145ddc2](https://github.com/TheDave94/oriel-dashboard/commit/145ddc226b1a225aaabec6fa59d02b474f0aa5b1))
+
 ## [4.27.3](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.2...v4.27.3) (2026-07-14)
 
 
