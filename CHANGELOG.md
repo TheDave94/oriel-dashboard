@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.29.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.29.0...v4.29.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* review leftovers — every remaining confirmed finding ([#196](https://github.com/TheDave94/oriel-dashboard/issues/196)) ([3eccc08](https://github.com/TheDave94/oriel-dashboard/commit/3eccc08f79e9fee22de2bbef04ba91e6b02735f8))
+
 ## [4.29.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.28.0...v4.29.0) (2026-07-14)
 
 
