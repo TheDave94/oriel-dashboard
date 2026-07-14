@@ -131,12 +131,11 @@ describe('oriel-lights-group-card', () => {
   });
 
   describe('picker integration', () => {
-    it('registers with window.customCards including preview:true', () => {
+    it('is deliberately absent from window.customCards (Registry-coupled, renders nothing standalone)', () => {
       const entry = (window.customCards || []).find(
         (c: { type: string }) => c.type === 'oriel-lights-group-card',
-      ) as { preview?: boolean } | undefined;
-      expect(entry).toBeDefined();
-      expect(entry?.preview).toBe(true);
+      );
+      expect(entry).toBeUndefined();
     });
 
     it('getStubConfig returns group_type=all', () => {

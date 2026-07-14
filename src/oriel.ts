@@ -144,6 +144,13 @@ function composeViewBackground(
 }
 
 class Oriel extends HTMLElement {
+  // HA 2026.7+: regenerate the strategy only when one of these hass
+  // registry collections changes. Declared explicitly because
+  // Registry.initialize()'s staleness check reference-compares exactly
+  // these four. Labels need no entry: label assignments live on entity
+  // registry entries, so they bump `entities`.
+  static registryDependencies = ['entities', 'devices', 'areas', 'floors'] as const;
+
   static async generate(rawConfig: OrielConfig, hass: HomeAssistant): Promise<LovelaceConfig> {
     generateCallCount++;
     t(`generate() called (#${generateCallCount})`);
@@ -433,13 +440,18 @@ class Oriel extends HTMLElement {
     // every generated view. Theme = colors + the theme's default
     // background; the per-view `background` (object for images, string for
     // color/gradient) overrides that, mirroring HA's native precedence.
+    // A view that already carries its own theme/background (custom view
+    // YAML, referenced views) keeps it — the global setting is the
+    // default, not an override (matches upstream simon42 #374).
     const viewBackground = composeViewBackground(config.background);
     const styledViews =
       config.theme || viewBackground !== undefined
         ? views.map((v) => {
             const out: LovelaceViewConfig & { theme?: string; background?: unknown } = { ...v };
-            if (config.theme) out.theme = config.theme;
-            if (viewBackground !== undefined) out.background = viewBackground;
+            if (config.theme && !out.theme) out.theme = config.theme;
+            if (viewBackground !== undefined && out.background === undefined) {
+              out.background = viewBackground;
+            }
             return out;
           })
         : views;
@@ -531,5 +543,33 @@ class Oriel extends HTMLElement {
 // `ll-strategy-<name>` form (pre-2024.10). Oriel only supports the
 // 2025.5+ shape — minimum HA version is gated by `hacs.json`.
 customElements.define('ll-strategy-dashboard-oriel', Oriel);
+
+// HA 2026.5+: register in the "new dashboard" dialog (Community
+// dashboards section) so users can create an Oriel dashboard without
+// the YAML detour. getCreateSuggestions() then supplies the persona
+// presets. HA keeps the same array reference, so push order vs.
+// frontend load order is irrelevant.
+declare global {
+  interface Window {
+    customStrategies?: Array<{
+      type: string;
+      strategyType: 'dashboard' | 'view' | 'section';
+      name?: string;
+      description?: string;
+      documentationURL?: string;
+    }>;
+  }
+}
+window.customStrategies = window.customStrategies || [];
+if (!window.customStrategies.some((s) => s.type === 'oriel')) {
+  window.customStrategies.push({
+    type: 'oriel',
+    strategyType: 'dashboard',
+    name: 'Oriel Dashboard',
+    description:
+      'Auto-generated dashboard from your areas, devices, and entities — summaries, room views, per-user layouts, and a full setup wizard.',
+    documentationURL: 'https://github.com/TheDave94/oriel-dashboard',
+  });
+}
 
 console.log(`Oriel Dashboard v${STRATEGY_VERSION} loaded`);

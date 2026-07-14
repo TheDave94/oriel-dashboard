@@ -126,6 +126,7 @@ class Registry {
   private static _builtFromEntities: unknown = null;
   private static _builtFromDevices: unknown = null;
   private static _builtFromAreas: unknown = null;
+  private static _builtFromFloors: unknown = null;
 
   /**
    * Count of full rebuilds that actually fired (not idempotent early-
@@ -150,6 +151,7 @@ class Registry {
     Registry._builtFromEntities = null;
     Registry._builtFromDevices = null;
     Registry._builtFromAreas = null;
+    Registry._builtFromFloors = null;
     Registry._rebuildCount = 0;
   }
 
@@ -169,7 +171,8 @@ class Registry {
       Registry._initialized &&
       Registry._builtFromEntities === hass.entities &&
       Registry._builtFromDevices === hass.devices &&
-      Registry._builtFromAreas === hass.areas
+      Registry._builtFromAreas === hass.areas &&
+      Registry._builtFromFloors === hass.floors
     ) {
       return;
     }
@@ -181,6 +184,7 @@ class Registry {
     Registry._builtFromEntities = hass.entities;
     Registry._builtFromDevices = hass.devices;
     Registry._builtFromAreas = hass.areas;
+    Registry._builtFromFloors = hass.floors;
 
     // Initialize localization from hass language settings
     setupLocalize(hass);
@@ -438,6 +442,26 @@ class Registry {
    */
   static getVisibleEntityIdsForDomain(domain: string): string[] {
     return Registry._visibleEntitiesByDomain.get(domain) || [];
+  }
+
+  /**
+   * update.* entities for maintenance surfaces (overview updates
+   * section, updates badge, maintenance view). Unlike the pre-filtered
+   * domain map, `entity_category` does NOT exclude here: firmware
+   * updates routinely ship as config/diagnostic entities (e.g. Shelly),
+   * and maintenance surfaces exist precisely to show them. Every other
+   * exclusion (no_dboard label, areas_options hidden, hidden_by) still
+   * applies. Ported from upstream simon42 #344's collectUpdateIds fix.
+   */
+  static getUpdateEntityIds(): string[] {
+    return (Registry._entitiesByDomain.get('update') ?? []).filter((id) => {
+      const entity = Registry._entityById.get(id);
+      if (!entity) return false;
+      if (Registry._excludeSet.has(id)) return false;
+      if (Registry._hiddenFromConfig.has(id)) return false;
+      if (entity.hidden) return false;
+      return true;
+    });
   }
 
   /**

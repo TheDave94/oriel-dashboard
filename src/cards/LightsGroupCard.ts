@@ -847,12 +847,5 @@ class OrielLightsGroupCard extends LitElement {
 
 customElements.define('oriel-lights-group-card', OrielLightsGroupCard);
 
-window.customCards = window.customCards || [];
-if (!window.customCards.some((c) => c.type === 'oriel-lights-group-card')) {
-  window.customCards.push({
-    type: 'oriel-lights-group-card',
-    name: 'Oriel Lights Group',
-    description: 'Grouped on/off light tiles with nested-group support, floor grouping, and inline batch controls.',
-    preview: true,
-  } as { type: string; name: string; description: string });
-}
+// Deliberately NOT registered in window.customCards — Registry-coupled,
+// renders nothing standalone (see SummaryCard.ts for the rationale).

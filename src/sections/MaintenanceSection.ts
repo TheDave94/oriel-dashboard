@@ -17,7 +17,10 @@ export function createMaintenanceSection(
 ): LovelaceSectionConfig | null {
   if (!enabled) return null;
 
-  const pending = Registry.getVisibleEntityIdsForDomain('update').filter((id) => {
+  // Category-inclusive on purpose: firmware updates are often
+  // config/diagnostic entities (Shelly et al.) that the pre-filtered
+  // visible map would drop.
+  const pending = Registry.getUpdateEntityIds().filter((id) => {
     return hass.states[id]?.state === 'on';
   });
   if (pending.length === 0) return null;

@@ -640,12 +640,5 @@ class OrielCoversGroupCard extends LitElement {
 
 customElements.define('oriel-covers-group-card', OrielCoversGroupCard);
 
-window.customCards = window.customCards || [];
-if (!window.customCards.some((c) => c.type === 'oriel-covers-group-card')) {
-  window.customCards.push({
-    type: 'oriel-covers-group-card',
-    name: 'Oriel Covers Group',
-    description: 'Grouped open/closed cover tiles with optional partially-open bucket, awnings, and windows.',
-    preview: true,
-  } as { type: string; name: string; description: string });
-}
+// Deliberately NOT registered in window.customCards — Registry-coupled,
+// renders nothing standalone (see SummaryCard.ts for the rationale).
