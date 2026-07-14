@@ -251,10 +251,11 @@ export async function buildExtensionSections(
       // v2 plugins: validate the return shape. v1 plugins kept as-is
       // for backwards-compat (their return contract was never specified
       // formally, so retroactively rejecting them would break installs).
-      // Shape-validate regardless of declared apiVersion: a plugin that
-      // omits apiVersion entirely must not bypass the gate (undefined >= 2
-      // is false) and feed malformed configs into HA's renderer.
-      if (!isValidSectionShape(result)) {
+      // Shape-validate unless the plugin EXPLICITLY declares apiVersion 1
+      // (documented lenient-compat contract). A plugin that omits
+      // apiVersion must not bypass the gate — `undefined >= 2` is false,
+      // which used to feed malformed configs straight into HA's renderer.
+      if (spec.apiVersion !== 1 && !isValidSectionShape(result)) {
         console.warn(
           `[oriel] extension section "${spec.key}" returned an invalid shape (missing or non-string \`type\`); skipping.`,
           result,
