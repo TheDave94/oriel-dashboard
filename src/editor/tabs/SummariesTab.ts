@@ -28,6 +28,7 @@
 //     battery_critical_threshold      number 1..99
 //     battery_low_threshold           number 1..99
 //     unavailable_batteries_bucket    select(critical|good)
+//   show_maintenance_view             boolean default false
 //
 // All nested fields render unconditionally (matches legacy
 // behaviour — the indentation in the old editor was purely visual).
@@ -68,6 +69,7 @@ interface SummariesData {
   show_humidity_summary: boolean;
   humidity_low_threshold: number;
   humidity_high_threshold: number;
+  show_maintenance_view: boolean;
 }
 
 function readData(c: OrielConfig): SummariesData {
@@ -99,6 +101,7 @@ function readData(c: OrielConfig): SummariesData {
     show_humidity_summary: c.show_humidity_summary === true,
     humidity_low_threshold: c.humidity_low_threshold ?? 30,
     humidity_high_threshold: c.humidity_high_threshold ?? 60,
+    show_maintenance_view: c.show_maintenance_view === true,
   };
 }
 
@@ -175,6 +178,7 @@ const SCHEMA = [
     name: 'humidity_high_threshold',
     selector: { number: { min: 1, max: 99, step: 1, unit_of_measurement: '%', mode: 'box' } },
   },
+  { name: 'show_maintenance_view', selector: { boolean: {} } },
 ] as const;
 
 function buildPatch(v: Partial<SummariesData>): Partial<OrielConfig> {
@@ -237,6 +241,9 @@ function buildPatch(v: Partial<SummariesData>): Partial<OrielConfig> {
     typeof v.humidity_high_threshold === 'number' && v.humidity_high_threshold !== 60
       ? v.humidity_high_threshold
       : undefined;
+
+  // maintenance view — default-false boolean → persist true.
+  p.show_maintenance_view = v.show_maintenance_view === true ? true : undefined;
 
   return p;
 }

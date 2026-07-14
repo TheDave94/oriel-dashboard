@@ -64,6 +64,8 @@ export interface HassFixtureSpec {
   language?: string;
   /** Loaded HA integrations (`hass.config.components`), e.g. ['logbook']. */
   components?: string[];
+  /** HA core version (`hass.config.version`), e.g. '2026.3.1'. */
+  version?: string;
 }
 
 /**
@@ -122,7 +124,7 @@ export function makeHass(spec: HassFixtureSpec = {}): HomeAssistant {
     floors,
     language: spec.language ?? 'en',
     locale: { language: spec.language ?? 'en' },
-    config: { components: spec.components ?? [] },
+    config: { components: spec.components ?? [], version: spec.version },
     // Anything else the code reads → cast-safe undefined
   } as unknown as HomeAssistant;
 }
