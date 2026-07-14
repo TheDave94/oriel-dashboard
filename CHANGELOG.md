@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.27.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.1...v4.27.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* dense_section_placement now actually closes section gaps ([#184](https://github.com/TheDave94/oriel-dashboard/issues/184)) ([530c274](https://github.com/TheDave94/oriel-dashboard/commit/530c27494810c7380082e99909f266f82f324744))
+
 ## [4.27.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.0...v4.27.1) (2026-07-14)
 
 
