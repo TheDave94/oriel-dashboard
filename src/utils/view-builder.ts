@@ -4,7 +4,7 @@
 
 import type { LovelaceViewConfig, LovelaceBadgeConfig, LovelaceSectionConfig } from '../types/lovelace';
 import { localize } from './localize';
-import { applySectionPacking } from './section-packing';
+import { packSections } from './section-packing';
 
 /**
  * Opt-in dense masonry placement for a `sections` view.
@@ -15,28 +15,22 @@ import { applySectionPacking } from './section-packing';
  * work together to close them (#182):
  *
  *  1. `dense_section_placement: true` on the view (`grid-auto-flow: row
- *     dense`) lets HA backfill free grid cells out of source order, and
- *  2. per-section `row_span` values (see utils/section-packing: measured
- *     heights when available, config-side estimates otherwise) split the
- *     grid into fine-grained tracks so short sections can actually stack
- *     beside tall ones — without them the dense flag has no free cells to
- *     fill and visibly does nothing.
- *
- * Pass the view's sections plus a stable per-view key (the measurement
- * storage namespace) to get both; sections are annotated in place.
+ *     dense`) lets HA backfill free grid cells out of source order — this
+ *     helper contributes the flag, and
+ *  2. per-section `row_span` values that split the grid into fine-grained
+ *     tracks so short sections can actually stack beside tall ones — without
+ *     them the dense flag has no free cells to fill and visibly does
+ *     nothing. Views produce those by passing their sections through
+ *     `packSections()` (utils/section-packing) and returning its result.
  *
  * Returns a spreadable fragment: the flag when the user enabled it, otherwise
  * nothing — so existing dashboards keep their current layout unless they opt in.
  * Ported from upstream simon42 #338 (fixes the #203 card-arrangement gaps).
  */
-export function densePlacement(
-  config?: { dense_section_placement?: boolean },
-  sections?: LovelaceSectionConfig[],
-  viewKey?: string,
-): { dense_section_placement: true } | Record<string, never> {
-  if (config?.dense_section_placement !== true) return {};
-  if (sections) applySectionPacking(sections, viewKey ?? 'view');
-  return { dense_section_placement: true };
+export function densePlacement(config?: {
+  dense_section_placement?: boolean;
+}): { dense_section_placement: true } | Record<string, never> {
+  return config?.dense_section_placement === true ? { dense_section_placement: true } : {};
 }
 
 /**
@@ -56,7 +50,7 @@ export function createOverviewView(
     icon: 'mdi:home',
     type: 'sections',
     max_columns: 3,
-    ...densePlacement(config, sections, 'overview'),
+    ...densePlacement(config),
     badges: personBadges.length > 0 ? personBadges : undefined,
     header:
       personBadges.length > 0
@@ -66,6 +60,6 @@ export function createOverviewView(
             badges_wrap: 'wrap',
           }
         : undefined,
-    sections,
+    sections: packSections(config, sections, 'overview'),
   };
 }

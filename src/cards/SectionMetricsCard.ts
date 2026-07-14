@@ -2,17 +2,27 @@
 // SECTION METRICS CARD — invisible section-height recorder (#182)
 // ====================================================================
 // Planted by the strategy (utils/section-packing) into views that use
-// dense_section_placement. Renders nothing and occupies a 0-height
-// grid slot; its only job is to measure the real rendered height of
-// every section in the ancestor hui-sections-view and persist them to
-// localStorage. The next strategy run turns those pixels into exact
-// per-section `row_span` values, replacing the config-side estimates
-// that first-paint packing runs on.
+// dense_section_placement. Renders nothing and hides its own grid
+// slot; its only job is to record the real rendered height of every
+// section in the ancestor hui-sections-view into localStorage (under
+// the store key the strategy stamped into its config). The next
+// strategy run turns those pixels into exact per-section `row_span`
+// values, replacing the config-side estimates that first-paint packing
+// runs on.
 //
-// Section heights don't depend on the sections' own row_span (the view
-// grid top-aligns items), so measuring and re-spanning never
-// oscillates. Storage is per device — correct, since heights are
-// viewport-dependent.
+// Heights are observed on the .section-container divs (the block-level
+// box wrapping each hui-section), NOT on the .section grid-item
+// wrappers — a container's height is its content, independent of the
+// section's own row_span, so measuring and re-spanning never
+// oscillates regardless of how the view grid aligns its items. (Not on
+// hui-section itself either: it renders inline, and ResizeObserver
+// reports 0×0 for non-replaced inline boxes.)
+//
+// Perf posture (this codebase runs on wall tablets): sizes arrive
+// push-based from a ResizeObserver — no polling, no layout reads in
+// steady state. The MutationObserver that tracks section add/remove is
+// childList-only on the sections container (NOT subtree), so per-card
+// re-renders inside sections never wake it.
 // ====================================================================
 
 import type { HomeAssistant } from '../types/homeassistant';
@@ -20,8 +30,9 @@ import { writeMeasuredHeights } from '../utils/section-packing';
 
 interface SectionMetricsConfig {
   type: string;
-  /** Storage namespace — identifies the view these sections belong to. */
-  view_key: string;
+  /** Full localStorage key for this view's measurements (stamped by
+   *  the strategy so both sides agree byte-for-byte). */
+  store_key: string;
 }
 
 /** How long to keep polling for the ancestor sections view before
@@ -30,8 +41,16 @@ interface SectionMetricsConfig {
 const ATTACH_RETRY_MS = 500;
 const ATTACH_RETRY_LIMIT = 20;
 
-/** Ignore sub-pixel and scrollbar jitter. */
-const MIN_DELTA_PX = 8;
+/** Quantize heights so sub-pixel/scrollbar jitter never causes writes. */
+const QUANTIZE_PX = 8;
+
+type SectionElement = Element & { config?: { oriel_section_key?: string } };
+
+/** The measurement key of the hui-section inside a section container. */
+function sectionKeyOfContainer(container: Element): string | undefined {
+  const section = container.querySelector('hui-section') as SectionElement | null;
+  return section?.config?.oriel_section_key;
+}
 
 class OrielSectionMetricsCard extends HTMLElement {
   private _config?: SectionMetricsConfig;
@@ -41,11 +60,12 @@ class OrielSectionMetricsCard extends HTMLElement {
   private _attachTimer?: ReturnType<typeof setTimeout>;
   private _writeTimer?: ReturnType<typeof setTimeout>;
   private _attachAttempts = 0;
-  private _lastWritten = new Map<string, number>();
+  private _heightByEl = new Map<Element, number>();
+  private _lastWritten = '';
 
   public setConfig(config: SectionMetricsConfig): void {
-    if (!config?.view_key || typeof config.view_key !== 'string') {
-      throw new Error('oriel-section-metrics: `view_key` config required');
+    if (!config?.store_key || typeof config.store_key !== 'string') {
+      throw new Error('oriel-section-metrics: `store_key` config required');
     }
     this._config = config;
   }
@@ -64,7 +84,12 @@ class OrielSectionMetricsCard extends HTMLElement {
   }
 
   public connectedCallback(): void {
+    // Hide the element AND flag it hidden so hui-card can collapse the
+    // grid slot entirely (same mechanism conditional cards use) — no
+    // ghost band in the host section.
     this.style.display = 'none';
+    this.toggleAttribute('hidden', true);
+    this.dispatchEvent(new Event('card-visibility-changed', { bubbles: true, composed: true }));
     this._attachAttempts = 0;
     this._tryAttach();
   }
@@ -77,6 +102,7 @@ class OrielSectionMetricsCard extends HTMLElement {
     this._resizeObserver = undefined;
     this._mutationObserver = undefined;
     this._viewRoot = undefined;
+    this._heightByEl.clear();
   }
 
   /** Walks the composed tree upward to the ancestor hui-sections-view;
@@ -96,63 +122,63 @@ class OrielSectionMetricsCard extends HTMLElement {
     }
     this._viewRoot = root;
 
-    this._resizeObserver = new ResizeObserver(() => this._scheduleWrite());
-    this._mutationObserver = new MutationObserver(() => {
-      this._observeSections();
+    this._resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const px = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        this._heightByEl.set(entry.target, px);
+      }
       this._scheduleWrite();
     });
-    this._mutationObserver.observe(root, { childList: true, subtree: true });
-    this._observeSections();
-    this._scheduleWrite();
+
+    // Sections are added/removed as direct children of the sections
+    // container — childList-only (no subtree), so per-card re-renders
+    // inside sections never wake this observer.
+    this._mutationObserver = new MutationObserver(() => this._syncObserved());
+    const container = root.querySelector('.content') ?? root.querySelector('.container') ?? root;
+    this._mutationObserver.observe(container, { childList: true });
+    this._syncObserved();
   }
 
-  private _sectionWrappers(): Element[] {
-    return this._viewRoot ? [...this._viewRoot.querySelectorAll('.section')] : [];
-  }
-
-  private _observeSections(): void {
-    if (!this._resizeObserver) return;
-    this._resizeObserver.disconnect();
-    for (const wrapper of this._sectionWrappers()) {
-      this._resizeObserver.observe(wrapper);
+  /** Observes newly-appeared sections, releases removed ones. */
+  private _syncObserved(): void {
+    if (!this._resizeObserver || !this._viewRoot) return;
+    const current = new Set<Element>(this._viewRoot.querySelectorAll('.section-container'));
+    for (const el of current) {
+      if (!this._heightByEl.has(el)) {
+        this._heightByEl.set(el, 0);
+        this._resizeObserver.observe(el);
+      }
+    }
+    for (const el of [...this._heightByEl.keys()]) {
+      if (!current.has(el)) {
+        this._resizeObserver.unobserve(el);
+        this._heightByEl.delete(el);
+      }
     }
   }
 
   private _scheduleWrite(): void {
     if (this._writeTimer) clearTimeout(this._writeTimer);
-    this._writeTimer = setTimeout(() => this._measureAndStore(), 300);
+    this._writeTimer = setTimeout(() => this._store(), 300);
   }
 
-  private _measureAndStore(): void {
-    const viewKey = this._config?.view_key;
-    if (!viewKey || !this._viewRoot) return;
+  private _store(): void {
+    const storeKey = this._config?.store_key;
+    if (!storeKey) return;
 
     const heights: Record<string, number> = {};
-    for (const wrapper of this._sectionWrappers()) {
-      const section = wrapper.querySelector('hui-section') as
-        | (Element & { config?: { oriel_section_key?: string } })
-        | null;
-      const key = section?.config?.oriel_section_key;
+    for (const [el, px] of this._heightByEl) {
+      if (px <= 0 || !el.isConnected) continue;
+      const key = sectionKeyOfContainer(el);
       if (!key) continue;
-      const px = wrapper.getBoundingClientRect().height;
-      if (px > 0) heights[key] = Math.round(px);
+      heights[key] = Math.round(px / QUANTIZE_PX) * QUANTIZE_PX;
     }
     if (Object.keys(heights).length === 0) return;
 
-    let changed = this._lastWritten.size !== Object.keys(heights).length;
-    if (!changed) {
-      for (const [key, px] of Object.entries(heights)) {
-        const prev = this._lastWritten.get(key);
-        if (prev === undefined || Math.abs(prev - px) > MIN_DELTA_PX) {
-          changed = true;
-          break;
-        }
-      }
-    }
-    if (!changed) return;
-
-    this._lastWritten = new Map(Object.entries(heights));
-    writeMeasuredHeights(viewKey, heights);
+    const serialized = JSON.stringify(heights);
+    if (serialized === this._lastWritten) return;
+    this._lastWritten = serialized;
+    writeMeasuredHeights(storeKey, heights);
   }
 }
 

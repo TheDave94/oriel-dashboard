@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import { densePlacement } from '../utils/view-builder';
+import { packSections } from '../utils/section-packing';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
@@ -112,8 +113,8 @@ class OrielViewClimate extends HTMLElement {
       : sections;
     return {
       type: 'sections',
-      ...densePlacement(dashboardConfig, finalSections, 'climate'),
-      sections: finalSections,
+      ...densePlacement(dashboardConfig),
+      sections: packSections(dashboardConfig, finalSections, 'climate'),
     };
   }
 }

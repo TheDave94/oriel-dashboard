@@ -4,6 +4,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import { densePlacement } from '../utils/view-builder';
+import { packSections } from '../utils/section-packing';
 import type { LovelaceViewConfig, LovelaceSectionConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
@@ -66,7 +67,11 @@ class OrielViewLights extends HTMLElement {
       );
       if (popups) sections.push(popups);
     }
-    return { type: 'sections', ...densePlacement(dashboardConfig, sections, 'lights'), sections };
+    return {
+      type: 'sections',
+      ...densePlacement(dashboardConfig),
+      sections: packSections(dashboardConfig, sections, 'lights'),
+    };
   }
 }
 

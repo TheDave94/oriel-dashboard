@@ -10,6 +10,7 @@
 
 import type { HomeAssistant } from '../types/homeassistant';
 import { densePlacement } from '../utils/view-builder';
+import { packSections } from '../utils/section-packing';
 import type { LovelaceViewConfig, LovelaceSectionConfig, LovelaceCardConfig } from '../types/lovelace';
 import type { OrielConfig } from '../types/strategy';
 import { Registry } from '../Registry';
@@ -129,7 +130,11 @@ class OrielViewCamera extends HTMLElement {
     }
     pushSection(localize('camera.no_area'), ungrouped);
 
-    return { type: 'sections', ...densePlacement(strategyConfig, sections, 'cameras'), sections };
+    return {
+      type: 'sections',
+      ...densePlacement(strategyConfig),
+      sections: packSections(strategyConfig, sections, 'cameras'),
+    };
   }
 }
 

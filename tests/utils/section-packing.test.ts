@@ -14,17 +14,19 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   estimateCardGridSize,
   estimateSectionRowSpan,
-  applySectionPacking,
+  packSections,
+  sectionKeysFor,
+  measurementStoreKey,
   writeMeasuredHeights,
   readMeasuredHeights,
-  SECTION_HEIGHTS_STORAGE_KEY,
 } from '../../src/utils/section-packing';
-import { densePlacement } from '../../src/utils/view-builder';
 import type { LovelaceSectionConfig } from '../../src/types/lovelace';
 
 beforeEach(() => {
-  localStorage.removeItem(SECTION_HEIGHTS_STORAGE_KEY);
+  localStorage.clear();
 });
+
+const DENSE = { dense_section_placement: true };
 
 describe('estimateCardGridSize — frontend default mirror', () => {
   it('tile: half section, one row; bottom features add rows, inline does not', () => {
@@ -204,7 +206,37 @@ describe('estimateSectionRowSpan — band packing', () => {
   });
 });
 
-describe('applySectionPacking', () => {
+describe('estimateSectionRowSpan — column_span scaling', () => {
+  it('a section spanning two view columns packs twice as many tiles per band', () => {
+    const cards = [
+      { type: 'tile', entity: 'light.a' },
+      { type: 'tile', entity: 'light.b' },
+      { type: 'tile', entity: 'light.c' },
+      { type: 'tile', entity: 'light.d' },
+    ];
+    expect(estimateSectionRowSpan({ type: 'grid', cards })).toBe(2);
+    expect(estimateSectionRowSpan({ type: 'grid', column_span: 2, cards })).toBe(1);
+  });
+});
+
+describe('sectionKeysFor', () => {
+  it('keys by heading with occurrence counters, independent of position', () => {
+    const sections: LovelaceSectionConfig[] = [
+      { type: 'grid', cards: [{ type: 'heading', heading: 'Lights' }] },
+      { type: 'grid', cards: [{ type: 'tile', entity: 'a' }] },
+      { type: 'grid', cards: [{ type: 'heading', heading: 'Lights' }] },
+    ];
+    expect(sectionKeysFor(sections)).toEqual(['Lights#0', 'tile#0', 'Lights#1']);
+    // Reordering unrelated sections keeps each section's key.
+    expect(sectionKeysFor([sections[1], sections[0], sections[2]])).toEqual([
+      'tile#0',
+      'Lights#0',
+      'Lights#1',
+    ]);
+  });
+});
+
+describe('packSections', () => {
   const makeSections = (): LovelaceSectionConfig[] => [
     {
       type: 'grid',
@@ -215,88 +247,110 @@ describe('applySectionPacking', () => {
       cards: [{ type: 'logbook', target: { entity_id: ['lock.a'] } }],
     },
   ];
+  const STORE = measurementStoreKey('security');
 
-  it('annotates every section with a key and an estimated row_span', () => {
+  it('returns the input untouched when the flag is off', () => {
     const sections = makeSections();
-    applySectionPacking(sections, 'security');
-    expect(sections[0].oriel_section_key).toBe('0:Locks');
-    expect(sections[0].row_span).toBe(2);
-    expect(sections[1].oriel_section_key).toBe('1:logbook');
-    expect(sections[1].row_span).toBe(6);
+    expect(packSections({}, sections, 'security')).toBe(sections);
+    expect(packSections(undefined, sections, 'security')).toBe(sections);
+    expect(sections[0].row_span).toBeUndefined();
   });
 
-  it('preserves explicit row_span', () => {
+  it('annotates copies with key + estimated row_span, never mutating the input', () => {
+    const sections = makeSections();
+    const inputCards = sections.map((s) => s.cards);
+    const packed = packSections(DENSE, sections, 'security');
+
+    expect(packed).not.toBe(sections);
+    expect(packed[0].oriel_section_key).toBe('Locks#0');
+    expect(packed[0].row_span).toBe(2);
+    expect(packed[1].oriel_section_key).toBe('logbook#0');
+    expect(packed[1].row_span).toBe(6);
+
+    // Input objects stay pristine — they may be user-config-owned
+    // (room_view_overrides) and must never carry our bookkeeping.
+    expect(sections[0].row_span).toBeUndefined();
+    expect(sections[0].oriel_section_key).toBeUndefined();
+    expect(sections[0].cards).toBe(inputCards[0]);
+    expect(sections[0].cards).toHaveLength(2);
+
+    // Repeated packing of the same input never accumulates anything.
+    const packedAgain = packSections(DENSE, sections, 'security');
+    expect(packedAgain[0].cards?.filter((c) => c.type === 'custom:oriel-section-metrics')).toHaveLength(1);
+  });
+
+  it('keeps a user-authored row_span', () => {
     const sections = makeSections();
     sections[0].row_span = 9;
-    applySectionPacking(sections, 'security');
-    expect(sections[0].row_span).toBe(9);
+    const packed = packSections(DENSE, sections, 'security');
+    expect(packed[0].row_span).toBe(9);
   });
 
   it('prefers a stored measurement over the estimate', () => {
-    writeMeasuredHeights('security', { '1:logbook': 200 });
-    const sections = makeSections();
-    applySectionPacking(sections, 'security');
-    expect(sections[1].row_span).toBe(3); // 200px / 64 ≈ 3, not the estimated 6
-    expect(sections[0].row_span).toBe(2); // unmeasured → estimate
+    writeMeasuredHeights(STORE, { 'logbook#0': 200 });
+    const packed = packSections(DENSE, makeSections(), 'security');
+    expect(packed[1].row_span).toBe(3); // 200px / 64 ≈ 3, not the estimated 6
+    expect(packed[0].row_span).toBe(2); // unmeasured → estimate
   });
 
-  it('scopes measurements per view key', () => {
-    writeMeasuredHeights('overview', { '1:logbook': 200 });
-    const sections = makeSections();
-    applySectionPacking(sections, 'security');
-    expect(sections[1].row_span).toBe(6);
+  it('scopes measurements per view', () => {
+    writeMeasuredHeights(measurementStoreKey('overview'), { 'logbook#0': 200 });
+    const packed = packSections(DENSE, makeSections(), 'security');
+    expect(packed[1].row_span).toBe(6);
   });
 
-  it('plants the metrics card once, in the first section', () => {
-    const sections = makeSections();
-    applySectionPacking(sections, 'security');
-    const metrics = sections
-      .flatMap((s) => s.cards ?? [])
-      .filter((c) => c.type === 'custom:oriel-section-metrics');
-    expect(metrics).toHaveLength(1);
-    expect(metrics[0]).toMatchObject({
-      view_key: 'security',
+  it('plants the metrics card once, in the first unconditionally-visible section', () => {
+    const sections: LovelaceSectionConfig[] = [
+      {
+        type: 'grid',
+        visibility: [{ condition: 'state', entity: 'binary_sensor.alert', state: 'on' }],
+        cards: [{ type: 'custom:oriel-notification-card' }],
+      },
+      ...makeSections(),
+    ];
+    const packed = packSections(DENSE, sections, 'security');
+    const hosts = packed.map((s) =>
+      (s.cards ?? []).filter((c) => c.type === 'custom:oriel-section-metrics').length,
+    );
+    // Not in the visibility-gated banner; exactly once, in the next section.
+    expect(hosts).toEqual([0, 1, 0]);
+    const metrics = packed[1].cards?.at(-1);
+    expect(metrics).toMatchObject({
+      store_key: STORE,
       grid_options: { columns: 'full', rows: 0 },
     });
-    expect(sections[0].cards?.at(-1)?.type).toBe('custom:oriel-section-metrics');
   });
 });
 
 describe('measured heights store', () => {
-  it('round-trips and replaces a view wholesale (stale keys drop out)', () => {
-    writeMeasuredHeights('overview', { '0:Weather': 661, '1:Overview': 288 });
-    writeMeasuredHeights('security', { '0:Locks': 120 });
-    writeMeasuredHeights('overview', { '0:Weather': 500 });
-    expect(readMeasuredHeights()).toEqual({
-      'overview|0:Weather': 500,
-      'security|0:Locks': 120,
+  const STORE = measurementStoreKey('overview');
+
+  it('namespaces keys per dashboard and view', () => {
+    // jsdom URL is http://localhost/ → dashboard segment falls back.
+    expect(STORE).toBe('oriel:section-heights:v1:default/overview');
+  });
+
+  it('round-trips; a same-or-fuller snapshot replaces (stale keys drop out)', () => {
+    writeMeasuredHeights(STORE, { 'Weather#0': 661, 'Overview#0': 288 });
+    writeMeasuredHeights(STORE, { 'Weather#0': 500, 'Areas#0': 410 });
+    expect(readMeasuredHeights(STORE)).toEqual({ 'Weather#0': 500, 'Areas#0': 410 });
+  });
+
+  it('merges a partial snapshot instead of destroying good measurements', () => {
+    writeMeasuredHeights(STORE, { 'Weather#0': 661, 'Overview#0': 288, 'Areas#0': 410 });
+    // Slow device: an early write sees only one section laid out.
+    writeMeasuredHeights(STORE, { 'Weather#0': 700 });
+    expect(readMeasuredHeights(STORE)).toEqual({
+      'Weather#0': 700,
+      'Overview#0': 288,
+      'Areas#0': 410,
     });
   });
 
   it('tolerates a corrupt store', () => {
-    localStorage.setItem(SECTION_HEIGHTS_STORAGE_KEY, '{not json');
-    expect(readMeasuredHeights()).toEqual({});
-    writeMeasuredHeights('overview', { '0:A': 100 });
-    expect(readMeasuredHeights()).toEqual({ 'overview|0:A': 100 });
-  });
-});
-
-describe('densePlacement wiring', () => {
-  it('packs sections only when the flag is on', () => {
-    const on: LovelaceSectionConfig[] = [
-      { type: 'grid', cards: [{ type: 'tile', entity: 'light.a' }] },
-    ];
-    expect(densePlacement({ dense_section_placement: true }, on, 'lights')).toEqual({
-      dense_section_placement: true,
-    });
-    expect(typeof on[0].row_span).toBe('number');
-    expect(on[0].oriel_section_key).toBeDefined();
-
-    const off: LovelaceSectionConfig[] = [
-      { type: 'grid', cards: [{ type: 'tile', entity: 'light.a' }] },
-    ];
-    expect(densePlacement({}, off, 'lights')).toEqual({});
-    expect(off[0].row_span).toBeUndefined();
-    expect(off[0].oriel_section_key).toBeUndefined();
+    localStorage.setItem(STORE, '{not json');
+    expect(readMeasuredHeights(STORE)).toEqual({});
+    writeMeasuredHeights(STORE, { 'A#0': 100 });
+    expect(readMeasuredHeights(STORE)).toEqual({ 'A#0': 100 });
   });
 });
