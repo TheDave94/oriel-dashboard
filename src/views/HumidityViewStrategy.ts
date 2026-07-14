@@ -87,6 +87,7 @@ class OrielViewHumidity extends HTMLElement {
     const sortByLevel = (a: string, b: string): number => {
       const valA = parseFloat(hass.states[a]?.state ?? '');
       const valB = parseFloat(hass.states[b]?.state ?? '');
+      if (isNaN(valA) && isNaN(valB)) return 0;
       if (isNaN(valA)) return 1;
       if (isNaN(valB)) return -1;
       return valA - valB;

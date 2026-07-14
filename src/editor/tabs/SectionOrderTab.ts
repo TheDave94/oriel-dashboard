@@ -29,6 +29,7 @@ import type {
   WeatherPresentation,
   EnergyPresentation,
 } from '../../types/strategy';
+import { ALL_HEADING_KEYS } from '../../types/strategy';
 import { ALL_POLLEN_TYPES } from '../../types/strategy';
 import { localize } from '../../utils/localize';
 import { detectAvailable, type KnownCard } from '../../utils/section-card-registry';
@@ -96,16 +97,9 @@ export interface SectionOrderTabContext {
   onMoveSectionDown: (idx: number) => void;
 }
 
-const HIDDEN_HEADING_KEYS = [
-  'overview',
-  'summaries',
-  'favorites',
-  'custom_cards',
-  'areas',
-  'areas_other',
-  'weather',
-  'energy',
-] as const;
+// Derived from the strategy's own list so the editor can never offer a
+// key with no rendered heading, or miss one that has it.
+const HIDDEN_HEADING_KEYS = ALL_HEADING_KEYS;
 
 const BADGE_TOGGLE_KEYS = [
   'show_unavailable_alert_badge',

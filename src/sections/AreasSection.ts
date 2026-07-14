@@ -199,8 +199,8 @@ function getFloorIcon(level: number | null | undefined): string {
  */
 export function createAreasSection(
   visibleAreas: AreaRegistryEntry[],
-  groupByFloors: boolean = false,
-  hass: HomeAssistant | null = null,
+  groupByFloors: boolean,
+  hass: HomeAssistant,
   hideAreasHeading: boolean = false,
   hideAreasOtherHeading: boolean = false,
   floorsDisplay?: FloorsDisplay
@@ -209,7 +209,7 @@ export function createAreasSection(
   if (visibleAreas.length === 0) return null;
 
   // No floor grouping: flat list
-  if (!groupByFloors || !hass) {
+  if (!groupByFloors) {
     const cards: LovelaceCardConfig[] = [];
     if (!hideAreasHeading) {
       cards.push({
@@ -218,7 +218,7 @@ export function createAreasSection(
         heading: localize('sections.areas'),
       });
     }
-    for (const area of visibleAreas) cards.push(buildAreaCard(area, hass as HomeAssistant));
+    for (const area of visibleAreas) cards.push(buildAreaCard(area, hass));
     return { type: 'grid', cards };
   }
 

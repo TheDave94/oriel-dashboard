@@ -237,7 +237,7 @@ Area cards only receive `controls` that actually exist in the area (e.g. `['ligh
 **Why:** Without pre-filtering, each card must scan all entities itself — with many areas and entities, this causes massive load times on weak devices (tablets, wall panels). Check here first when investigating performance issues!
 
 ### Custom Cards: LitElement with Reactive willUpdate() (PERFORMANCE-CRITICAL)
-Every custom card in `src/cards/` uses LitElement with `willUpdate(changedProps)` instead of the older innerHTML rebuild pattern. This means:
+Every custom card in `src/cards/` that renders reactive content uses LitElement with `willUpdate`/`shouldUpdate` relevance gating instead of the older innerHTML rebuild pattern. (Render-less bookkeeping cards and thin wrappers — `SectionMetricsCard`, `CameraCard`, `AreaCard` — are plain `HTMLElement` by design: they have no per-state render work to gate.) This means:
 - HA calls `card.hass = ...` on **every** state change (any entity in the entire system) — this happens hundreds of times per minute
 - Without the reactive pattern, each card would rebuild its entire DOM on every `set hass()` call → massive performance problems
 - With `willUpdate()`, cards check whether relevant states actually changed and only re-render when needed

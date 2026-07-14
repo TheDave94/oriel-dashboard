@@ -35,15 +35,24 @@ class OrielAreaCard extends LitElement {
     if (!config || !config.area_card_config) {
       throw new Error('oriel-area-card: area_card_config is required');
     }
-    this._config = config;
+    // The element is registered and YAML-usable — a hand-written config
+    // without `scenes` must not TypeError inside the hold handler.
+    this._config = { ...config, scenes: Array.isArray(config.scenes) ? config.scenes : [] };
     void this._ensureInner();
   }
 
   private async _ensureInner(): Promise<void> {
     if (!this._config) return;
-    const helpers = await (
-      window as unknown as { loadCardHelpers: () => Promise<{ createCardElement: (c: unknown) => HTMLElement }> }
-    ).loadCardHelpers();
+    const loadCardHelpers = (
+      window as unknown as { loadCardHelpers?: () => Promise<{ createCardElement: (c: unknown) => HTMLElement }> }
+    ).loadCardHelpers;
+    if (!loadCardHelpers) {
+      // Without helpers there is no inner card — surface it instead of a
+      // silently blank area card (the void-ed rejection was swallowed).
+      console.warn('[oriel] oriel-area-card: window.loadCardHelpers unavailable — area card not rendered');
+      return;
+    }
+    const helpers = await loadCardHelpers();
     const el = helpers.createCardElement(this._config.area_card_config) as HTMLElement & { hass?: HomeAssistant };
     if (this.hass) el.hass = this.hass;
     this._inner = el;

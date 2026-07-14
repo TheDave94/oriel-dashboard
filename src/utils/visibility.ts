@@ -142,6 +142,10 @@ export function evaluateVisibility(
   if (rule.mode_entity && rule.mode_is) {
     const state = hass.states[rule.mode_entity]?.state;
     if (normalize(state) !== normalize(rule.mode_is)) return false;
+  } else if (rule.mode_entity || rule.mode_is) {
+    // Half a mode pair is a config mistake — silently passing made the
+    // rule look active while doing nothing.
+    console.warn('[oriel] visibility rule: mode_entity and mode_is must be set together — mode condition ignored');
   }
 
   return true;

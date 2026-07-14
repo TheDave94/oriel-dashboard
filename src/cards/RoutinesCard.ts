@@ -209,7 +209,13 @@ class OrielRoutinesCard extends LitElement {
       // Labels live ONLY in the entity registry (hass.entities), never in
       // state attributes. State-only entities (no registry entry) have no
       // labels: they pass the exclude filter but fail a non-empty include.
-      const labels = this.hass.entities?.[eid]?.labels ?? [];
+      const registryEntry = this.hass.entities?.[eid] as
+        | { labels?: string[]; hidden?: boolean }
+        | undefined;
+      // Same visibility pipeline as every other Oriel surface: entities
+      // hidden in the registry stay hidden here too.
+      if (registryEntry?.hidden) continue;
+      const labels = registryEntry?.labels ?? [];
       if (labels.some((l) => exclude.has(l.toLowerCase()))) continue;
       if (include && !labels.some((l) => include.has(l.toLowerCase()))) continue;
 

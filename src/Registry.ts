@@ -300,13 +300,16 @@ class Registry {
       Registry._entityById.set(e.entity_id, e);
     }
 
-    // Entities by domain — raw + visible (built from registry, filtered to entities with state)
+    // Entities by domain — raw + visible. NOT state-gated at build time:
+    // states arriving after the build (integration still starting up)
+    // don't bump any registry identity, so a build-time gate dropped
+    // those entities from every domain view until an unrelated registry
+    // event. The state filter lives in the query methods instead,
+    // evaluated against the LIVE hass reference (kept fresh on every
+    // initialize()).
     Registry._entitiesByDomain = new Map();
     Registry._visibleEntitiesByDomain = new Map();
     for (const e of entities) {
-      // Only include entities that have a state (disabled entities don't)
-      if (!(e.entity_id in Registry._hass.states)) continue;
-
       const dotIndex = e.entity_id.indexOf('.');
       const domain = e.entity_id.substring(0, dotIndex);
 
@@ -442,9 +445,16 @@ class Registry {
     return Registry._entityById.get(entityId);
   }
 
-  /** Get all entity IDs for a given domain (e.g. "light", "sensor"). O(1). */
+  /**
+   * Registry entity IDs for a domain that currently HAVE a state.
+   * The state gate runs here at query time against the live hass —
+   * NOT at map-build time — so entities whose state arrives after the
+   * build (integration startup race) appear as soon as it does.
+   */
   static getEntityIdsForDomain(domain: string): string[] {
-    return Registry._entitiesByDomain.get(domain) || [];
+    return (Registry._entitiesByDomain.get(domain) || []).filter(
+      (id) => id in Registry._hass.states,
+    );
   }
 
   /**
@@ -466,11 +476,14 @@ class Registry {
   // =====================================================================
 
   /**
-   * Get visible entity IDs for a domain. O(1).
+   * Get visible entity IDs for a domain.
    * Pre-filtered: no hidden, no_dboard, config/diagnostic, config-hidden.
+   * State-gated at query time (see getEntityIdsForDomain).
    */
   static getVisibleEntityIdsForDomain(domain: string): string[] {
-    return Registry._visibleEntitiesByDomain.get(domain) || [];
+    return (Registry._visibleEntitiesByDomain.get(domain) || []).filter(
+      (id) => id in Registry._hass.states,
+    );
   }
 
   /**
@@ -484,6 +497,7 @@ class Registry {
    */
   static getUpdateEntityIds(): string[] {
     return (Registry._entitiesByDomain.get('update') ?? []).filter((id) => {
+      if (!(id in Registry._hass.states)) return false;
       const entity = Registry._entityById.get(id);
       if (!entity) return false;
       if (Registry._excludeSet.has(id)) return false;

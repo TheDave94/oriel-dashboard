@@ -2840,6 +2840,8 @@ class OrielEditor extends LitElement {
       { key: 'valve', label: localize('editor.domain_valve'), icon: 'mdi:valve' },
       { key: 'water_heater', label: localize('editor.domain_water_heater'), icon: 'mdi:water-boiler' },
       { key: 'cameras', label: localize('editor.domain_cameras'), icon: 'mdi:cctv' },
+      { key: 'automations', label: localize('editor.domain_automations'), icon: 'mdi:robot' },
+      { key: 'scripts', label: localize('editor.domain_scripts'), icon: 'mdi:script-text' },
     ];
 
     const hasEntities = domainGroups.some((g) => (groupedEntities[g.key]?.length ?? 0) > 0);
@@ -4365,7 +4367,8 @@ async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant): Prom
       roomEntities.climate.push(entity.entity_id);
     } else if (domain === 'media_player') {
       roomEntities.media_player.push(entity.entity_id);
-    } else if (domain === 'vacuum') {
+    } else if (domain === 'vacuum' || domain === 'lawn_mower') {
+      // Mirrors RoomViewStrategy: mowers share the vacuum group.
       roomEntities.vacuum.push(entity.entity_id);
     } else if (domain === 'fan') {
       roomEntities.fan.push(entity.entity_id);
@@ -4381,6 +4384,10 @@ async function getAreaGroupedEntities(areaId: string, hass: HomeAssistant): Prom
       roomEntities.water_heater.push(entity.entity_id);
     } else if (domain === 'camera') {
       roomEntities.cameras.push(entity.entity_id);
+    } else if (domain === 'automation') {
+      roomEntities.automations.push(entity.entity_id);
+    } else if (domain === 'script') {
+      roomEntities.scripts.push(entity.entity_id);
     }
   }
 

@@ -87,6 +87,7 @@ class OrielViewRoom extends HTMLElement {
       door: [],
       smoke: [],
       gas: [],
+      leak: [],
     };
 
     // Main categorization loop — use pre-filtered visible entities from Registry
@@ -256,6 +257,12 @@ class OrielViewRoom extends HTMLElement {
           sensorEntities.smoke.push(entityId);
           continue;
         }
+        // Water-leak sensors (binary_sensor moisture ≠ sensor moisture,
+        // which is soil) — an active leak alarm was absent from rooms.
+        if (deviceClass === 'moisture') {
+          sensorEntities.leak.push(entityId);
+          continue;
+        }
         // CO detectors ride the gas bucket — a triggered CO alarm was
         // completely absent from room views before.
         if (deviceClass === 'gas' || deviceClass === 'carbon_monoxide') {
@@ -345,6 +352,7 @@ class OrielViewRoom extends HTMLElement {
       [sensorEntities.soil_moisture, 'moisture'],
       [sensorEntities.smoke, 'smoke'],
       [sensorEntities.gas, 'gas'],
+      [sensorEntities.leak, 'moisture'],
     ];
     for (const [entities, colorKey] of singleTypes) {
       if (entities[0]) addCandidate(entities[0], colorKey);

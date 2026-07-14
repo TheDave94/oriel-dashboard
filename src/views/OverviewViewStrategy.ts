@@ -347,7 +347,11 @@ class OrielViewOverview extends HTMLElement {
         hiddenHeadings.has('vacuums'),
         dashboardConfig.vacuums_presentation,
       )],
-      ['maintenance', createMaintenanceSection(hass, dashboardConfig.show_maintenance_section === true)],
+      ['maintenance', createMaintenanceSection(
+        hass,
+        dashboardConfig.show_maintenance_section === true,
+        hiddenHeadings.has('maintenance'),
+      )],
       [
         'presence',
         createPresenceZonesSection(
