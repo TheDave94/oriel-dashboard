@@ -129,10 +129,11 @@ class OrielViewBatteries extends HTMLElement {
     const goodSection = createBatterySection(good, 'good', `> ${lowThreshold}%`);
     if (goodSection) sections.push(goodSection);
 
+    const finalSections = showArea ? applyAreaContextToSections(sections, hass) : sections;
     return {
       type: 'sections',
-      ...densePlacement(strategyConfig),
-      sections: showArea ? applyAreaContextToSections(sections, hass) : sections,
+      ...densePlacement(strategyConfig, finalSections, 'batteries'),
+      sections: finalSections,
     };
   }
 }

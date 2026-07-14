@@ -1043,7 +1043,7 @@ class OrielViewRoom extends HTMLElement {
     timeEnd(`room-generate-${area.area_id}`);
     return {
       type: 'sections',
-      ...densePlacement(dashboardConfig),
+      ...densePlacement(dashboardConfig, finalSections, `room:${area.area_id}`),
       header: { badges_position: 'bottom' },
       sections: finalSections,
       badges,

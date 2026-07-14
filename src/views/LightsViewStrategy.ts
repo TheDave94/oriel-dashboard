@@ -66,7 +66,7 @@ class OrielViewLights extends HTMLElement {
       );
       if (popups) sections.push(popups);
     }
-    return { type: 'sections', ...densePlacement(dashboardConfig), sections };
+    return { type: 'sections', ...densePlacement(dashboardConfig, sections, 'lights'), sections };
   }
 }
 

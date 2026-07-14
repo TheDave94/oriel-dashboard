@@ -163,7 +163,7 @@ class OrielViewCovers extends HTMLElement {
       );
       if (popups) sections.push(popups);
     }
-    return { type: 'sections', ...densePlacement(strategyConfig), sections };
+    return { type: 'sections', ...densePlacement(strategyConfig, sections, 'covers'), sections };
   }
 }
 

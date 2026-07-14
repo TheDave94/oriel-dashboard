@@ -129,7 +129,7 @@ class OrielViewCamera extends HTMLElement {
     }
     pushSection(localize('camera.no_area'), ungrouped);
 
-    return { type: 'sections', ...densePlacement(strategyConfig), sections };
+    return { type: 'sections', ...densePlacement(strategyConfig, sections, 'cameras'), sections };
   }
 }
 

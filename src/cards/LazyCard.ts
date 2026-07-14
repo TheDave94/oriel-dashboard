@@ -17,6 +17,7 @@ import { LitElement, html, css, nothing, type TemplateResult } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import type { HomeAssistant } from '../types/homeassistant';
 import type { LovelaceCardConfig } from '../types/lovelace';
+import { estimateCardGridSize } from '../utils/section-packing';
 
 interface LazyCardConfig {
   type: string;
@@ -60,6 +61,26 @@ class OrielLazyCard extends LitElement {
     return 3;
   }
 
+  /**
+   * Grid sizing for the section layout. The child isn't mounted yet when
+   * HA asks, so we can't delegate to its getGridOptions() — without an
+   * answer HA falls back to full-width/auto and every lazy-wrapped tile
+   * loses its half-section width. The wrapped config's own `grid_options`
+   * are authoritative when present; otherwise we take the estimated
+   * per-type default columns and leave rows 'auto' so the mounted child
+   * keeps its natural height (a wrong numeric row count would clip it).
+   */
+  public getGridOptions(): { columns: number | 'full'; rows: number | 'auto' } {
+    const inner = this._config?.card;
+    if (!inner || typeof inner !== 'object') return { columns: 12, rows: 'auto' };
+    const explicitRows = (inner.grid_options as { rows?: number | 'auto' } | undefined)?.rows;
+    return {
+      // estimateCardGridSize already honors explicit grid_options.columns.
+      columns: estimateCardGridSize(inner).columns,
+      rows: typeof explicitRows === 'number' ? explicitRows : 'auto',
+    };
+  }
+
   protected firstUpdated(): void {
     const rootMargin = this._config.root_margin ?? '200px';
     this._observer = new IntersectionObserver(
@@ -86,7 +107,13 @@ class OrielLazyCard extends LitElement {
 
   protected render(): TemplateResult | typeof nothing {
     if (!this._mounted) {
-      const minHeight = this._config?.placeholder_height ?? '200px';
+      // Reserve roughly the child's eventual height (rows × 56px + gaps)
+      // so mounting doesn't shift the layout. Explicit config wins.
+      const estimatedRows = this._config?.card
+        ? estimateCardGridSize(this._config.card).rows
+        : 3;
+      const estimatedPx = Math.max(40, Math.round(estimatedRows * 64 - 8));
+      const minHeight = this._config?.placeholder_height ?? `${estimatedPx}px`;
       return html`<div
         class="placeholder"
         style=${`--oriel-lazy-min-height: ${minHeight}`}

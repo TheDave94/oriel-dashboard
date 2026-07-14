@@ -467,12 +467,13 @@ class OrielViewSecurity extends HTMLElement {
       else sections.unshift(activitySection);
     }
 
+    const finalSections = showAreaInSummaries(dashboardConfig)
+      ? applyAreaContextToSections(sections, hass)
+      : sections;
     return {
       type: 'sections',
-      ...densePlacement(dashboardConfig),
-      sections: showAreaInSummaries(dashboardConfig)
-        ? applyAreaContextToSections(sections, hass)
-        : sections,
+      ...densePlacement(dashboardConfig, finalSections, 'security'),
+      sections: finalSections,
     };
   }
 }

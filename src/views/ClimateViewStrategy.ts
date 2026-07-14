@@ -107,12 +107,13 @@ class OrielViewClimate extends HTMLElement {
       if (popups) sections.push(popups);
     }
 
+    const finalSections = showAreaInSummaries(dashboardConfig)
+      ? applyAreaContextToSections(sections, hass)
+      : sections;
     return {
       type: 'sections',
-      ...densePlacement(dashboardConfig),
-      sections: showAreaInSummaries(dashboardConfig)
-        ? applyAreaContextToSections(sections, hass)
-        : sections,
+      ...densePlacement(dashboardConfig, finalSections, 'climate'),
+      sections: finalSections,
     };
   }
 }

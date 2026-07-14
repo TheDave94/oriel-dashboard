@@ -110,7 +110,7 @@ class OrielViewHumidity extends HTMLElement {
     );
     if (comfortableSection) sections.push(comfortableSection);
 
-    return { type: 'sections', ...densePlacement(strategyConfig), sections };
+    return { type: 'sections', ...densePlacement(strategyConfig, sections, 'humidity'), sections };
   }
 }
 
