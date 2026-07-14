@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.27.3](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.2...v4.27.3) (2026-07-14)
+
+
+### Bug Fixes
+
+* upstream alignment wave — shared bugs and HA 2026.x integration ([#188](https://github.com/TheDave94/oriel-dashboard/issues/188)) ([d54a27c](https://github.com/TheDave94/oriel-dashboard/commit/d54a27c1979409bbb68350a47c7a26cb32d35c8f))
+
 ## [4.27.2](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.1...v4.27.2) (2026-07-14)
 
 
