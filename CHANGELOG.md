@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.27.1](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.0...v4.27.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* security view lock tiles now ride lock-commands inline ([#183](https://github.com/TheDave94/oriel-dashboard/issues/183)) ([8a0be37](https://github.com/TheDave94/oriel-dashboard/commit/8a0be379a52452818a4ee6704fa0f2ea11791852)), closes [#181](https://github.com/TheDave94/oriel-dashboard/issues/181)
+
 ## [4.27.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.26.0...v4.27.0) (2026-07-06)
 
 
