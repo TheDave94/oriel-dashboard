@@ -64,9 +64,11 @@ export type RoomSectionKey =
   | 'windows'
   | 'media'
   | 'scenes'
+  | 'vacuums'
   | 'misc'
   | 'automations'
-  | 'scripts';
+  | 'scripts'
+  | 'pins';
 
 export const DEFAULT_ROOM_SECTION_ORDER: RoomSectionKey[] = [
   'lights',
@@ -77,9 +79,21 @@ export const DEFAULT_ROOM_SECTION_ORDER: RoomSectionKey[] = [
   'windows',
   'media',
   'scenes',
+  'vacuums',
   'misc',
   'automations',
   'scripts',
+];
+
+/**
+ * Keys accepted in room_section_order. `pins` is orderable when the
+ * user places it explicitly, but absent from the DEFAULT order so
+ * unconfigured dashboards keep the legacy room_pins_position placement
+ * (top, or bottom via that toggle).
+ */
+export const VALID_ROOM_SECTION_KEYS: RoomSectionKey[] = [
+  ...DEFAULT_ROOM_SECTION_ORDER,
+  'pins',
 ];
 
 /** Keys for section headings that can be hidden via hidden_section_headings */
@@ -256,6 +270,10 @@ export interface OrielConfig {
   lights_sort_by?: 'last_changed' | 'name'; // default: 'last_changed'
   show_security_summary?: boolean; // default: true
   show_battery_summary?: boolean; // default: true
+  /** Batteries VIEW toggle, decoupled from the summary tile (#320).
+   *  Default: follows show_battery_summary. Explicit false hides the
+   *  tab but keeps the view reachable while the tile exists. */
+  show_battery_view?: boolean;
   show_climate_summary?: boolean; // default: false
   hide_mobile_app_batteries?: boolean; // default: false
   hide_battery_notes_entities?: boolean; // default: false
@@ -268,7 +286,11 @@ export interface OrielConfig {
   show_humidity_summary?: boolean; // default: false
   humidity_low_threshold?: number; // default: 30 (below = Dry)
   humidity_high_threshold?: number; // default: 60 (above = Humid)
-  show_locks_in_rooms?: boolean; // default: false
+  show_locks_in_rooms?: boolean;
+  /** Vacuums & mowers get their own room section instead of riding in
+   *  Misc (#330 upstream). Default false — matches HA's own areas
+   *  strategy, which groups them under "others". */
+  show_vacuums_section_in_rooms?: boolean; // default: false
   show_automations_in_rooms?: boolean; // default: false
   show_scripts_in_rooms?: boolean; // default: false
   show_cameras_in_rooms?: boolean; // default: true
@@ -1198,11 +1220,15 @@ export interface CustomSection {
   heading?: string;
   /** Optional MDI icon for the heading */
   icon?: string;
-  /** Raw YAML string entered by the user in the editor — a Lovelace card
-   *  config array, e.g. `- type: markdown\n  content: ...` */
+  /** Raw YAML string entered by the user in the editor. Accepts either
+   *  a Lovelace card list (`- type: markdown\n  content: ...`) or a
+   *  COMPLETE section config (`type: grid\ncards: [...]` — exactly what
+   *  HA's raw section editor shows), incl. section-level fields like
+   *  `column_span` and `visibility` (#351 upstream). */
   yaml?: string;
-  /** Parsed array of Lovelace card configs (derived from yaml) */
-  parsed_config?: Record<string, any>[] | null;
+  /** Parsed config (derived from yaml): a card array (legacy), or a
+   *  full section object when the YAML carried `cards:`. */
+  parsed_config?: Record<string, any>[] | Record<string, any> | null;
   /** Render-time alias for `parsed_config` (F3) — a card config or an array
    *  of them; a single object is wrapped into an array. See CustomCard.card.
    *  `parsed_config` wins if both are set. */

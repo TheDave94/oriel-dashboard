@@ -92,10 +92,32 @@ function inheritVisibilityFromCard(parsedConfig: unknown): unknown[] | undefined
  * to that shape). Malformed entries are dropped.
  */
 function buildCustomSection(section: CustomSection): LovelaceSectionConfig | null {
-  if (!Array.isArray(section.parsed_config) || section.parsed_config.length === 0) return null;
+  const parsed = section.parsed_config;
+
+  // Full-section form (#351 upstream): an object carrying `cards:` is a
+  // complete Lovelace section — 1:1 passthrough of section-level fields
+  // (column_span, visibility, future HA options). heading/icon inputs
+  // are ignored here: the pasted section already IS the layout.
+  if (parsed && !Array.isArray(parsed) && typeof parsed === 'object') {
+    const sectionConfig = parsed as Record<string, unknown>;
+    if (!Array.isArray(sectionConfig.cards)) return null;
+    const validCards = (sectionConfig.cards as unknown[]).filter(
+      (c): c is LovelaceCardConfig => typeof (c as { type?: unknown } | null)?.type === 'string',
+    );
+    if (validCards.length === 0) return null;
+    return {
+      type: 'grid',
+      ...sectionConfig,
+      cards: validCards,
+    } as LovelaceSectionConfig;
+  }
+
+  // Legacy cards-only form: a card list; heading/icon fields synthesize
+  // the heading card.
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
   // `?.` matters: a blank YAML list item parses to null, and a crash
   // here takes down the whole overview generate.
-  const validCards = section.parsed_config.filter(
+  const validCards = parsed.filter(
     (c): c is LovelaceCardConfig => typeof (c as { type?: unknown } | null)?.type === 'string'
   );
   if (validCards.length === 0) return null;

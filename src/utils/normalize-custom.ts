@@ -54,6 +54,11 @@ function normalizeSection(entry: CustomSection, index: number): CustomSection {
   if (e.parsed_config != null) return entry;
   const alias = e.card ?? e.config;
   if (alias != null) {
+    // An object alias carrying `cards:` is a full section config (#351) —
+    // keep it whole; anything else is a card (list).
+    if (!Array.isArray(alias) && Array.isArray((alias as Record<string, unknown>).cards)) {
+      return { ...entry, parsed_config: alias as Record<string, any> };
+    }
     const arr = Array.isArray(alias) ? alias : [alias];
     return { ...entry, parsed_config: arr as Record<string, any>[] };
   }

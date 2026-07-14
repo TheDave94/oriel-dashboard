@@ -251,7 +251,14 @@ class Oriel extends HTMLElement {
     const showLights = config.show_light_summary !== false;
     const showCovers = config.show_covers_summary !== false;
     const showSecurity = config.show_security_summary !== false;
-    const showBatteries = config.show_battery_summary !== false;
+    const showBatterySummaryTile = config.show_battery_summary !== false;
+    // #320 (upstream simon42): the batteries VIEW is decoupled from the
+    // summary tile. Default follows the tile as before; an explicit
+    // show_battery_view keeps the view without the tile (or vice versa —
+    // the view then survives as a subview so the tile's tap target
+    // always exists).
+    const showBatteries =
+      (config.show_battery_view ?? showBatterySummaryTile) !== false || showBatterySummaryTile;
     const showClimate = config.show_climate_summary === true;
     const showCamera = config.show_camera_view === true;
     const showHumidity = config.show_humidity_summary === true;
@@ -273,6 +280,9 @@ class Oriel extends HTMLElement {
       { enabled: showSecurity, title: localize('views.security'), path: 'security', icon: 'mdi:security',
         resolve: () => getStrategy('ll-strategy-view-oriel-security').generate({ config }, hass) },
       { enabled: showBatteries, title: localize('views.batteries'), path: 'batteries', icon: 'mdi:battery-alert',
+        // Tab hidden when the user explicitly disabled the view but the
+        // tile still needs it as a navigation target.
+        subviewOverride: config.show_battery_view === false ? true : undefined,
         resolve: () => getStrategy('ll-strategy-view-oriel-batteries').generate({ config }, hass) },
       { enabled: showClimate, title: localize('views.climate'), path: 'climate', icon: 'mdi:thermostat',
         resolve: () => getStrategy('ll-strategy-view-oriel-climate').generate({ config }, hass) },
@@ -332,7 +342,7 @@ class Oriel extends HTMLElement {
         title: def.title,
         path: def.path,
         icon: def.icon,
-        subview: !showSummaryViews,
+        subview: (def as { subviewOverride?: boolean }).subviewOverride ?? !showSummaryViews,
         ...utilityConfigs[i],
       })),
       ...visibleAreas.map((area, i) => densityOverlay({
