@@ -6,6 +6,13 @@ Full release notes with diffs and asset bundles: [GitHub releases](https://githu
 
 ---
 
+## [4.28.0](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.4...v4.28.0) (2026-07-14)
+
+
+### Features
+
+* upstream ports — full-YAML custom sections, battery view toggle, orderable pins, room vacuums, visibility cascade ([#192](https://github.com/TheDave94/oriel-dashboard/issues/192)) ([d50e52b](https://github.com/TheDave94/oriel-dashboard/commit/d50e52bf3274a45d650e5d3ca7dda5b2909e7657))
+
 ## [4.27.4](https://github.com/TheDave94/oriel-dashboard/compare/v4.27.3...v4.27.4) (2026-07-14)
 
 
