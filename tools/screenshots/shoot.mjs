@@ -58,16 +58,16 @@ const OPTIONAL = [
 function ws() {
   return new Promise((res, rej) => {
     const sock = new WebSocket(WS_URL);
-    let id = 1; const pend = {};
+    let id = 1; const pend = new Map();
     sock.on('message', (data) => {
       const m = JSON.parse(data);
       if (m.type === 'auth_required') return sock.send(JSON.stringify({ type: 'auth', access_token: TOKEN }));
       if (m.type === 'auth_ok') return res({
-        call: (msg) => new Promise((r) => { const i = id++; pend[i] = r; sock.send(JSON.stringify({ id: i, ...msg })); }),
+        call: (msg) => new Promise((r) => { const i = id++; pend.set(i, r); sock.send(JSON.stringify({ id: i, ...msg })); }),
         close: () => sock.close(),
       });
       if (m.type === 'auth_invalid') return rej(new Error('auth_invalid'));
-      if (m.type === 'result' && pend[m.id]) { pend[m.id](m); delete pend[m.id]; }
+      if (m.type === 'result' && pend.has(m.id)) { pend.get(m.id)(m); pend.delete(m.id); }
     });
     sock.on('error', rej);
   });
