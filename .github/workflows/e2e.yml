@@ -35,6 +35,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 env:
   # Pinned, public demo image. v0.1.1 added the /hacsfiles route fix (chunks
   # load so cards mount); v0.1.2 added the pinned zone-presence card; v0.1.3
