@@ -75,7 +75,8 @@ def resolve_release(repo: str, tag: str | None) -> tuple[str, list[str]]:
         page = _get(f"https://github.com/{repo}/releases")
         found = re.search(rf'/{re.escape(repo)}/releases/tag/([^"]+)"', page)
         if not found:
-            sys.exit("Could not determine the latest tag; pass --tag explicitly.")
+            print("FAIL: could not determine the latest tag; pass --tag explicitly.")
+            sys.exit(2)
         tag = found.group(1)
 
     page = _get(f"https://github.com/{repo}/releases/expanded_assets/{tag}")
@@ -125,7 +126,8 @@ def parse_runtime(entry_js: str) -> tuple[str, dict[str, str]]:
     """Read publicPath and the chunk-id -> filename map straight out of the bundle."""
     pub = re.search(r'\.p\s*=\s*"([^"]*)"', entry_js)
     if not pub:
-        sys.exit("No webpack publicPath in the entry bundle -- nothing to verify.")
+        print("FAIL: no webpack publicPath in the entry bundle -- nothing to verify.")
+        sys.exit(2)
 
     names, hashes = {}, {}
     if u_expr := re.search(r'\.u\s*=\s*[^;]{0,400}?\.js"', entry_js):
@@ -157,7 +159,13 @@ def main() -> int:
     tag, assets = resolve_release(repo, args.tag)
     print(f"[1] release under test: {tag}  ({len(assets)} assets)")
 
-    manifest = json.loads(_get(f"https://raw.githubusercontent.com/{repo}/{tag}/hacs.json"))
+    try:
+        manifest = json.loads(_get(f"https://raw.githubusercontent.com/{repo}/{tag}/hacs.json"))
+    except urllib.error.HTTPError as err:
+        if err.code == 404:
+            print(f"FAIL: no hacs.json at {repo}@{tag} -- HACS cannot load this repository.")
+            return 2
+        raise
     print(f"[2] hacs.json @ {tag}: {json.dumps(manifest, separators=(', ', ': '))}")
 
     file_name, remote = update_filenames(manifest, assets, repo)
@@ -233,5 +241,19 @@ def main() -> int:
     return 0
 
 
+class TransportError(RuntimeError):
+    """An upstream fault. Says nothing about the release under test."""
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except TransportError as err:
+        print(f"RETRY: {err}")
+        sys.exit(3)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as err:
+        print(f"RETRY: transport fault: {err}")
+        sys.exit(3)
+    except (json.JSONDecodeError, UnicodeDecodeError) as err:
+        print(f"RETRY: unreadable upstream response: {err}")
+        sys.exit(3)
