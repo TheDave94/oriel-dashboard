@@ -123,6 +123,22 @@ python3 tools/hacs-install-sim.py --repo TheDave94/oriel-dashboard --tag v4.29.1
 python3 tools/hacs-install-sim.py --keep   # latest release, keep the staged tree for inspection
 ```
 
+**Re-testing the gate itself (disposable prerelease).** The gate is exercised end-to-end by publishing a throwaway prerelease, because neither obvious route works here: `release: published` only runs workflows from the **default branch**, so the gate cannot be tested from a PR branch, and the repo PAT has no `Actions: write`, so `workflow_dispatch` returns `HTTP 403: Resource not accessible by personal access token`. Merge to `main` first, then:
+
+1. Publish a prerelease on a throwaway tag (e.g. `gate-test`) pointing at `main`'s current sha. That fires `release: published` and runs `release-build.yml` from `main`.
+2. The build job uploads `dist/` to the **throwaway** release — `gh release upload` targets `github.event.release.tag_name`, so production releases are never written to. `verify-install` then replays a HACS install against the throwaway tag, which is a genuine end-to-end run: real `hacs.json` at that sha, real uploaded assets.
+3. Confirm the run's conclusion and the `verify-install` verdict.
+4. Diff the newest production release's asset list against a pre-run baseline to prove nothing else was touched.
+5. Delete the throwaway release **and** its tag.
+
+**Verification history.**
+
+| Date | Method | Run | Result |
+|---|---|---|---|
+| 2026-09-08 | Disposable `gate-test` prerelease at `main` `8124623` | [run 34228399633](https://github.com/TheDave94/oriel-dashboard/actions/runs/34228399633) | success. `verify-install` PASS, all 5 runtime chunks resolve, 8 s. `v4.29.1` assets unchanged (baseline diff empty). `gate-test` release and tag confirmed removed. |
+
+**Coverage caveat — only the pass path has run on real infrastructure.** The 2026-09-08 run exercised exit 0 against a genuinely good release. The exit 1 (missing chunk), 2 (structural) and 3 (transport) branches are **stub-tested only**: verified by substituting a fake simulator that returns each code and asserting the step takes the intended branch. The classifier itself was additionally confirmed on live data (`v4.29.1` → 0, `v1.0.0` → 2), but the *workflow's* handling of 1, 2 and 3 has never run in CI. Treat a first real failure as also being the first live test of that branch, and read the step log rather than assuming the routing was right.
+
 **Keeping it honest.** The script pins the `hacs/integration` commit it mirrors in `HACS_REF`. When HACS changes its download path, bump the ref, re-read the cited lines, and fix the annotations in the same PR. The line references are the point: they let anyone diff the simulation against the source by hand. See [CONVENTIONS.md §1](../CONVENTIONS.md#1-packaging-claims-about-hacs-are-verified-against-hacsintegration-source-never-asserted) for why packaging claims about HACS get cited, not asserted.
 
 ## How to pause the autonomous flow
@@ -169,6 +185,16 @@ The App token isn't being used. Check that:
 - The workflow has the `Mint release-bot token` step before `Release Please`.
 - The release-please step has `token: ${{ steps.app-token.outputs.token }}` set.
 - Both secrets resolve (the workflow log shows `***` for both names, not blanks).
+
+## Local environment notes
+
+### `git fetch` against the Forgejo remote returns 403 from an interactive shell
+
+**Found 2026-09-08 on `claudebox`.** This repo has two remotes: `origin` (self-hosted Forgejo, `git.flamingistan.com`) and `github` (GitHub, where CI, issues and releases live). From an interactive login shell, `git fetch origin` fails with HTTP 403, while the same operation from a Claude Code session succeeds — CC pushes and fetches against both remotes without trouble.
+
+That asymmetry points at a **credential-helper gap** rather than a permissions problem on the Forgejo side: the two contexts resolve different helpers (or the interactive shell resolves none), so the interactive shell sends no usable credential.
+
+Not fixed here — it does not block the release path, which runs entirely against the `github` remote. Recorded so the next person who hits it does not re-diagnose it as a Forgejo ACL or token-expiry problem. The fix belongs in the shell/credential-helper configuration, in its own change.
 
 ## Key rotation
 
