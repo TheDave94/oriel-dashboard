@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-hacs-plugin-install-sim.py
+hacs-install-sim.py
 
 Simulates what HACS actually writes into `www/community/<repo>/` when a user
 downloads a `plugin`-category repository from a GitHub release, then checks
@@ -18,12 +18,24 @@ pinned in HACS_REF; every branch carries the file:line it reproduces, so the
 simulation can be diffed against the source by hand.
 
 Usage:
-    python3 hacs-plugin-install-sim.py
-    python3 hacs-plugin-install-sim.py --repo owner/name --tag v1.2.3
-    python3 hacs-plugin-install-sim.py --keep      # keep the staged tree
+    python3 hacs-install-sim.py
+    python3 hacs-install-sim.py --repo owner/name --tag v1.2.3
+    python3 hacs-install-sim.py --keep      # keep the staged tree
 
-Exit code 0 = every runtime chunk resolves. Non-zero = a real user install
-would 404. Stdlib only; GITHUB_TOKEN is used if set, but is not required.
+Exit codes -- the contract the CI gate keys on. Every path prints its verdict
+on stdout as a single line, so a caller never has to parse a traceback:
+
+    0  PASS   every runtime chunk resolves
+    1  FAIL   a chunk the entry bundle requests is absent -> real users 404
+    2  FAIL   no release asset matches hacs.json `filename`, no hacs.json at
+              the tag, or the entry bundle never landed. Right after an upload
+              this is also what propagation lag looks like, so callers must
+              disambiguate it against the expected asset list before treating
+              it as final.
+    3  RETRY  transport or upstream fault (HTTP error, unreadable JSON).
+              Says nothing about the release; retry it.
+
+Stdlib only; GITHUB_TOKEN is used if set, but is not required.
 """
 
 from __future__ import annotations
@@ -42,7 +54,7 @@ from pathlib import Path
 HACS_REF = "adb7d83e33d24325535fb43b8226572405143757"  # hacs/integration, 2026-09-05
 
 DEFAULT_REPO = "TheDave94/oriel-dashboard"
-UA = {"User-Agent": "hacs-plugin-install-sim"}
+UA = {"User-Agent": "hacs-install-sim"}
 
 
 def _get(url: str, *, as_json: bool = False, binary: bool = False):
@@ -75,7 +87,8 @@ def resolve_release(repo: str, tag: str | None) -> tuple[str, list[str]]:
         page = _get(f"https://github.com/{repo}/releases")
         found = re.search(rf'/{re.escape(repo)}/releases/tag/([^"]+)"', page)
         if not found:
-            sys.exit("Could not determine the latest tag; pass --tag explicitly.")
+            print("FAIL: could not determine the latest tag; pass --tag explicitly.")
+            sys.exit(2)
         tag = found.group(1)
 
     page = _get(f"https://github.com/{repo}/releases/expanded_assets/{tag}")
@@ -125,7 +138,8 @@ def parse_runtime(entry_js: str) -> tuple[str, dict[str, str]]:
     """Read publicPath and the chunk-id -> filename map straight out of the bundle."""
     pub = re.search(r'\.p\s*=\s*"([^"]*)"', entry_js)
     if not pub:
-        sys.exit("No webpack publicPath in the entry bundle -- nothing to verify.")
+        print("FAIL: no webpack publicPath in the entry bundle -- nothing to verify.")
+        sys.exit(2)
 
     names, hashes = {}, {}
     if u_expr := re.search(r'\.u\s*=\s*[^;]{0,400}?\.js"', entry_js):
@@ -157,7 +171,13 @@ def main() -> int:
     tag, assets = resolve_release(repo, args.tag)
     print(f"[1] release under test: {tag}  ({len(assets)} assets)")
 
-    manifest = json.loads(_get(f"https://raw.githubusercontent.com/{repo}/{tag}/hacs.json"))
+    try:
+        manifest = json.loads(_get(f"https://raw.githubusercontent.com/{repo}/{tag}/hacs.json"))
+    except urllib.error.HTTPError as err:
+        if err.code == 404:
+            print(f"FAIL: no hacs.json at {repo}@{tag} -- HACS cannot load this repository.")
+            return 2
+        raise
     print(f"[2] hacs.json @ {tag}: {json.dumps(manifest, separators=(', ', ': '))}")
 
     file_name, remote = update_filenames(manifest, assets, repo)
@@ -233,5 +253,19 @@ def main() -> int:
     return 0
 
 
+class TransportError(RuntimeError):
+    """An upstream fault. Says nothing about the release under test."""
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except TransportError as err:
+        print(f"RETRY: {err}")
+        sys.exit(3)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError) as err:
+        print(f"RETRY: transport fault: {err}")
+        sys.exit(3)
+    except (json.JSONDecodeError, UnicodeDecodeError) as err:
+        print(f"RETRY: unreadable upstream response: {err}")
+        sys.exit(3)

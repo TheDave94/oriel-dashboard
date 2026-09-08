@@ -101,13 +101,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      # Check out the tag under test so the simulator version that shipped
-      # with that release is the one that judges it. A workflow_dispatch
-      # against a tag older than the simulator fails here with a clear
-      # "No such file" — that is the intended answer, not a bug.
+      # Check out the workflow's own commit, not the tag under test. The
+      # simulator is CI tooling: on a `release: published` event the two are
+      # the same commit anyway, and on workflow_dispatch this is what lets
+      # the gate run against a tag that predates tools/hacs-install-sim.py.
+      # The build job still checks out the tag, so the assets are the tag's.
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-        with:
-          ref: ${{ needs.build.outputs.ref }}
 
       - name: Replay HACS plugin install against the release
         env:
@@ -117,32 +116,59 @@ jobs:
           TAG: ${{ needs.build.outputs.ref }}
           EXPECTED_ASSETS: ${{ needs.build.outputs.dist_files }}
         run: |
-          set -uo pipefail
-          # The simulator is a single hard verdict: exit 0 means every chunk
-          # the entry bundle can request is on disk after a HACS install;
-          # non-zero means a real user would 404.
+          set -u
+          # Exit-code contract of tools/hacs-install-sim.py (see its docstring):
+          #   0  pass        every chunk the entry bundle can request is on disk
+          #   1  missing     a runtime chunk is absent -> real installs 404
+          #   2  structural  no asset matches hacs.json filename / entry never landed
+          #   3  transport   HTTP/network fault talking to GitHub
           #
-          # The only thing retried here is asset-propagation lag — the
-          # window right after `gh release upload` where the release API
-          # (or the download CDN) does not yet list everything the build
-          # job just pushed. A failure while the asset list already matches
-          # dist/ is a genuine missing chunk and fails immediately.
+          # Branching:
+          #   0 -> done.
+          #   3 -> retry. The fault is between us and GitHub, not in the
+          #        release; the asset list is not consulted.
+          #   1 -> fail fast. The release lists what the bundle needs and it
+          #        still is not there. Waiting would not change the answer.
+          #   2 -> ambiguous: a genuinely non-compliant release looks the same
+          #        as one whose assets have not propagated yet. Compare the
+          #        release's asset list against the dist/ manifest the build
+          #        job recorded: complete -> structural, fail fast;
+          #        incomplete -> propagation lag, retry.
+          # Retry budget: 3 attempts, 20 s apart. stderr is folded into the
+          # log so the verdict line and its reason are both in sim.log.
           for attempt in 1 2 3; do
-            if python3 tools/hacs-install-sim.py --repo "$REPO" --tag "$TAG" | tee sim.log; then
-              exit 0
-            fi
+            python3 tools/hacs-install-sim.py --repo "$REPO" --tag "$TAG" 2>&1 | tee sim.log
+            rc=${PIPESTATUS[0]}
 
-            actual=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name' | sort | tr '\n' ' ' | sed 's/ $//')
-            if [ "$actual" = "$EXPECTED_ASSETS" ] && grep -q '^FAIL:' sim.log; then
-              echo "::error::Release $TAG lists every dist/ file, yet the HACS install replay failed. This is a genuine missing chunk, not propagation lag — not retrying."
-              exit 1
-            fi
+            case "$rc" in
+              0)
+                exit 0
+                ;;
+              1)
+                echo "::error::Simulator exit 1: a runtime chunk is missing from release $TAG. Genuine defect, not propagation lag — not retrying."
+                exit 1
+                ;;
+              2)
+                actual=$(gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets[].name' | sort | tr '\n' ' ' | sed 's/ $//')
+                if [ "$actual" = "$EXPECTED_ASSETS" ]; then
+                  echo "::error::Simulator exit 2 and release $TAG already lists every dist/ file. Structural failure (hacs.json filename vs assets), not propagation lag — not retrying."
+                  exit 1
+                fi
+                echo "Simulator exit 2 while the release asset list still lags dist/ — propagation lag, attempt $attempt/3."
+                ;;
+              3)
+                echo "Simulator exit 3: transport fault talking to GitHub — attempt $attempt/3."
+                ;;
+              *)
+                echo "::error::Simulator exited $rc, outside its documented 0-3 contract. Treating as a hard failure."
+                exit 1
+                ;;
+            esac
 
             if [ "$attempt" -lt 3 ]; then
-              echo "Release asset list does not yet match dist/ (or the fetch was transient) — attempt $attempt/3, waiting 20s for propagation."
               sleep 20
             fi
           done
 
-          echo "::error::HACS install replay still failing after 3 attempts (20s apart). Expected assets: $EXPECTED_ASSETS"
+          echo "::error::HACS install replay still failing after 3 attempts (20 s apart). Expected assets: $EXPECTED_ASSETS"
           exit 1

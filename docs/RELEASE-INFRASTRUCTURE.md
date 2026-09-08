@@ -101,9 +101,20 @@ If step 5's auto-fire fails, **do not** paper over with a fallback `gh workflow 
 3. Downloads exactly what HACS would download into a staged `www/community/oriel-dashboard/` tree.
 4. Parses webpack's `publicPath` and chunk map out of the delivered `oriel.js` and checks every async chunk is on disk under the served path.
 
-Exit 0 means a real user install resolves every chunk. Non-zero fails the workflow. The job is a hard gate: a release whose `verify-install` job is red has shipped a broken install and needs the missing asset uploaded (rerun the workflow via `gh workflow run release-build.yml -f tag=<tag>`; `--clobber` makes the upload idempotent).
+The script has a four-value exit-code contract, and every path prints one verdict line:
 
-**Retry semantics.** The step retries up to 3 times, 20 s apart, but only while the release's asset list still lags the `dist/` manifest the build job recorded. That window is GitHub asset propagation, not a defect. If the asset list already matches `dist/` and the simulator still prints a `FAIL:` verdict, the job fails immediately without retrying: that is a genuine missing chunk, and waiting would not change the answer.
+| Exit | Meaning | Gate behaviour |
+|---|---|---|
+| 0 | `PASS:` every runtime chunk resolves | job succeeds |
+| 1 | `FAIL:` a runtime chunk is absent (real installs 404) | fail fast, no retry |
+| 2 | `FAIL:` structural: no asset matches `hacs.json` `filename`, no `hacs.json` at the tag, entry never landed | ambiguous, see below |
+| 3 | `RETRY:` transport fault talking to GitHub | retry, asset list not consulted |
+
+The job is a hard gate: a release whose `verify-install` job is red has shipped a broken install and needs the missing asset uploaded (rerun the workflow via `gh workflow run release-build.yml -f tag=<tag>`; `--clobber` makes the upload idempotent).
+
+**Retry semantics.** Up to 3 attempts, 20 s apart. Exit 3 always retries: the fault is between the runner and GitHub, not in the release. Exit 1 never retries: the release lists what the bundle needs and it is still not there. Exit 2 is the ambiguous case: a genuinely non-compliant release looks identical to one whose assets have not propagated yet. The step compares the release's asset list against the `dist/` manifest the build job recorded. If the list is already complete, the failure is structural and the job fails immediately. If it still lags, that is propagation lag and the step retries. Any exit outside 0-3 is a hard failure.
+
+The verify job checks out the workflow's own commit, not the tag under test. The simulator is CI tooling: on a `release: published` event the two commits are the same, and on `workflow_dispatch` this is what lets the gate run against a tag that predates the script. The build job still checks out the tag, so the assets under test are the tag's.
 
 **Running it locally.** Stdlib only, no token required (a `GITHUB_TOKEN` env var raises the API rate limit if set):
 
@@ -146,12 +157,11 @@ This is the failure mode the whole App setup is designed to prevent. If it happe
 
 ### Symptom: `verify-install` job fails after a green `build` job
 
-Read the step log. Two shapes:
+Read `sim.log` in the step output (stderr is folded in). The `::error::` line names the simulator exit code and the branch the gate took:
 
-- **`FAIL: N chunk(s) absent -> 404 on a real install`** with the "genuine missing chunk, not propagation lag" error. The release asset list matches `dist/` but a chunk the entry bundle requests is not among them. Almost always a build/asset naming drift: compare the chunk names the simulator printed under `[7]` against `ls dist/` from the build job's log. Fix the packaging, then rerun the workflow on the same tag.
-- **Retried 3× and still failing** with the asset list not matching `dist/`. Either GitHub asset propagation took longer than 60 s (rerun the workflow; the upload is idempotent) or the upload step partially failed and `build` went green anyway. Check the upload step's log for per-file errors.
-
-A `No such file or directory: tools/hacs-install-sim.py` means the tag under test predates the simulator. Expected for `workflow_dispatch` against old tags; not a regression.
+- **Exit 1, "a runtime chunk is missing".** The release lists every `dist/` file yet a chunk the entry bundle requests is not among them. Almost always a build/asset naming drift: compare the chunk names the simulator printed under `[7]` against `ls dist/` from the build job's log. Fix the packaging, then rerun the workflow on the same tag.
+- **Exit 2, "already lists every dist/ file".** Structural: `hacs.json` `filename` does not match any uploaded asset, or the entry bundle never landed. Check `hacs.json` at the tag against the asset names.
+- **Exit 2 or 3, retried 3× and still failing.** Either GitHub asset propagation took longer than 60 s or GitHub was unreachable from the runner. Rerun the workflow; the upload is idempotent. If it recurs, check the upload step's log for per-file errors.
 
 ### Symptom: release PR author is `github-actions[bot]` instead of `oriel-release-bot[bot]`
 
