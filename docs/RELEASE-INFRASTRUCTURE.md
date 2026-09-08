@@ -87,9 +87,32 @@ A release after this setup ships should land entirely hands-off — the post-PR-
    - Tag created automatically — already worked under `GITHUB_TOKEN`.
    - **`release-build.yml` auto-fires** from the `release: published` event. This is the regression the App setup is fixing — it still has to work after the auto-merge changes.
    - Dist assets land on the GitHub release without a manual dispatch.
+   - The `verify-install` job in the same run goes green — the HACS install replay found every runtime chunk (see [Post-release install-verification gate](#post-release-install-verification-gate)).
 6. Install on live HA via HACS — picks up the new version normally.
 
 If step 5's auto-fire fails, **do not** paper over with a fallback `gh workflow run` step. That masks whether the App approach actually works. Read the CI logs, then see Troubleshooting below.
+
+## Post-release install-verification gate
+
+`release-build.yml` has a second job, `verify-install`, that runs after the asset upload on the same tag. It runs `tools/hacs-install-sim.py`, which replays the HACS plugin install path against the published release rather than trusting that the upload worked:
+
+1. Fetches `hacs.json` at the tag and the release's asset list.
+2. Replays the HACS branch decisions (`update_filenames`, `download_content`, the `content_in_root` filter) with the `hacs/integration` file:line each step reproduces printed beside it.
+3. Downloads exactly what HACS would download into a staged `www/community/oriel-dashboard/` tree.
+4. Parses webpack's `publicPath` and chunk map out of the delivered `oriel.js` and checks every async chunk is on disk under the served path.
+
+Exit 0 means a real user install resolves every chunk. Non-zero fails the workflow. The job is a hard gate: a release whose `verify-install` job is red has shipped a broken install and needs the missing asset uploaded (rerun the workflow via `gh workflow run release-build.yml -f tag=<tag>`; `--clobber` makes the upload idempotent).
+
+**Retry semantics.** The step retries up to 3 times, 20 s apart, but only while the release's asset list still lags the `dist/` manifest the build job recorded. That window is GitHub asset propagation, not a defect. If the asset list already matches `dist/` and the simulator still prints a `FAIL:` verdict, the job fails immediately without retrying: that is a genuine missing chunk, and waiting would not change the answer.
+
+**Running it locally.** Stdlib only, no token required (a `GITHUB_TOKEN` env var raises the API rate limit if set):
+
+```
+python3 tools/hacs-install-sim.py --repo TheDave94/oriel-dashboard --tag v4.29.1
+python3 tools/hacs-install-sim.py --keep   # latest release, keep the staged tree for inspection
+```
+
+**Keeping it honest.** The script pins the `hacs/integration` commit it mirrors in `HACS_REF`. When HACS changes its download path, bump the ref, re-read the cited lines, and fix the annotations in the same PR. The line references are the point: they let anyone diff the simulation against the source by hand. See [CONVENTIONS.md §1](../CONVENTIONS.md#1-packaging-claims-about-hacs-are-verified-against-hacsintegration-source-never-asserted) for why packaging claims about HACS get cited, not asserted.
 
 ## How to pause the autonomous flow
 
@@ -120,6 +143,15 @@ This is the failure mode the whole App setup is designed to prevent. If it happe
 2. The workflow file may have lost the App-token step in a refactor. Diff `release-please.yml` against the commit that introduced the App pattern (search the log for `ci(release): use GitHub App token`).
 
 **Do not** add a `workflow_dispatch` fallback as a quick fix. The fallback obscures whether the App approach works at all. Either fix the root cause or open an issue documenting the regression so the next maintainer doesn't inherit a silent workaround.
+
+### Symptom: `verify-install` job fails after a green `build` job
+
+Read the step log. Two shapes:
+
+- **`FAIL: N chunk(s) absent -> 404 on a real install`** with the "genuine missing chunk, not propagation lag" error. The release asset list matches `dist/` but a chunk the entry bundle requests is not among them. Almost always a build/asset naming drift: compare the chunk names the simulator printed under `[7]` against `ls dist/` from the build job's log. Fix the packaging, then rerun the workflow on the same tag.
+- **Retried 3× and still failing** with the asset list not matching `dist/`. Either GitHub asset propagation took longer than 60 s (rerun the workflow; the upload is idempotent) or the upload step partially failed and `build` went green anyway. Check the upload step's log for per-file errors.
+
+A `No such file or directory: tools/hacs-install-sim.py` means the tag under test predates the simulator. Expected for `workflow_dispatch` against old tags; not a regression.
 
 ### Symptom: release PR author is `github-actions[bot]` instead of `oriel-release-bot[bot]`
 
